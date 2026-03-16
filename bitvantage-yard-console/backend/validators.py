@@ -27,11 +27,12 @@ def validate_position(container_type: str, block: str, bay: str, row: int, tier:
     if tier < 1 or tier > 4:
         raise ValueError("Tier must be a number from 1 to 4.")
 
-    is_even_row = int(row) % 2 == 0
-    if normalized_type == "20ft" and is_even_row:
-        raise ValueError("Rule violation: 20ft containers cannot be placed in even rows.")
-    if normalized_type in {"40ft", "45ft"} and not is_even_row:
-        raise ValueError(f"Rule violation: {normalized_type} containers cannot be placed in odd rows.")
+    bay_num = int(normalized_bay)
+    is_even_bay = bay_num % 2 == 0
+    if normalized_type == "20ft" and is_even_bay:
+        raise ValueError("Rule violation: 20ft containers cannot be placed in even bays.")
+    if normalized_type in {"40ft", "45ft"} and not is_even_bay:
+        raise ValueError(f"Rule violation: {normalized_type} containers cannot be placed in odd bays.")
 
     return {
         "container_type": normalized_type,

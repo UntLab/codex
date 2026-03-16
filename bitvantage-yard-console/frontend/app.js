@@ -9,7 +9,7 @@ const MAX_TIER_COUNT = 4;
 const DEFAULT_VIEWPORT_SIZE = 14;
 
 const DEFAULT_LAYOUT = [
-    { block: "01", bayCount: 5, rowCount: 2, tierCount: MAX_TIER_COUNT, label: "West Rail Block", equipment: "Left of the railway", footprint: "5 x 2" },
+    { block: "01", bayCount: 10, rowCount: 2, tierCount: MAX_TIER_COUNT, label: "West Rail Block", equipment: "Left of the railway", footprint: "10 x 2" },
     { block: "02", bayCount: 14, rowCount: 3, tierCount: MAX_TIER_COUNT, label: "East Rail Block", equipment: "Right of the railway", footprint: "14 x 3" },
 ];
 
@@ -40,6 +40,11 @@ const state = {
     dragOverSlotKey: null,
     pendingMove: null,
     toastTimer: null,
+    formDirty: {
+        stackin: false,
+        stackout: false,
+        restow: false,
+    },
 };
 
 document.addEventListener("DOMContentLoaded", async () => {
@@ -87,6 +92,10 @@ function openTab(tabId) {
 }
 
 function setupForms() {
+    bindFormDirtyTracking("stackin-form", "stackin");
+    bindFormDirtyTracking("stackout-form", "stackout");
+    bindFormDirtyTracking("restow-form", "restow");
+
     document.getElementById("stackin-form").addEventListener("submit", async (event) => {
         event.preventDefault();
         await submitForm(event.target, `${API_BASE_URL}/stack-in`, {
@@ -117,6 +126,16 @@ function setupForms() {
             new_row: numberValue("restow-row"),
             new_tier: numberValue("restow-tier"),
         });
+    });
+}
+
+function bindFormDirtyTracking(formId, key) {
+    const form = document.getElementById(formId);
+    form.addEventListener("input", () => {
+        state.formDirty[key] = true;
+    });
+    form.addEventListener("change", () => {
+        state.formDirty[key] = true;
     });
 }
 
@@ -500,6 +519,9 @@ function resetSessionState() {
     state.pendingMove = null;
     state.containerHistory.clear();
     state.routingPreviewCache.clear();
+    state.formDirty.stackin = false;
+    state.formDirty.stackout = false;
+    state.formDirty.restow = false;
     localStorage.removeItem(STORAGE_TOKEN_KEY);
     localStorage.removeItem(STORAGE_USER_KEY);
     stopAutoRefresh();
@@ -661,6 +683,38 @@ async function loadInventory(options = {}) {
     }
 }
 
+async function submitForm(form, url, payload) {
+    const response = await apiFetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+    });
+    const data = await response.json();
+    if (!response.ok) {
+        showToast(data.detail || "Operation failed.", "error");
+        return;
+    }
+    if (form.id === "stackin-form") state.formDirty.stackin = false;
+    if (form.id === "stackout-form") state.formDirty.stackout = false;
+    if (form.id === "restow-form") state.formDirty.restow = false;
+    if (typeof form.reset === "function") form.reset();
+    await loadInventory({ silent: true });
+    if (payload.container_id) {
+        const updatedContainer = findContainerById(payload.container_id);
+        if (updatedContainer) {
+            state.selectedContainerId = updatedContainer.container_id;
+            state.selectedBlock = updatedContainer.block;
+            state.selectedSlotKey = getSlotKey(updatedContainer.block, getSurfaceStartBay(updatedContainer), updatedContainer.row_num);
+            ensureContainerHistory(updatedContainer.container_id);
+        } else {
+            state.selectedContainerId = null;
+            state.selectedSlotKey = null;
+        }
+    }
+    renderDashboard();
+    showToast(data.message || "Operation completed.", "success");
+}
+
 function preserveSelection() {
     const layouts = getTerminalLayout();
     const availableBlocks = layouts.map((layout) => layout.block);
@@ -688,7 +742,7 @@ function getTerminalLayout() {
     }));
     return base.map((layout) => ({
         ...layout,
-        bays: Array.from({ length: layout.bayCount }, (_, index) => String(index + 1).padStart(2, "0")),
+        bays: Array.from({ length: layout.bayCount }, (_, index) => formatBayNumber(index * 2 + 1)),
         rows: Array.from({ length: layout.rowCount }, (_, index) => index + 1),
     }));
 }
@@ -697,38 +751,148 @@ function getBlockLayout(block) {
     return getTerminalLayout().find((item) => item.block === block) || getTerminalLayout()[0];
 }
 
-function defaultAllowedTypesForRow(row) {
-    return Number(row) % 2 === 0 ? ["40ft", "45ft"] : ["20ft"];
+function formatBayNumber(value) {
+    return String(Number(value)).padStart(2, "0");
 }
 
-function isTallContainer(container) {
+function parseBayNumber(value) {
+    return Number(String(value));
+}
+
+function isSurfaceBay(value) {
+    return parseBayNumber(value) % 2 === 1;
+}
+
+function getMaxSurfaceBay(block) {
+    return getBlockLayout(block).bayCount * 2 - 1;
+}
+
+function getMaxWideBay(block) {
+    return getMaxSurfaceBay(block) - 1;
+}
+
+function canStartWideAtSurfaceBay(block, bay) {
+    const bayNum = parseBayNumber(bay);
+    return bayNum % 4 === 1 && bayNum + 2 <= getMaxSurfaceBay(block);
+}
+
+function getWideAnchorBayFromSurfaceBay(bay) {
+    return formatBayNumber(parseBayNumber(bay) + 1);
+}
+
+function getWideSurfaceBaysFromAnchor(bay) {
+    const anchorNum = parseBayNumber(bay);
+    return [formatBayNumber(anchorNum - 1), formatBayNumber(anchorNum + 1)];
+}
+
+function getSurfaceStartBayFromWideAnchor(bay) {
+    return getWideSurfaceBaysFromAnchor(bay)[0];
+}
+
+function getSurfaceStartBay(container) {
+    return isWideContainer(container) ? getWideSurfaceBaysFromAnchor(container.bay)[0] : formatBayNumber(container.bay);
+}
+
+function is45ftAnchorAllowed(block, bay) {
+    const bayNum = parseBayNumber(bay);
+    return bayNum === 2 || bayNum === getMaxWideBay(block);
+}
+
+function defaultAllowedTypesForBay(block, bay) {
+    const allowed = ["20ft"];
+    if (canStartWideAtSurfaceBay(block, bay)) {
+        allowed.push("40ft");
+        if (is45ftAnchorAllowed(block, getWideAnchorBayFromSurfaceBay(bay))) {
+            allowed.push("45ft");
+        }
+    }
+    return allowed;
+}
+
+function isWideContainer(container) {
     return Boolean(container && ["40ft", "45ft"].includes(container.container_type));
 }
 
-function canContainerSpanVertical(container) {
-    return Boolean(container && isTallContainer(container) && Number(container.row_num) > 1 && Number(container.row_num) % 2 === 0);
+function canContainerSpanHorizontal(container) {
+    return isWideContainer(container);
 }
 
 function getCoveredSurfaceSlotKey(container) {
-    if (!canContainerSpanVertical(container)) return null;
-    return getSlotKey(container.block, container.bay, Number(container.row_num) - 1);
+    if (!canContainerSpanHorizontal(container)) return null;
+    return getSlotKey(container.block, getWideSurfaceBaysFromAnchor(container.bay)[1], container.row_num);
+}
+
+function getSurfaceBaysForPlacement(block, bay, containerType) {
+    if (!["40ft", "45ft"].includes(containerType)) return [formatBayNumber(bay)];
+    return getWideSurfaceBaysFromAnchor(bay);
+}
+
+function getActualBayForPlacement(containerType, block, surfaceBay) {
+    if (!["40ft", "45ft"].includes(containerType)) return formatBayNumber(surfaceBay);
+    if (!canStartWideAtSurfaceBay(block, surfaceBay)) return null;
+    const anchorBay = getWideAnchorBayFromSurfaceBay(surfaceBay);
+    if (containerType === "45ft" && !is45ftAnchorAllowed(block, anchorBay)) return null;
+    return anchorBay;
 }
 
 function getSurfaceOccupancy(block) {
     const occupied = new Set();
     getBlockContainers(block).forEach((container) => {
-        occupied.add(getSlotKey(container.block, container.bay, container.row_num));
-        const coveredSlotKey = getCoveredSurfaceSlotKey(container);
-        if (coveredSlotKey) occupied.add(coveredSlotKey);
+        getSurfaceBaysForPlacement(container.block, container.bay, container.container_type).forEach((surfaceBay) => {
+            occupied.add(getSlotKey(container.block, surfaceBay, container.row_num));
+        });
     });
     return occupied;
 }
 
-function getCoveringTallContainer(block, bay, row) {
-    const anchorRow = Number(row) + 1;
-    if (anchorRow % 2 !== 0) return null;
-    const anchorContainer = getVisibleContainerForSlot(getSlotContainers(block, bay, anchorRow));
-    return canContainerSpanVertical(anchorContainer) ? anchorContainer : null;
+function getAnchoredWideContainer(block, bay, row) {
+    if (!canStartWideAtSurfaceBay(block, bay)) return null;
+    const anchorBay = getWideAnchorBayFromSurfaceBay(bay);
+    const anchorContainer = getVisibleContainerForSlot(
+        state.inventory
+            .filter((container) => container.block === block && container.bay === anchorBay && Number(container.row_num) === Number(row))
+            .sort((a, b) => a.tier_num - b.tier_num)
+    );
+    return canContainerSpanHorizontal(anchorContainer) ? anchorContainer : null;
+}
+
+function getCoveringWideContainer(block, bay, row) {
+    const bayNum = parseBayNumber(bay);
+    if (bayNum % 4 !== 3) return null;
+    const anchorBay = formatBayNumber(bayNum - 1);
+    const anchorContainer = getVisibleContainerForSlot(
+        state.inventory
+            .filter((container) => container.block === block && container.bay === anchorBay && Number(container.row_num) === Number(row))
+            .sort((a, b) => a.tier_num - b.tier_num)
+    );
+    return canContainerSpanHorizontal(anchorContainer) ? anchorContainer : null;
+}
+
+function getSurfacePositionCodes(block, bay, row, tier, containerType) {
+    return getSurfaceBaysForPlacement(block, bay, containerType).map((surfaceBay) => `${block}-${surfaceBay}-${row}-${tier}`);
+}
+
+function findPositionOccupant(block, bay, row, tier, containerType, excludeContainerId = null) {
+    const targetCodes = new Set(getSurfacePositionCodes(block, bay, row, tier, containerType));
+    return state.inventory.find((container) => {
+        if (excludeContainerId && container.container_id === excludeContainerId) return false;
+        return getSurfacePositionCodes(container.block, container.bay, container.row_num, container.tier_num, container.container_type)
+            .some((code) => targetCodes.has(code));
+    }) || null;
+}
+
+function hasSupportingBase(block, bay, row, tier, containerType) {
+    if (tier <= 1) return true;
+    const supportCodes = new Set(getSurfacePositionCodes(block, bay, row, tier - 1, containerType));
+    return [...supportCodes].every((targetCode) =>
+        state.inventory.some((container) =>
+            container.block === block &&
+            Number(container.row_num) === Number(row) &&
+            Number(container.tier_num) === tier - 1 &&
+            getSurfacePositionCodes(container.block, container.bay, container.row_num, container.tier_num, container.container_type)
+                .some((code) => code === targetCode)
+        )
+    );
 }
 
 function getFallbackSlotRecord(block, bay, row) {
@@ -739,7 +903,7 @@ function getFallbackSlotRecord(block, bay, row) {
         slot_code: `${block}-${bay}-${row}`,
         enabled: true,
         max_tiers: getBlockLayout(block).tierCount,
-        allowed_container_types: defaultAllowedTypesForRow(row),
+        allowed_container_types: defaultAllowedTypesForBay(block, bay),
         notes: null,
     };
 }
@@ -829,12 +993,17 @@ function renderMiniGrid(layout) {
     const cells = [];
     [...layout.rows].reverse().forEach((row, rowIndex) => {
         layout.bays.forEach((bay, bayIndex) => {
-            if (getCoveringTallContainer(layout.block, bay, row)) return;
+            const coveringWideContainer = getCoveringWideContainer(layout.block, bay, row);
+            if (coveringWideContainer) return;
+            const anchoredWideContainer = getAnchoredWideContainer(layout.block, bay, row);
+            if (anchoredWideContainer) {
+                cells.push(`<span class="mini-cell type-${anchoredWideContainer.container_type} wide" style="grid-column:${bayIndex + 1} / span 2;grid-row:${rowIndex + 1};"></span>`);
+                return;
+            }
             const slot = getSlotRecord(layout.block, bay, row);
             const container = getVisibleContainerForSlot(getSlotContainers(layout.block, bay, row));
-            const spanRows = canContainerSpanVertical(container) ? 2 : 1;
             const typeClass = !slot.enabled ? "type-disabled" : container ? `type-${container.container_type}` : "type-empty";
-            cells.push(`<span class="mini-cell ${typeClass} ${spanRows === 2 ? "tall" : ""}" style="grid-column:${bayIndex + 1};grid-row:${rowIndex + 1} / span ${spanRows};"></span>`);
+            cells.push(`<span class="mini-cell ${typeClass}" style="grid-column:${bayIndex + 1};grid-row:${rowIndex + 1};"></span>`);
         });
     });
     return cells.join("");
@@ -842,10 +1011,14 @@ function renderMiniGrid(layout) {
 
 function renderBayGrid() {
     const layout = getBlockLayout(state.selectedBlock);
+    const maxViewportSize = layout.bays.length;
+    if (state.viewportSize > maxViewportSize) state.viewportSize = maxViewportSize;
     const visibleRows = getVisibleRows(layout);
     const visibleBays = getVisibleBays(layout);
+    const isFullBlockView = state.viewportSize >= layout.bays.length;
+    const isDenseView = visibleBays.length >= 10;
     setText("bay-panel-title", `${layout.label} · Block ${layout.block}`);
-    setText("bay-panel-subtitle", state.tierVisibility === "top" ? `Top mode shows the highest container in each rail slot. 40ft and 45ft containers span two vertical cells. ${layout.equipment || "Rail-side handling"}.` : `Tier ${state.tierVisibility} mode isolates one stack layer. Standard supports up to ${layout.tierCount} tiers.`);
+    setText("bay-panel-subtitle", state.tierVisibility === "top" ? `Top mode shows the highest container in each rail slot. 40ft and 45ft containers span two horizontal cells in the same row. ${layout.equipment || "Rail-side handling"}.` : `Tier ${state.tierVisibility} mode isolates one stack layer. Standard supports up to ${layout.tierCount} tiers.`);
     renderViewportControls(layout, visibleRows, visibleBays);
 
     const bayGrid = document.getElementById("bay-grid");
@@ -860,11 +1033,32 @@ function renderBayGrid() {
         const gridRow = rowIndex + 2;
         items.push(`<span class="row-header-cell" style="grid-column:1;grid-row:${gridRow};">${row}</span>`);
         visibleBays.forEach((bay, bayIndex) => {
-            if (getCoveringTallContainer(layout.block, bay, row)) return;
+            const coveringWideContainer = getCoveringWideContainer(layout.block, bay, row);
+            if (coveringWideContainer) return;
+            const anchoredWideContainer = getAnchoredWideContainer(layout.block, bay, row);
+            if (anchoredWideContainer) {
+                const anchorBay = anchoredWideContainer.bay;
+                const anchorSlotRecord = getSlotRecord(layout.block, bay, row);
+                const anchorSlotContainers = getSlotContainers(layout.block, bay, row);
+                items.push(renderSlotCell({
+                    block: layout.block,
+                    bay: anchorBay,
+                    row,
+                    slotRecord: anchorSlotRecord,
+                    slotContainers: anchorSlotContainers,
+                    visibleContainer: anchoredWideContainer,
+                    tierCount: layout.tierCount,
+                    gridColumn: bayIndex + 2,
+                    gridRow,
+                    spanCols: 2,
+                    condensed: isDenseView,
+                }));
+                return;
+            }
             const slotRecord = getSlotRecord(layout.block, bay, row);
             const slotContainers = getSlotContainers(layout.block, bay, row);
             const visibleContainer = getVisibleContainerForSlot(slotContainers);
-            const spanRows = canContainerSpanVertical(visibleContainer) ? 2 : 1;
+            const spanCols = canContainerSpanHorizontal(visibleContainer) ? 2 : 1;
             items.push(renderSlotCell({
                 block: layout.block,
                 bay,
@@ -875,14 +1069,17 @@ function renderBayGrid() {
                 tierCount: layout.tierCount,
                 gridColumn: bayIndex + 2,
                 gridRow,
-                spanRows,
+                spanCols,
+                condensed: isDenseView,
             }));
         });
     });
 
-    const bayCellWidth = visibleBays.length > 10 ? 60 : 72;
+    const bayCellWidth = visibleBays.length > 12 ? 44 : visibleBays.length > 10 ? 52 : 72;
+    bayGrid.classList.toggle("compact-grid", visibleBays.length > 12);
+    bayGrid.classList.toggle("condensed-grid", isDenseView);
     bayGrid.style.gridTemplateColumns = `72px repeat(${visibleBays.length}, minmax(${bayCellWidth}px, 1fr))`;
-    bayGrid.style.gridAutoRows = visibleBays.length > 10 ? "78px" : "88px";
+    bayGrid.style.gridAutoRows = visibleBays.length > 12 ? "72px" : visibleBays.length > 10 ? "78px" : "88px";
     bayGrid.innerHTML = items.join("");
     bayGrid.querySelectorAll(".slot-cell").forEach((cell) => {
         cell.addEventListener("click", () => handleSlotClick(cell.dataset.slotKey, cell.dataset.containerId || null));
@@ -896,15 +1093,17 @@ function renderBayGrid() {
     });
 }
 
-function renderSlotCell({ block, bay, row, slotRecord, slotContainers, visibleContainer, tierCount, gridColumn, gridRow, spanRows }) {
-    const slotKey = getSlotKey(block, bay, row);
+function renderSlotCell({ block, bay, row, slotRecord, slotContainers, visibleContainer, tierCount, gridColumn, gridRow, spanCols, condensed = false }) {
+    const slotBay = visibleContainer && canContainerSpanHorizontal(visibleContainer) ? getSurfaceStartBayFromWideAnchor(bay) : bay;
+    const slotKey = getSlotKey(block, slotBay, row);
     const isSelected = state.selectedSlotKey === slotKey;
     const isMoveTarget = state.moveDraftContainerId && state.selectedSlotKey === slotKey;
     const isDragHover = state.dragOverSlotKey === slotKey;
     const canDrag = Boolean(visibleContainer && state.currentUser?.permissions?.includes("restow"));
     const canDropHere = Boolean(state.draggingContainerId && canDropContainerOnSlot(state.draggingContainerId, slotKey));
-    const title = visibleContainer ? visibleContainer.container_id : slotRecord.enabled ? "Free" : "Blocked";
-    const meta = visibleContainer ? `${visibleContainer.container_type.toUpperCase()} · Tier ${visibleContainer.tier_num}` : slotRecord.enabled ? "" : "Blocked slot";
+    const title = condensed ? (visibleContainer ? `T${visibleContainer.tier_num}` : slotRecord.enabled ? "" : "X") : visibleContainer ? visibleContainer.container_id : slotRecord.enabled ? "Free" : "Blocked";
+    const meta = condensed ? "" : visibleContainer ? `${visibleContainer.container_type.toUpperCase()} · Tier ${visibleContainer.tier_num}` : slotRecord.enabled ? "" : "Blocked slot";
+    const code = condensed ? "" : `${block}-${bay}-${row}`;
     const classes = [
         "slot-cell",
         isSelected ? "is-selected" : "",
@@ -914,13 +1113,13 @@ function renderSlotCell({ block, bay, row, slotRecord, slotContainers, visibleCo
         canDrag ? "is-draggable" : "",
         !slotRecord.enabled ? "is-disabled" : "",
         visibleContainer ? `type-${visibleContainer.container_type}` : "type-empty",
-        Number(row) % 2 === 0 ? "parity-even" : "parity-odd",
-        spanRows === 2 ? "tall" : "",
+        Number(bay) % 2 === 0 ? "parity-even" : "parity-odd",
+        spanCols === 2 ? "wide" : "",
     ].filter(Boolean).join(" ");
 
     return `
-        <button type="button" class="${classes}" style="grid-column:${gridColumn};grid-row:${gridRow} / span ${spanRows};" data-slot-key="${slotKey}" data-container-id="${visibleContainer ? visibleContainer.container_id : ""}" draggable="${canDrag ? "true" : "false"}">
-            <span class="slot-code">${block}-${bay}-${row}</span>
+        <button type="button" class="${classes}" style="grid-column:${gridColumn} / span ${spanCols};grid-row:${gridRow};" data-slot-key="${slotKey}" data-container-id="${visibleContainer ? visibleContainer.container_id : ""}" draggable="${canDrag ? "true" : "false"}">
+            ${code ? `<span class="slot-code">${code}</span>` : ""}
             <strong class="slot-title">${title}</strong>
             ${meta ? `<span class="slot-meta">${meta}</span>` : ""}
             <span class="slot-stack">${slotContainers.length}/${slotRecord.max_tiers || tierCount}</span>
@@ -1080,7 +1279,7 @@ function renderInventoryTable() {
         const container = findContainerById(row.dataset.containerId);
         if (!container) return;
         state.selectedBlock = container.block;
-        state.selectedSlotKey = getSlotKey(container.block, container.bay, container.row_num);
+        state.selectedSlotKey = getSlotKey(container.block, getSurfaceStartBay(container), container.row_num);
         state.selectedContainerId = container.container_id;
         ensureSlotVisible(container.block, container.bay, container.row_num);
         ensureContainerHistory(container.container_id);
@@ -1111,10 +1310,13 @@ function renderInspector() {
     const selectedContainer = getSelectedContainer(slotContainers);
     empty.classList.add("hidden");
     content.classList.remove("hidden");
-    badge.textContent = `${parsed.block}-${parsed.bay}-${parsed.row}`;
+    const selectedAddress = selectedContainer && isWideContainer(selectedContainer)
+        ? `${selectedContainer.block}-${selectedContainer.bay}-${selectedContainer.row_num}`
+        : `${parsed.block}-${parsed.bay}-${parsed.row}`;
+    badge.textContent = selectedAddress;
     badge.className = `slot-badge ${selectedContainer ? `type-${selectedContainer.container_type}` : "neutral"}`;
     setText("inspector-subtitle", state.moveDraftContainerId ? `Move mode armed for ${state.moveDraftContainerId}. Pick a target slot on the map.` : "Stack details, current container and audit trail for the selected slot.");
-    setText("detail-slot", `${parsed.block}-${parsed.bay}-${parsed.row}`);
+    setText("detail-slot", selectedAddress);
     setText("detail-rule", slotRecord.enabled ? `Allowed types: ${slotRecord.allowed_container_types.join(", ")}` : "Slot blocked in directory");
     setText("detail-capacity", `${slotContainers.length} / ${slotRecord.max_tiers || layout.tierCount} tiers occupied`);
     setText("detail-next-tier", nextTier ? `Next free tier: ${nextTier} of ${slotRecord.max_tiers || layout.tierCount}` : slotRecord.enabled ? "Stack is full" : "Slot blocked");
@@ -1124,7 +1326,7 @@ function renderInspector() {
     renderStackLayers(slotContainers);
     renderHistory(selectedContainer ? selectedContainer.container_id : null);
     renderRoutingPreview(selectedContainer);
-    syncFormsFromSelection();
+    syncFormsFromSelection({ force: true });
     moveButton.innerHTML = state.moveDraftContainerId ? `<i class="fa-solid fa-xmark"></i> Cancel Move Mode` : `<i class="fa-solid fa-arrows-up-down-left-right"></i> Prepare Restow`;
     moveButton.disabled = !selectedContainer && !state.moveDraftContainerId;
     stackOutButton.disabled = !selectedContainer;
@@ -1255,14 +1457,22 @@ function handleMoveTargetSelection(targetSlotKey) {
 function resolveMoveTarget(containerId, targetSlotKey) {
     const movingContainer = findContainerById(containerId);
     if (!movingContainer) return { error: "Source container no longer exists." };
-    const target = parseSlotKey(targetSlotKey);
-    const sourceKey = getSlotKey(movingContainer.block, movingContainer.bay, movingContainer.row_num);
+    const targetSurface = parseSlotKey(targetSlotKey);
+    const targetBay = getActualBayForPlacement(movingContainer.container_type, targetSurface.block, targetSurface.bay);
+    if (!targetBay) return { error: `${movingContainer.container_type} cannot be placed at this bay.` };
+    const target = { ...targetSurface, bay: targetBay };
+    const sourceKey = getSlotKey(movingContainer.block, getSurfaceStartBay(movingContainer), movingContainer.row_num);
     if (sourceKey === targetSlotKey) return { error: "Choose a different target slot." };
-    const slotRecord = getSlotRecord(target.block, target.bay, target.row);
+    const slotRecord = getSlotRecord(targetSurface.block, targetSurface.bay, targetSurface.row);
     if (!slotRecord.enabled) return { error: "Selected slot is blocked in the slot directory." };
     if (!slotRecord.allowed_container_types.includes(movingContainer.container_type)) return { error: `Selected slot does not allow ${movingContainer.container_type}.` };
-    const nextTier = getNextAvailableTier(getSlotContainers(target.block, target.bay, target.row), slotRecord.max_tiers);
+    const nextTier = getNextAvailableTier(getSlotContainers(targetSurface.block, targetSurface.bay, targetSurface.row), slotRecord.max_tiers);
     if (!nextTier) return { error: "No free tier in the selected stack." };
+    if (!hasSupportingBase(target.block, target.bay, target.row, nextTier, movingContainer.container_type)) {
+        return { error: `${movingContainer.container_type} is not supported by the tier below in this slot.` };
+    }
+    const occupant = findPositionOccupant(target.block, target.bay, target.row, nextTier, movingContainer.container_type, movingContainer.container_id);
+    if (occupant) return { error: `Selected slot is already occupied by ${occupant.container_id} on tier ${nextTier}.` };
     return { movingContainer, target, slotRecord, nextTier };
 }
 
@@ -1276,7 +1486,11 @@ async function executeRestowMove(containerIdOrMoveTarget, targetSlotKey) {
         showToast(moveTarget.error, "error");
         return;
     }
-    const resolvedTargetSlotKey = targetSlotKey || getSlotKey(moveTarget.target.block, moveTarget.target.bay, moveTarget.target.row);
+    const resolvedTargetSlotKey = targetSlotKey || getSlotKey(
+        moveTarget.target.block,
+        ["40ft", "45ft"].includes(moveTarget.movingContainer.container_type) ? getSurfaceStartBayFromWideAnchor(moveTarget.target.bay) : moveTarget.target.bay,
+        moveTarget.target.row
+    );
     const response = await apiFetch(`${API_BASE_URL}/restow`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -1358,19 +1572,26 @@ function handleSlotDrop(event) {
     openMoveConfirmModal(moveTarget);
 }
 
-function syncFormsFromSelection() {
+function syncFormsFromSelection(options = {}) {
+    const force = Boolean(options.force);
     if (state.selectedSlotKey) {
         const parsed = parseSlotKey(state.selectedSlotKey);
         const slotRecord = getSlotRecord(parsed.block, parsed.bay, parsed.row);
         const nextTier = getNextAvailableTier(getSlotContainers(parsed.block, parsed.bay, parsed.row), slotRecord.max_tiers) || slotRecord.max_tiers;
-        setValue("in-block", parsed.block);
-        setValue("in-bay", parsed.bay);
-        setValue("in-row", String(parsed.row));
-        setValue("in-tier", String(nextTier));
+        if (force || !state.formDirty.stackin) {
+            setValue("in-block", parsed.block);
+            setValue("in-bay", state.selectedContainerId && isWideContainer(findContainerById(state.selectedContainerId)) ? findContainerById(state.selectedContainerId).bay : parsed.bay);
+            setValue("in-row", String(parsed.row));
+            setValue("in-tier", String(nextTier));
+        }
     }
     if (state.selectedContainerId) {
-        setValue("out-id", state.selectedContainerId);
-        setValue("restow-id", state.selectedContainerId);
+        if (force || !state.formDirty.stackout) {
+            setValue("out-id", state.selectedContainerId);
+        }
+        if (force || !state.formDirty.restow) {
+            setValue("restow-id", state.selectedContainerId);
+        }
     }
 }
 
@@ -1384,7 +1605,7 @@ function renderViewportControls(layout, visibleRows, visibleBays) {
     document.getElementById("rows-next").disabled = state.rowPage >= totalRowPages - 1;
     document.getElementById("bays-prev").disabled = state.bayPage === 0;
     document.getElementById("bays-next").disabled = state.bayPage >= totalBayPages - 1;
-    document.getElementById("jump-bay").max = String(layout.bays.length);
+    document.getElementById("jump-bay").max = String(getMaxSurfaceBay(layout.block));
     document.getElementById("jump-row").max = String(layout.rows.length);
 }
 
@@ -1415,7 +1636,8 @@ function getVisibleBays(layout) {
 function ensureSlotVisible(block, bay, row) {
     const layout = getBlockLayout(block);
     const rowIndex = layout.rows.indexOf(Number(row));
-    const bayIndex = layout.bays.indexOf(String(bay));
+    const surfaceBay = isSurfaceBay(bay) ? formatBayNumber(bay) : getSurfaceStartBayFromWideAnchor(bay);
+    const bayIndex = layout.bays.indexOf(String(surfaceBay));
     if (rowIndex >= 0) state.rowPage = Math.floor(rowIndex / state.viewportSize);
     if (bayIndex >= 0) state.bayPage = Math.floor(bayIndex / state.viewportSize);
 }
@@ -1428,15 +1650,16 @@ function jumpToSlot() {
         showToast("Enter both bay and row.", "error");
         return;
     }
-    if (bayValue < 1 || bayValue > layout.bays.length || rowValue < 1 || rowValue > layout.rows.length) {
+    if (bayValue < 1 || bayValue > getMaxSurfaceBay(layout.block) || rowValue < 1 || rowValue > layout.rows.length) {
         showToast(`Target is outside block ${layout.block}.`, "error");
         return;
     }
-    const bay = String(bayValue).padStart(2, "0");
+    const bay = formatBayNumber(bayValue);
+    const surfaceBay = isSurfaceBay(bay) ? bay : getSurfaceStartBayFromWideAnchor(bay);
     const row = rowValue;
-    const slotKey = getSlotKey(layout.block, bay, row);
+    const slotKey = getSlotKey(layout.block, surfaceBay, row);
     state.selectedSlotKey = slotKey;
-    state.selectedContainerId = getVisibleContainerForSlot(getSlotContainers(layout.block, bay, row))?.container_id || null;
+    state.selectedContainerId = getVisibleContainerForSlot(getSlotContainers(layout.block, surfaceBay, row))?.container_id || null;
     ensureSlotVisible(layout.block, bay, row);
     if (state.selectedContainerId) ensureContainerHistory(state.selectedContainerId);
     syncFormsFromSelection();
@@ -1449,7 +1672,12 @@ function getBlockContainers(block) {
 }
 
 function getSlotContainers(block, bay, row) {
-    return state.inventory.filter((container) => container.block === block && container.bay === bay && container.row_num === row).sort((a, b) => a.tier_num - b.tier_num);
+    return state.inventory
+        .filter((container) => {
+            if (container.block !== block || Number(container.row_num) !== Number(row)) return false;
+            return getSurfaceBaysForPlacement(container.block, container.bay, container.container_type).includes(formatBayNumber(bay));
+        })
+        .sort((a, b) => a.tier_num - b.tier_num);
 }
 
 function getSelectedContainer(slotContainers) {

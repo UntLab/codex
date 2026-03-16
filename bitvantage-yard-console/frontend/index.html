@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>BitVantage Yard Console</title>
     <link rel="icon" type="image/svg+xml" href="assets/bitvantage-logo.svg">
-    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="styles.css?v=20260316-2">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
@@ -228,8 +228,7 @@
                                         <label for="viewport-size">Window</label>
                                         <select id="viewport-size">
                                             <option value="14" selected>Full block</option>
-                                            <option value="8">8 x 8</option>
-                                            <option value="5">5 x 5</option>
+                                            <option value="10">Compact</option>
                                         </select>
                                     </div>
                                 </div>
@@ -244,7 +243,7 @@
                                 <div class="viewport-nav">
                                     <span class="viewport-label">Bays</span>
                                     <button id="bays-prev" type="button" class="mini-nav-btn"><i class="fa-solid fa-chevron-left"></i></button>
-                                    <strong id="bays-range">01-14</strong>
+                                    <strong id="bays-range">01-27</strong>
                                     <button id="bays-next" type="button" class="mini-nav-btn"><i class="fa-solid fa-chevron-right"></i></button>
                                 </div>
                                 <div class="viewport-summary"><span id="viewport-summary-text">Showing first window of block</span></div>
@@ -269,7 +268,7 @@
                         </div>
                         <div id="inspector-empty" class="inspector-empty">
                             <p>The map follows a tablet-first yard flow: choose a block, then a slot, then a stack layer.</p>
-                            <p>40ft and 45ft containers visually occupy two vertical cells on the surface plan.</p>
+                            <p>20ft containers use odd bays. 40ft containers use even bays 2, 6, 10... and 45ft only the edge wide bays.</p>
                         </div>
                         <div id="inspector-content" class="inspector-content hidden">
                             <div class="detail-card">
@@ -335,7 +334,7 @@
                     <form id="stackin-form">
                         <div class="form-grid">
                             <div class="form-group"><label>Container ID</label><input type="text" id="in-id" required placeholder="MSKU1234567"></div>
-                            <div class="form-group"><label>Container Type</label><select id="in-type" required><option value="20ft">20ft (odd rows)</option><option value="40ft">40ft (even rows)</option><option value="45ft">45ft (even rows)</option></select></div>
+                            <div class="form-group"><label>Container Type</label><select id="in-type" required><option value="20ft">20ft (odd bays)</option><option value="40ft">40ft (even bays)</option><option value="45ft">45ft (even bays)</option></select></div>
                             <div class="form-group"><label>Status</label><select id="in-status" required><option value="Loaded">Loaded</option><option value="Empty">Empty</option></select></div>
                             <div class="form-group"><label>Direction</label><select id="in-direction" required><option value="Import">Import</option><option value="Export">Export</option></select></div>
                             <div class="form-title">Target Position</div>
@@ -474,6 +473,6 @@
     </div>
 
     <div id="toast" class="toast hidden"></div>
-    <script src="app.js"></script>
+    <script src="app.js?v=20260316-2"></script>
 </body>
 </html>

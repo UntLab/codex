@@ -69,18 +69,29 @@ def parse_snapshot_date(value: Optional[str]) -> str:
     return snapshot_at.isoformat()
 
 
-def get_slot_or_404(block: str, bay: str, row: int) -> Dict[str, Any]:
+def get_slot_or_404(block: str, bay: str, row: int, container_type: str) -> Dict[str, Any]:
     normalized_bay = str(int(bay)).zfill(2)
-    slot = supabase_client.get_slot(block, normalized_bay, row)
+    lookup_bay = supabase_client.get_slot_lookup_bay(block, normalized_bay, container_type)
+    slot = supabase_client.get_slot(block, lookup_bay, row)
     if not slot:
-        raise HTTPException(status_code=404, detail=f"Slot {block}-{normalized_bay}-{row} not found in slot directory.")
+        raise HTTPException(status_code=404, detail=f"Slot {block}-{lookup_bay}-{row} not found in slot directory.")
     return slot
 
 
-def ensure_position_available(position_code: str, exclude_container_id: Optional[str] = None) -> None:
-    occupant = supabase_client.find_inventory_by_position(position_code, exclude_container_id=exclude_container_id)
+def ensure_position_available(position: Dict[str, Any], exclude_container_id: Optional[str] = None) -> None:
+    try:
+        occupant = supabase_client.find_inventory_by_surface_position(
+            position["block"],
+            position["bay"],
+            position["row"],
+            position["tier"],
+            position["container_type"],
+            exclude_container_id=exclude_container_id,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
     if occupant:
-        raise HTTPException(status_code=409, detail=f"Position {position_code} is already occupied by container {occupant['container_id']}.")
+        raise HTTPException(status_code=409, detail=f"Position {position['position_code']} is already occupied by container {occupant['container_id']}.")
 
 
 def ensure_slot_eligible(slot: Dict[str, Any], container_type: str, tier: int) -> None:
@@ -281,12 +292,14 @@ async def stack_in(request: StackInRequest, current_user: Dict[str, Any] = Depen
         normalized = validate_position(request.container_type, request.block, request.bay, request.row, request.tier)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
-    slot = get_slot_or_404(normalized["block"], normalized["bay"], normalized["row"])
+    slot = get_slot_or_404(normalized["block"], normalized["bay"], normalized["row"], normalized["container_type"])
     ensure_slot_eligible(slot, normalized["container_type"], normalized["tier"])
+    if not supabase_client.has_supporting_base(normalized["block"], normalized["bay"], normalized["row"], normalized["tier"], normalized["container_type"]):
+        raise HTTPException(status_code=400, detail=f"{normalized['container_type']} is not supported by the lower tier at {normalized['position_code']}.")
     existing = supabase_client.check_inventory(request.container_id)
     if existing:
         raise HTTPException(status_code=400, detail="Container ID already exists in inventory. Use Restow to move or Stack Out to remove.")
-    ensure_position_available(normalized["position_code"])
+    ensure_position_available(normalized)
     performed_at = supabase_client.utc_now_iso()
     inventory_data = {
         "container_id": request.container_id,
@@ -335,9 +348,11 @@ async def restow(request: RestowRequest, current_user: Dict[str, Any] = Depends(
         normalized = validate_position(existing.get("container_type"), request.new_block, request.new_bay, request.new_row, request.new_tier)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
-    slot = get_slot_or_404(normalized["block"], normalized["bay"], normalized["row"])
+    slot = get_slot_or_404(normalized["block"], normalized["bay"], normalized["row"], normalized["container_type"])
     ensure_slot_eligible(slot, normalized["container_type"], normalized["tier"])
-    ensure_position_available(normalized["position_code"], exclude_container_id=request.container_id)
+    if not supabase_client.has_supporting_base(normalized["block"], normalized["bay"], normalized["row"], normalized["tier"], normalized["container_type"]):
+        raise HTTPException(status_code=400, detail=f"{normalized['container_type']} is not supported by the lower tier at {normalized['position_code']}.")
+    ensure_position_available(normalized, exclude_container_id=request.container_id)
     old_position = existing.get("position_code")
     performed_at = supabase_client.utc_now_iso()
     updates = {"block": normalized["block"], "bay": normalized["bay"], "row_num": normalized["row"], "tier_num": normalized["tier"], "position_code": normalized["position_code"], "positioned_at": performed_at}

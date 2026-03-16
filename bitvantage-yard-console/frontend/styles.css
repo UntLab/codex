@@ -596,7 +596,7 @@ header h1 {
 .mini-cell.type-20ft { background: rgba(15, 120, 255, 0.95); }
 .mini-cell.type-40ft { background: rgba(255, 154, 26, 0.95); }
 .mini-cell.type-45ft { background: rgba(255, 85, 96, 0.95); }
-.mini-cell.tall { grid-row: span 2; border-radius: 8px; }
+.mini-cell.wide { grid-column: span 2; border-radius: 8px; }
 .mini-cell.type-disabled {
     background: repeating-linear-gradient(135deg, rgba(180, 191, 204, 0.65), rgba(180, 191, 204, 0.65) 4px, rgba(234, 239, 245, 0.9) 4px, rgba(234, 239, 245, 0.9) 8px);
 }
@@ -643,19 +643,56 @@ input, select {
     align-items: stretch;
 }
 
+.bay-grid.compact-grid {
+    gap: 0.35rem;
+}
+
+.bay-grid.condensed-grid {
+    gap: 0.28rem;
+}
+
 .axis-cell,
 .bay-header-cell,
 .row-header-cell {
     min-height: 44px;
     border-radius: 14px;
-    background: rgba(255, 255, 255, 0.9);
-    border: 1px solid rgba(140, 164, 196, 0.18);
+    background: linear-gradient(180deg, rgba(231, 239, 249, 0.95), rgba(214, 226, 241, 0.96));
+    border: 1px solid rgba(120, 145, 176, 0.22);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.6);
     display: flex;
     align-items: center;
     justify-content: center;
-    color: var(--muted-dark);
-    font-size: 0.76rem;
+    color: #52657e;
+    font-size: 0.72rem;
     font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    justify-self: center;
+    align-self: center;
+    width: calc(100% - 16px);
+    height: 34px;
+}
+
+.bay-grid.compact-grid .axis-cell,
+.bay-grid.compact-grid .bay-header-cell,
+.bay-grid.compact-grid .row-header-cell {
+    min-height: 36px;
+    border-radius: 12px;
+    font-size: 0.58rem;
+    width: calc(100% - 10px);
+    height: 28px;
+}
+
+.axis-cell {
+    width: calc(100% - 12px);
+}
+
+.row-header-cell {
+    width: calc(100% - 20px);
+}
+
+.bay-header-cell {
+    width: calc(100% - 22px);
 }
 
 .slot-cell {
@@ -672,6 +709,17 @@ input, select {
     display: flex;
     flex-direction: column;
     justify-content: flex-start;
+}
+
+.bay-grid.compact-grid .slot-cell {
+    padding: 0.42rem 0.42rem 0.38rem;
+    border-radius: 12px;
+}
+
+.bay-grid.condensed-grid .slot-cell {
+    padding: 0.32rem 0.32rem 0.3rem;
+    border-radius: 12px;
+    justify-content: center;
 }
 
 .slot-cell.is-draggable { cursor: grab; }
@@ -692,7 +740,47 @@ input, select {
 .slot-cell.type-45ft .slot-title { color: #c42130; }
 .slot-meta { display: block; color: var(--muted-dark); font-size: 0.74rem; max-width: calc(100% - 42px); line-height: 1.35; }
 .slot-stack { position: absolute; top: 0.6rem; right: 0.6rem; min-width: 30px; padding: 0.22rem 0.45rem; border-radius: 999px; background: rgba(19, 34, 56, 0.08); color: var(--text-dark); font-size: 0.72rem; font-weight: 700; }
-.slot-cell.tall { min-height: calc(100% + 0.55rem); border-radius: 20px; }
+.slot-cell.wide { border-radius: 20px; }
+
+.bay-grid.compact-grid .slot-code {
+    font-size: 0.52rem;
+    margin-bottom: 0.18rem;
+}
+
+.bay-grid.compact-grid .slot-title {
+    font-size: 0.7rem;
+    margin-bottom: 0.08rem;
+}
+
+.bay-grid.compact-grid .slot-meta {
+    font-size: 0.56rem;
+    max-width: calc(100% - 26px);
+    line-height: 1.2;
+}
+
+.bay-grid.compact-grid .slot-stack {
+    top: 0.28rem;
+    right: 0.28rem;
+    min-width: 22px;
+    padding: 0.1rem 0.24rem;
+    font-size: 0.55rem;
+}
+
+.bay-grid.condensed-grid .slot-title {
+    font-size: 0.54rem;
+    margin: 0;
+    line-height: 1.1;
+    font-weight: 800;
+    letter-spacing: 0.02em;
+}
+
+.bay-grid.condensed-grid .slot-stack {
+    top: 0.18rem;
+    right: 0.18rem;
+    min-width: 18px;
+    padding: 0.08rem 0.18rem;
+    font-size: 0.48rem;
+}
 
 .slot-badge {
     display: inline-flex;
