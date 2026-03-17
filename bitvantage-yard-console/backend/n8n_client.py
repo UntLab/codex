@@ -1,4 +1,5 @@
 import logging
+import json
 import os
 from pathlib import Path
 from typing import Dict, Tuple
@@ -27,6 +28,13 @@ load_project_env()
 
 N8N_WEBHOOK_URL_BASE = os.getenv("N8N_WEBHOOK_URL_BASE", "").strip()
 N8N_MOVEMENT_ENDPOINT = os.getenv("N8N_MOVEMENT_ENDPOINT", "terminal-movement")
+N8N_WEBHOOK_SECRET = os.getenv("N8N_WEBHOOK_SECRET", "").strip()
+
+
+def json_default(value):
+    if hasattr(value, "isoformat"):
+        return value.isoformat()
+    return str(value)
 
 
 def send_to_n8n(endpoint: str, payload: Dict) -> Tuple[bool, str, int]:
@@ -35,8 +43,14 @@ def send_to_n8n(endpoint: str, payload: Dict) -> Tuple[bool, str, int]:
         return False, "n8n webhook disabled", 0
     url = f"{N8N_WEBHOOK_URL_BASE.rstrip('/')}/{endpoint.lstrip('/')}"
     logger.info(f"Sending data to n8n webhook: {url}")
+    headers = {}
+    if N8N_WEBHOOK_SECRET:
+        headers["X-BitVantage-Secret"] = N8N_WEBHOOK_SECRET
+    if payload.get("event_type"):
+        headers["X-BitVantage-Event-Type"] = str(payload["event_type"])
+    headers["Content-Type"] = "application/json"
     try:
-        response = requests.post(url, json=payload, timeout=2)
+        response = requests.post(url, data=json.dumps(payload, default=json_default), headers=headers or None, timeout=2)
         response.raise_for_status()
         return True, response.text or "Success", response.status_code
     except requests.exceptions.RequestException as exc:

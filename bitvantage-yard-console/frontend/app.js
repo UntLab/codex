@@ -46,6 +46,11 @@ const state = {
     authBusy: false,
     operationBusyLabel: "",
     busyButtonId: null,
+    quickMoveContainerId: null,
+    moveTargetDraft: {
+        bay: "",
+        row: "",
+    },
     formDirty: {
         stackin: false,
         stackout: false,
@@ -84,11 +89,18 @@ function renderBusyState() {
     const refreshButton = document.getElementById("refresh-dashboard");
     if (refreshButton) refreshButton.disabled = Boolean(state.inventoryLoadPromise);
 
-    ["auth-submit-button", "stackin-submit-button", "stackout-submit-button", "restow-submit-button", "confirm-move-button"].forEach((id) => {
+    ["auth-submit-button", "stackin-submit-button", "stackout-submit-button", "restow-submit-button", "target-move-submit", "confirm-move-button"].forEach((id) => {
         const button = document.getElementById(id);
         if (!button) return;
-        button.classList.toggle("is-loading", state.busyButtonId === id);
-        button.disabled = state.busyButtonId === id;
+        const isBusyButton = state.busyButtonId === id;
+        button.classList.toggle("is-loading", isBusyButton);
+        if (isBusyButton) {
+            button.disabled = true;
+            button.dataset.busyLocked = "true";
+        } else if (button.dataset.busyLocked === "true") {
+            button.disabled = false;
+            delete button.dataset.busyLocked;
+        }
     });
 }
 
@@ -96,6 +108,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     setupTabs();
     setupForms();
     setupDashboardActions();
+    setupTargetMoveWidget();
     setupAuth();
     setupSettings();
     setupMoveConfirmation();
@@ -139,6 +152,13 @@ function openTab(tabId) {
     if (nextTab.id === "admin-tab" && state.currentUser?.permissions?.includes("manage_users") && !state.adminUsers.length) {
         void loadAdminUsers();
     }
+}
+
+function resetMoveTargetDraft(row = "") {
+    state.moveTargetDraft = {
+        bay: "",
+        row: row ? String(row) : "",
+    };
 }
 
 function setupForms() {
@@ -234,6 +254,7 @@ function setupDashboardActions() {
     on("prefill-restow", "click", () => {
         if (state.moveDraftContainerId) {
             state.moveDraftContainerId = null;
+            resetMoveTargetDraft();
             renderInspector();
             showToast("Move mode cancelled.", "success");
             return;
@@ -243,9 +264,26 @@ function setupDashboardActions() {
             return;
         }
         state.moveDraftContainerId = state.selectedContainerId;
+        const selectedContainer = findContainerById(state.selectedContainerId);
+        resetMoveTargetDraft(selectedContainer?.row_num || "");
         renderInspector();
-        showToast("Pick a target slot on the map to prefill Restow.", "success");
+        showToast("Enter target bay and row, then press OK.", "success");
         openTab("dashboard-tab");
+    });
+}
+
+function setupTargetMoveWidget() {
+    on("target-move-widget", "submit", async (event) => {
+        event.preventDefault();
+        await submitTargetMove();
+    });
+    on("target-move-bay", "input", (event) => {
+        state.moveTargetDraft.bay = event.target.value;
+        renderTargetMoveWidget();
+    });
+    on("target-move-row", "input", (event) => {
+        state.moveTargetDraft.row = event.target.value;
+        renderTargetMoveWidget();
     });
 }
 
@@ -581,6 +619,8 @@ function resetSessionState() {
     state.authBusy = false;
     state.operationBusyLabel = "";
     state.busyButtonId = null;
+    state.quickMoveContainerId = null;
+    resetMoveTargetDraft();
     state.containerHistory.clear();
     state.routingPreviewCache.clear();
     state.formDirty.stackin = false;
@@ -1134,6 +1174,7 @@ function renderOverview() {
         const occupied = getSurfaceOccupancy(layout.block).size;
         const total = blockSlots.length || (layout.bays.length * layout.rows.length);
         const percent = total === 0 ? 0 : Math.round((occupied / total) * 100);
+        const overviewGrid = getOverviewGridConfig(layout);
         return `
             <button type="button" class="terminal-block ${layout.block === state.selectedBlock ? "active" : ""}" data-block="${layout.block}" aria-label="Open ${layout.label}">
                 <div class="terminal-block-top">
@@ -1144,15 +1185,15 @@ function renderOverview() {
                     </div>
                     <div class="terminal-block-stat">
                         <span class="terminal-block-ratio">${occupied}/${total}</span>
-                        <small>${layout.footprint} surface</small>
+                        <small>${overviewGrid.footprintLabel} surface</small>
                     </div>
                 </div>
                 <div class="terminal-block-track">
                     <span class="terminal-block-track-line"></span>
-                    <span class="terminal-block-footprint">${layout.footprint}</span>
+                    <span class="terminal-block-footprint">${overviewGrid.footprintLabel}</span>
                     <span class="terminal-block-track-line"></span>
                 </div>
-                <div class="terminal-block-grid" style="--mini-columns:${layout.bays.length}; --mini-rows:${layout.rows.length};">${renderMiniGrid(layout)}</div>
+                <div class="terminal-block-grid ${overviewGrid.className}" style="--mini-columns:${overviewGrid.columns}; --mini-rows:${overviewGrid.rows}; --mini-row-height:${overviewGrid.rowHeight}; --mini-gap:${overviewGrid.gap}; --mini-min-height:${overviewGrid.minHeight};">${renderMiniGrid(layout, overviewGrid)}</div>
                 <div class="terminal-block-footer"><span>${blockContainers.length} containers</span><span>${percent}% loaded · ${layout.tierCount} tiers</span></div>
             </button>
         `;
@@ -1167,7 +1208,67 @@ function renderOverview() {
     }));
 }
 
-function renderMiniGrid(layout) {
+function getOverviewGridConfig(layout) {
+    if (layout.block === "02") {
+        return {
+            columns: 28,
+            rows: layout.rows.length,
+            footprintLabel: "28 x 3",
+            className: "dense-overview-grid",
+            rowHeight: "12px",
+            gap: "0.16rem",
+            minHeight: "96px",
+        };
+    }
+    return {
+        columns: layout.bays.length,
+        rows: layout.rows.length,
+        footprintLabel: layout.footprint,
+        className: "",
+        rowHeight: "16px",
+        gap: "0.22rem",
+        minHeight: "112px",
+    };
+}
+
+function renderDenseOverviewMiniGrid(layout) {
+    const cells = [];
+    [...layout.rows].reverse().forEach((row, rowIndex) => {
+        for (let column = 1; column <= 28; column += 1) {
+            cells.push(`<span class="mini-cell type-empty" style="grid-column:${column};grid-row:${rowIndex + 1};"></span>`);
+        }
+    });
+
+    [...layout.rows].reverse().forEach((row, rowIndex) => {
+        const rendered = new Set();
+        layout.bays.forEach((bay) => {
+            const coveringWideContainer = getCoveringWideContainer(layout.block, bay, row);
+            if (coveringWideContainer) return;
+
+            const anchoredWideContainer = getAnchoredWideContainer(layout.block, bay, row);
+            if (anchoredWideContainer) {
+                if (rendered.has(anchoredWideContainer.container_id)) return;
+                const gridColumn = Math.min(parseBayNumber(anchoredWideContainer.bay), 28);
+                cells.push(`<span class="mini-cell type-${anchoredWideContainer.container_type} wide dense-wide" style="grid-column:${gridColumn} / span 2;grid-row:${rowIndex + 1};"></span>`);
+                rendered.add(anchoredWideContainer.container_id);
+                return;
+            }
+
+            const visibleContainer = getVisibleContainerForSlot(getSlotContainers(layout.block, bay, row));
+            if (!visibleContainer || rendered.has(visibleContainer.container_id)) return;
+            const gridColumn = Math.min(parseBayNumber(bay), 28);
+            cells.push(`<span class="mini-cell type-${visibleContainer.container_type} dense-single" style="grid-column:${gridColumn};grid-row:${rowIndex + 1};"></span>`);
+            rendered.add(visibleContainer.container_id);
+        });
+    });
+
+    return cells.join("");
+}
+
+function renderMiniGrid(layout, overviewGrid = getOverviewGridConfig(layout)) {
+    if (layout.block === "02") {
+        return renderDenseOverviewMiniGrid(layout);
+    }
     const cells = [];
     [...layout.rows].reverse().forEach((row, rowIndex) => {
         layout.bays.forEach((bay, bayIndex) => {
@@ -1501,13 +1602,147 @@ function renderInspector() {
     document.getElementById("selected-container-card").innerHTML = selectedContainer
         ? `<span class="detail-label">Selected container</span><strong>${selectedContainer.container_id}</strong><small>${selectedContainer.container_type} · ${selectedContainer.status} · ${selectedContainer.direction}</small><small>${selectedContainer.position_code}</small>`
         : `<span class="detail-label">Selected container</span><strong>${slotRecord.enabled ? "Slot is free" : "Slot is blocked"}</strong><small>${slotRecord.enabled ? "Use this address for Stack In or as a Restow target." : "Admin must unblock this slot before it can accept containers."}</small>`;
+    renderTargetMoveWidget();
     renderStackLayers(slotContainers);
     renderHistory(selectedContainer ? selectedContainer.container_id : null);
     renderRoutingPreview(selectedContainer);
     syncFormsFromSelection({ force: true });
-    moveButton.innerHTML = state.moveDraftContainerId ? `<i class="fa-solid fa-xmark"></i> Cancel Move Mode` : `<i class="fa-solid fa-arrows-up-down-left-right"></i> Prepare Restow`;
+    moveButton.innerHTML = state.moveDraftContainerId ? `<i class="fa-solid fa-xmark"></i> Cancel Map Target` : `<i class="fa-solid fa-location-crosshairs"></i> Pick Target On Map`;
     moveButton.disabled = !selectedContainer && !state.moveDraftContainerId;
     stackOutButton.disabled = !selectedContainer;
+}
+
+function getMoveDraftContainer() {
+    if (state.moveDraftContainerId) {
+        return findContainerById(state.moveDraftContainerId);
+    }
+    return state.selectedContainerId ? findContainerById(state.selectedContainerId) : null;
+}
+
+function listAllowedWideBays(block) {
+    const bays = [];
+    for (let bay = 2; bay <= getMaxWideBay(block); bay += 4) {
+        bays.push(formatBayNumber(bay));
+    }
+    return bays;
+}
+
+function getTargetMoveHelper(container) {
+    if (!container) return "Arm a container to enter a target bay and row.";
+    if (container.container_type === "20ft") {
+        return `20ft: use odd bays in block ${container.block} like 01, 03, 05, 07...`;
+    }
+    if (container.container_type === "40ft") {
+        return `40ft: use wide bays ${listAllowedWideBays(container.block).join(", ")} in block ${container.block}.`;
+    }
+    return `45ft: only edge bays ${formatBayNumber(2)} and ${formatBayNumber(getMaxWideBay(container.block))} are allowed in block ${container.block}.`;
+}
+
+function resolveTargetMoveFromDraft() {
+    const movingContainer = getMoveDraftContainer();
+    if (!movingContainer) return { error: "Select a container and arm move mode first." };
+    const rawBay = state.moveTargetDraft.bay.trim();
+    const rawRow = state.moveTargetDraft.row.trim();
+    if (!rawBay || !rawRow) return { error: "", incomplete: true };
+
+    const bayValue = Number(rawBay);
+    const rowValue = Number(rawRow);
+    const layout = getBlockLayout(movingContainer.block);
+    if (!Number.isInteger(bayValue) || bayValue < 1 || bayValue > getMaxSurfaceBay(movingContainer.block)) {
+        return { error: `Bay must be between 1 and ${getMaxSurfaceBay(movingContainer.block)}.` };
+    }
+    if (!Number.isInteger(rowValue) || rowValue < 1 || rowValue > layout.rows.length) {
+        return { error: `Row must be between 1 and ${layout.rows.length}.` };
+    }
+
+    const bay = formatBayNumber(bayValue);
+    if (!isWideContainer(movingContainer) && !isSurfaceBay(bay)) {
+        return { error: "20ft containers can be moved only to odd bays like 01, 03, 05..." };
+    }
+    if (movingContainer.container_type === "40ft" && (isSurfaceBay(bay) || parseBayNumber(bay) % 4 !== 2)) {
+        return { error: `40ft containers use wide bays ${listAllowedWideBays(movingContainer.block).join(", ")}.` };
+    }
+    if (movingContainer.container_type === "45ft") {
+        const lastWideBay = formatBayNumber(getMaxWideBay(movingContainer.block));
+        if (isSurfaceBay(bay)) {
+            return { error: `45ft containers use edge bays 02 and ${lastWideBay} only.` };
+        }
+        if (!is45ftAnchorAllowed(movingContainer.block, bay)) {
+            return { error: `45ft containers can be moved only to 02 or ${lastWideBay} in block ${movingContainer.block}.` };
+        }
+    }
+    const targetSlotKey = isWideContainer(movingContainer)
+        ? getSlotKey(movingContainer.block, getSurfaceStartBayFromWideAnchor(bay), rowValue)
+        : getSlotKey(movingContainer.block, bay, rowValue);
+    const moveTarget = resolveMoveTarget(movingContainer.container_id, targetSlotKey);
+    if (moveTarget.error) return moveTarget;
+    return { moveTarget, targetSlotKey };
+}
+
+function renderTargetMoveWidget() {
+    const widget = document.getElementById("target-move-widget");
+    const containerEl = document.getElementById("target-move-container");
+    const blockEl = document.getElementById("target-move-block");
+    const helperEl = document.getElementById("target-move-helper");
+    const feedbackEl = document.getElementById("target-move-feedback");
+    const submitButton = document.getElementById("target-move-submit");
+    const movingContainer = getMoveDraftContainer();
+
+    if (!widget || !containerEl || !blockEl || !helperEl || !feedbackEl || !submitButton) return;
+    if (!movingContainer) {
+        widget.classList.add("hidden");
+        state.quickMoveContainerId = null;
+        submitButton.disabled = true;
+        return;
+    }
+
+    if (state.quickMoveContainerId !== movingContainer.container_id) {
+        state.quickMoveContainerId = movingContainer.container_id;
+        resetMoveTargetDraft(movingContainer.row_num || "");
+    }
+
+    widget.classList.remove("hidden");
+    containerEl.textContent = `${movingContainer.container_id} · ${movingContainer.container_type}`;
+    blockEl.textContent = `Target block: ${movingContainer.block}`;
+    helperEl.textContent = getTargetMoveHelper(movingContainer);
+    setValue("target-move-bay", state.moveTargetDraft.bay);
+    setValue("target-move-row", state.moveTargetDraft.row);
+
+    const resolution = resolveTargetMoveFromDraft();
+    feedbackEl.className = "target-move-feedback neutral";
+    if (resolution.incomplete) {
+        feedbackEl.textContent = "Enter target bay and row. The system will accept only a valid address for this container type.";
+        submitButton.disabled = true;
+        return;
+    }
+    if (resolution.error) {
+        feedbackEl.textContent = resolution.error;
+        feedbackEl.className = "target-move-feedback error";
+        submitButton.disabled = true;
+        return;
+    }
+
+    const { moveTarget } = resolution;
+    feedbackEl.textContent = `Ready: ${moveTarget.target.block}-${moveTarget.target.bay}-${moveTarget.target.row}-${moveTarget.nextTier}`;
+    feedbackEl.className = "target-move-feedback success";
+    submitButton.disabled = false;
+}
+
+async function submitTargetMove() {
+    const resolution = resolveTargetMoveFromDraft();
+    if (resolution.incomplete) {
+        showToast("Enter both target bay and target row.", "error");
+        return;
+    }
+    if (resolution.error) {
+        showToast(resolution.error, "error");
+        return;
+    }
+    await executeRestowMove(resolution.moveTarget, resolution.targetSlotKey, {
+        buttonId: "target-move-submit",
+        label: "Moving to target...",
+    });
+    resetMoveTargetDraft();
 }
 
 function renderStackLayers(slotContainers) {
@@ -1617,19 +1852,14 @@ function handleMoveTargetSelection(targetSlotKey) {
         showToast(moveTarget.error, "error");
         return;
     }
-    setValue("restow-id", moveTarget.movingContainer.container_id);
-    setValue("restow-block", moveTarget.target.block);
-    setValue("restow-bay", moveTarget.target.bay);
-    setValue("restow-row", String(moveTarget.target.row));
-    setValue("restow-tier", String(moveTarget.nextTier));
     state.selectedSlotKey = targetSlotKey;
     state.selectedContainerId = moveTarget.movingContainer.container_id;
     state.selectedBlock = moveTarget.target.block;
     ensureSlotVisible(moveTarget.target.block, moveTarget.target.bay, moveTarget.target.row);
-    state.moveDraftContainerId = null;
+    state.moveTargetDraft.bay = moveTarget.target.bay;
+    state.moveTargetDraft.row = String(moveTarget.target.row);
     renderDashboard();
-    openTab("restow-tab");
-    showToast(`Restow prepared: ${moveTarget.movingContainer.container_id} -> ${moveTarget.target.block}-${moveTarget.target.bay}-${moveTarget.target.row}-${moveTarget.nextTier}.`, "success");
+    showToast(`Target prepared: ${moveTarget.target.block}-${moveTarget.target.bay}-${moveTarget.target.row}-${moveTarget.nextTier}. Press OK to move.`, "success");
 }
 
 function resolveMoveTarget(containerId, targetSlotKey) {
@@ -1658,13 +1888,15 @@ function canDropContainerOnSlot(containerId, targetSlotKey) {
     return !resolveMoveTarget(containerId, targetSlotKey).error;
 }
 
-async function executeRestowMove(containerIdOrMoveTarget, targetSlotKey) {
+async function executeRestowMove(containerIdOrMoveTarget, targetSlotKey, options = {}) {
     const moveTarget = typeof containerIdOrMoveTarget === "object" ? containerIdOrMoveTarget : resolveMoveTarget(containerIdOrMoveTarget, targetSlotKey);
     if (moveTarget.error) {
         showToast(moveTarget.error, "error");
         return;
     }
-    setOperationBusy("Processing Restow...", "confirm-move-button");
+    const busyButtonId = options.buttonId || "confirm-move-button";
+    const busyLabel = options.label || "Processing Restow...";
+    setOperationBusy(busyLabel, busyButtonId);
     try {
         const resolvedTargetSlotKey = targetSlotKey || getSlotKey(
             moveTarget.target.block,
@@ -1691,6 +1923,7 @@ async function executeRestowMove(containerIdOrMoveTarget, targetSlotKey) {
         state.draggingContainerId = null;
         state.dragOverSlotKey = null;
         state.pendingMove = null;
+        resetMoveTargetDraft();
         applyOptimisticRestow(moveTarget.movingContainer.container_id, {
             block: moveTarget.target.block,
             bay: moveTarget.target.bay,
@@ -1705,7 +1938,7 @@ async function executeRestowMove(containerIdOrMoveTarget, targetSlotKey) {
         refreshInventoryInBackground();
         showToast(data.message || "Container moved.", "success");
     } finally {
-        setOperationBusy("", "confirm-move-button");
+        setOperationBusy("", busyButtonId);
     }
 }
 

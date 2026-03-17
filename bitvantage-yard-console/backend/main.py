@@ -1,3 +1,4 @@
+from pathlib import Path
 from datetime import date, datetime, time, timezone
 from typing import Any, Dict, Optional
 
@@ -6,6 +7,7 @@ from fastapi.encoders import jsonable_encoder
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, PlainTextResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from fastapi.staticfiles import StaticFiles
 
 import n8n_client
 import supabase_client
@@ -501,13 +503,18 @@ def get_notification_logs(limit: Optional[int] = Query(default=20, ge=1, le=200)
     return supabase_client.get_notification_logs(limit=limit)
 
 
+FRONTEND_DIR = Path(__file__).resolve().parents[1] / "frontend"
+if FRONTEND_DIR.exists():
+    app.mount("/", StaticFiles(directory=str(FRONTEND_DIR), html=True), name="frontend")
+
+
 if __name__ == "__main__":
     import os
     import uvicorn
 
     uvicorn.run(
         app,
-        host=os.getenv("BITVANTAGE_HOST", "127.0.0.1"),
+        host=os.getenv("BITVANTAGE_HOST", "0.0.0.0"),
         port=int(os.getenv("BITVANTAGE_PORT", "8000")),
         access_log=False,
     )

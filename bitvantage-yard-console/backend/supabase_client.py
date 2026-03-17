@@ -1151,7 +1151,7 @@ def insert_notification_log(entry: Dict[str, Any]) -> bool:
 
 
 def get_notification_logs(limit: Optional[int] = None) -> List[Dict[str, Any]]:
-    query = "SELECT * FROM notification_logs ORDER BY id DESC"
+    query = "SELECT * FROM notification_logs ORDER BY created_at DESC"
     if limit:
         query += f" LIMIT {int(limit)}"
     with get_db() as db:

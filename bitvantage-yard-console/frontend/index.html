@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>BitVantage Yard Console</title>
     <link rel="icon" type="image/svg+xml" href="assets/bitvantage-logo.svg">
-    <link rel="stylesheet" href="styles.css?v=20260317-6">
+    <link rel="stylesheet" href="styles.css?v=20260317-9">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
@@ -278,6 +278,26 @@
                                 <small id="detail-next-tier"></small>
                             </div>
                             <div id="selected-container-card" class="container-card"></div>
+                            <form id="target-move-widget" class="detail-section target-move-widget hidden no-print">
+                                <div class="target-move-header">
+                                    <span class="detail-label">Quick Restow</span>
+                                    <strong id="target-move-container">No container armed</strong>
+                                    <small id="target-move-block">Target block: --</small>
+                                </div>
+                                <div class="target-move-grid">
+                                    <div class="form-group">
+                                        <label for="target-move-bay">Target Bay</label>
+                                        <input id="target-move-bay" type="number" min="1" max="99" placeholder="26" inputmode="numeric">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="target-move-row">Target Row</label>
+                                        <input id="target-move-row" type="number" min="1" max="99" placeholder="1" inputmode="numeric">
+                                    </div>
+                                </div>
+                                <small id="target-move-helper" class="target-move-helper"></small>
+                                <div id="target-move-feedback" class="target-move-feedback neutral">Enter a target bay and row.</div>
+                                <button id="target-move-submit" type="submit" class="btn-primary target-move-submit">OK</button>
+                            </form>
                             <div class="detail-section">
                                 <span class="detail-label">Stack Layers</span>
                                 <div id="stack-layers" class="stack-layers"></div>
@@ -469,6 +489,6 @@
     </div>
 
     <div id="toast" class="toast hidden"></div>
-    <script src="app.js?v=20260317-6"></script>
+    <script src="app.js?v=20260317-9"></script>
 </body>
 </html>

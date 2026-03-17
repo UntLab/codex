@@ -1,0 +1,10 @@
+.git
+.gitignore
+.env
+.venv
+.playwright-cli
+backend/__pycache__
+backend/*.pyc
+backend/**/*.pyc
+backend/bitvantage_local.db
+.DS_Store
