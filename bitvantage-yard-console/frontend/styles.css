@@ -1012,7 +1012,59 @@ input, select {
 }
 .inspector-btn,
 .modal-submit { width: 100%; }
-.btn-secondary:disabled { opacity: 0.45; cursor: not-allowed; }
+.btn-primary:disabled,
+.btn-danger:disabled,
+.btn-secondary:disabled,
+.badge-action-btn:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+}
+
+.activity-indicator {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.7rem;
+    margin-bottom: 1rem;
+    padding: 0.85rem 1rem;
+    border-radius: 16px;
+    background: rgba(15, 25, 40, 0.74);
+    border: 1px solid rgba(88, 132, 196, 0.22);
+    color: #d9e6f8;
+    box-shadow: 0 18px 36px rgba(3, 10, 20, 0.26);
+}
+
+.activity-spinner {
+    width: 0.95rem;
+    height: 0.95rem;
+    border-radius: 999px;
+    border: 2px solid rgba(255, 255, 255, 0.2);
+    border-top-color: var(--accent);
+    animation: activity-spin 0.8s linear infinite;
+}
+
+@keyframes activity-spin {
+    to { transform: rotate(360deg); }
+}
+
+.btn-primary.is-loading,
+.btn-danger.is-loading,
+.btn-secondary.is-loading,
+.badge-action-btn.is-loading {
+    position: relative;
+}
+
+.btn-primary.is-loading::after,
+.btn-danger.is-loading::after,
+.btn-secondary.is-loading::after,
+.badge-action-btn.is-loading::after {
+    content: "";
+    width: 0.9rem;
+    height: 0.9rem;
+    border-radius: 999px;
+    border: 2px solid rgba(255, 255, 255, 0.25);
+    border-top-color: currentColor;
+    animation: activity-spin 0.8s linear infinite;
+}
 
 .table-scroll { max-height: 420px; overflow: auto; }
 .modern-table { width: 100%; border-collapse: collapse; }

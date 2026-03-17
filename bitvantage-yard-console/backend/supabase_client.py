@@ -1,3 +1,4 @@
+import atexit
 import hashlib
 import hmac
 import json
@@ -15,6 +16,11 @@ try:
 except ImportError:  # pragma: no cover - optional until dependencies are installed
     psycopg = None
     dict_row = None
+
+try:
+    from psycopg_pool import ConnectionPool
+except ImportError:  # pragma: no cover - optional until dependency is installed
+    ConnectionPool = None
 
 
 def load_project_env() -> None:
@@ -121,6 +127,8 @@ SCHEMA_REQUIRED_TABLES = [
     "sessions",
 ]
 
+_POSTGRES_POOL: Optional["ConnectionPool"] = None
+
 
 class DBResult:
     def __init__(self, cursor: Any):
@@ -138,9 +146,10 @@ class DBResult:
 
 
 class DBConnection:
-    def __init__(self, connection: Any, postgres: bool):
+    def __init__(self, connection: Any, postgres: bool, pool: Optional[Any] = None):
         self._connection = connection
         self._postgres = postgres
+        self._pool = pool
 
     def _adapt_query(self, query: str) -> str:
         return query.replace("?", "%s") if self._postgres else query
@@ -172,7 +181,10 @@ class DBConnection:
             self._connection.rollback()
         else:
             self._connection.commit()
-        self._connection.close()
+        if self._pool is not None:
+            self._pool.putconn(self._connection)
+        else:
+            self._connection.close()
         return False
 
 
@@ -214,10 +226,40 @@ def public_user(user: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 
+def get_postgres_pool() -> Optional["ConnectionPool"]:
+    global _POSTGRES_POOL
+    if not USE_POSTGRES or ConnectionPool is None:
+        return None
+    if _POSTGRES_POOL is None:
+        _POSTGRES_POOL = ConnectionPool(
+            DATABASE_URL,
+            min_size=1,
+            max_size=6,
+            kwargs={"row_factory": dict_row, "autocommit": False},
+            timeout=10,
+            open=True,
+        )
+    return _POSTGRES_POOL
+
+
+def close_postgres_pool() -> None:
+    global _POSTGRES_POOL
+    if _POSTGRES_POOL is not None:
+        _POSTGRES_POOL.close()
+        _POSTGRES_POOL = None
+
+
+atexit.register(close_postgres_pool)
+
+
 def get_db() -> DBConnection:
     if USE_POSTGRES:
         if psycopg is None:
             raise RuntimeError("psycopg is required when DATABASE_URL is set. Install backend requirements first.")
+        pool = get_postgres_pool()
+        if pool is not None:
+            connection = pool.getconn()
+            return DBConnection(connection, postgres=True, pool=pool)
         connection = psycopg.connect(DATABASE_URL, row_factory=dict_row, autocommit=False)
         return DBConnection(connection, postgres=True)
     connection = sqlite3.connect(LOCAL_DB_PATH)
@@ -1068,7 +1110,7 @@ def get_operations_log(
     return logs
 
 
-def get_bootstrap_payload(current_user: Dict[str, Any], logs_limit: int = 200) -> Dict[str, Any]:
+def get_bootstrap_payload(current_user: Dict[str, Any], logs_limit: int = 50, include_admin_users: bool = False) -> Dict[str, Any]:
     with get_db() as db:
         layout = get_terminal_layout(db=db)
         slots = get_all_slots(db=db, layout_records=layout)
@@ -1081,7 +1123,7 @@ def get_bootstrap_payload(current_user: Dict[str, Any], logs_limit: int = 200) -
             "logs": logs,
             "fetched_at": utc_now_iso(),
         }
-        if "manage_users" in current_user.get("permissions", []):
+        if include_admin_users and "manage_users" in current_user.get("permissions", []):
             payload["admin_users"] = list_users(db=db)
     return payload
 

@@ -231,8 +231,16 @@ def get_me(current_user: Dict[str, Any] = Depends(get_current_user)):
 
 
 @app.get("/api/bootstrap")
-def get_bootstrap(current_user: Dict[str, Any] = Depends(require_permission("view_inventory"))):
-    return supabase_client.get_bootstrap_payload(current_user, logs_limit=200)
+def get_bootstrap(
+    logs_limit: int = Query(default=50, ge=1, le=200),
+    include_admin_users: bool = Query(default=False),
+    current_user: Dict[str, Any] = Depends(require_permission("view_inventory")),
+):
+    return supabase_client.get_bootstrap_payload(
+        current_user,
+        logs_limit=logs_limit,
+        include_admin_users=include_admin_users,
+    )
 
 
 @app.patch("/api/users/me/notifications")

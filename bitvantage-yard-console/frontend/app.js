@@ -40,12 +40,57 @@ const state = {
     dragOverSlotKey: null,
     pendingMove: null,
     toastTimer: null,
+    inventoryLoadPromise: null,
+    inventoryReloadQueued: false,
+    inventoryLoadingVisible: false,
+    authBusy: false,
+    operationBusyLabel: "",
+    busyButtonId: null,
     formDirty: {
         stackin: false,
         stackout: false,
         restow: false,
     },
 };
+
+function setAuthBusy(isBusy) {
+    state.authBusy = isBusy;
+    state.busyButtonId = isBusy ? "auth-submit-button" : (state.busyButtonId === "auth-submit-button" ? null : state.busyButtonId);
+    renderBusyState();
+}
+
+function setOperationBusy(label = "", buttonId = null) {
+    state.operationBusyLabel = label;
+    state.busyButtonId = label ? buttonId : (state.busyButtonId === buttonId ? null : state.busyButtonId);
+    renderBusyState();
+}
+
+function renderBusyState() {
+    const indicator = document.getElementById("activity-indicator");
+    const text = document.getElementById("activity-text");
+    const active = Boolean(state.authBusy || state.operationBusyLabel || (state.inventoryLoadPromise && state.inventoryLoadingVisible));
+    if (indicator && text) {
+        if (active) {
+            indicator.classList.remove("hidden");
+            text.textContent = state.operationBusyLabel || (state.authBusy ? "Signing in..." : (state.lastLoadedAt ? "Refreshing yard data..." : "Loading terminal data..."));
+        } else {
+            indicator.classList.add("hidden");
+        }
+    }
+
+    const logoutButton = document.getElementById("logout-button");
+    if (logoutButton) logoutButton.disabled = Boolean(state.authBusy || state.operationBusyLabel);
+
+    const refreshButton = document.getElementById("refresh-dashboard");
+    if (refreshButton) refreshButton.disabled = Boolean(state.inventoryLoadPromise);
+
+    ["auth-submit-button", "stackin-submit-button", "stackout-submit-button", "restow-submit-button", "confirm-move-button"].forEach((id) => {
+        const button = document.getElementById(id);
+        if (!button) return;
+        button.classList.toggle("is-loading", state.busyButtonId === id);
+        button.disabled = state.busyButtonId === id;
+    });
+}
 
 document.addEventListener("DOMContentLoaded", async () => {
     setupTabs();
@@ -56,6 +101,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     setupMoveConfirmation();
     setupAdmin();
     restoreLocalSession();
+    renderBusyState();
 
     if (state.authToken) {
         const restored = await restoreSession();
@@ -89,6 +135,10 @@ function openTab(tabId) {
 
     const content = document.querySelector(".content");
     if (content) content.scrollTop = 0;
+
+    if (nextTab.id === "admin-tab" && state.currentUser?.permissions?.includes("manage_users") && !state.adminUsers.length) {
+        void loadAdminUsers();
+    }
 }
 
 function setupForms() {
@@ -429,6 +479,7 @@ async function restoreSession() {
 
 async function login(username, password) {
     setAuthError();
+    setAuthBusy(true);
     try {
         const response = await fetch(`${API_ROOT}/auth/login`, {
             method: "POST",
@@ -456,6 +507,8 @@ async function login(username, password) {
         showToast(`Signed in as ${state.currentUser.full_name}.`, "success");
     } catch (error) {
         setAuthError(error.message);
+    } finally {
+        setAuthBusy(false);
     }
 }
 
@@ -522,6 +575,12 @@ function resetSessionState() {
     state.draggingContainerId = null;
     state.dragOverSlotKey = null;
     state.pendingMove = null;
+    state.inventoryLoadPromise = null;
+    state.inventoryReloadQueued = false;
+    state.inventoryLoadingVisible = false;
+    state.authBusy = false;
+    state.operationBusyLabel = "";
+    state.busyButtonId = null;
     state.containerHistory.clear();
     state.routingPreviewCache.clear();
     state.formDirty.stackin = false;
@@ -535,6 +594,7 @@ function resetSessionState() {
     syncSessionBadge();
     syncRoleBasedUi();
     renderDashboard();
+    renderBusyState();
 }
 
 function showAuthScreen(message = "") {
@@ -685,8 +745,6 @@ function applyInventoryPayload(payload = {}) {
             state.selectedAdminUser = state.adminUsers.find((user) => user.username === state.selectedAdminUser.username) || null;
         }
         renderAdminUsers();
-    } else if (state.currentUser?.permissions?.includes("manage_users")) {
-        void loadAdminUsers();
     }
 
     if (state.currentUser?.permissions?.includes("manage_layout")) {
@@ -735,67 +793,104 @@ function refreshInventoryInBackground() {
 
 async function loadInventory(options = {}) {
     if (!state.authToken) return;
-    try {
-        const bootstrapResponse = await apiFetch(`${API_ROOT}/bootstrap`);
-        if (!bootstrapResponse.ok) throw new Error("Failed to load terminal data.");
-        applyInventoryPayload(await bootstrapResponse.json());
-    } catch (error) {
+    if (state.inventoryLoadPromise) {
+        state.inventoryReloadQueued = true;
+        state.inventoryLoadingVisible = state.inventoryLoadingVisible || !options.silent || !state.lastLoadedAt;
+        renderBusyState();
+        return state.inventoryLoadPromise;
+    }
+
+    state.inventoryLoadingVisible = !options.silent || !state.lastLoadedAt;
+    const task = (async () => {
         try {
-            applyInventoryPayload(await loadInventoryLegacy());
-        } catch (fallbackError) {
-            if (!options.silent) {
-                showToast(fallbackError.message || error.message, "error");
+            const params = new URLSearchParams({ logs_limit: "50" });
+            const shouldIncludeAdminUsers = Boolean(
+                state.currentUser?.permissions?.includes("manage_users")
+                && document.getElementById("admin-tab")?.classList.contains("active")
+            );
+            if (shouldIncludeAdminUsers) params.set("include_admin_users", "true");
+            const bootstrapResponse = await apiFetch(`${API_ROOT}/bootstrap?${params.toString()}`);
+            if (!bootstrapResponse.ok) throw new Error("Failed to load terminal data.");
+            applyInventoryPayload(await bootstrapResponse.json());
+        } catch (error) {
+            try {
+                applyInventoryPayload(await loadInventoryLegacy());
+            } catch (fallbackError) {
+                if (!options.silent) {
+                    showToast(fallbackError.message || error.message, "error");
+                }
             }
+        }
+    })();
+
+    state.inventoryLoadPromise = task;
+    renderBusyState();
+    try {
+        await task;
+    } finally {
+        state.inventoryLoadPromise = null;
+        state.inventoryLoadingVisible = false;
+        renderBusyState();
+        if (state.inventoryReloadQueued && state.authToken) {
+            state.inventoryReloadQueued = false;
+            void loadInventory({ silent: true });
         }
     }
 }
 
 async function submitForm(form, url, payload) {
-    const response = await apiFetch(url, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-    });
-    const data = await response.json();
-    if (!response.ok) {
-        showToast(data.detail || "Operation failed.", "error");
-        return;
-    }
-    if (form.id === "stackin-form") state.formDirty.stackin = false;
-    if (form.id === "stackout-form") state.formDirty.stackout = false;
-    if (form.id === "restow-form") state.formDirty.restow = false;
-    if (typeof form.reset === "function") form.reset();
-    if (form.id === "restow-form") {
-        applyOptimisticRestow(payload.container_id, {
-            block: payload.new_block,
-            bay: payload.new_bay,
-            row: payload.new_row,
-            tier: payload.new_tier,
+    const button = form.querySelector("button[type='submit']");
+    const label = form.id === "stackin-form" ? "Processing Stack In..." : form.id === "stackout-form" ? "Processing Stack Out..." : "Processing Restow...";
+    setOperationBusy(label, button?.id || null);
+    try {
+        const response = await apiFetch(url, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
         });
-        state.selectedContainerId = payload.container_id;
-        state.selectedBlock = payload.new_block;
-        state.selectedSlotKey = getSlotKey(payload.new_block, ["40ft", "45ft"].includes(findContainerById(payload.container_id)?.container_type) ? getSurfaceStartBayFromWideAnchor(String(payload.new_bay).padStart(2, "0")) : String(payload.new_bay).padStart(2, "0"), payload.new_row);
-        ensureSlotVisible(payload.new_block, String(payload.new_bay).padStart(2, "0"), payload.new_row);
-        ensureContainerHistory(payload.container_id);
-        renderDashboard();
-        refreshInventoryInBackground();
-    } else {
-        await loadInventory({ silent: true });
-        if (payload.container_id) {
-            const updatedContainer = findContainerById(payload.container_id);
-            if (updatedContainer) {
-                state.selectedContainerId = updatedContainer.container_id;
-                state.selectedBlock = updatedContainer.block;
-                state.selectedSlotKey = getSlotKey(updatedContainer.block, getSurfaceStartBay(updatedContainer), updatedContainer.row_num);
-                ensureContainerHistory(updatedContainer.container_id);
-            } else {
-                state.selectedContainerId = null;
-                state.selectedSlotKey = null;
-            }
+        const data = await response.json();
+        if (!response.ok) {
+            showToast(data.detail || "Operation failed.", "error");
+            return;
         }
-        renderDashboard();
+        if (form.id === "stackin-form") state.formDirty.stackin = false;
+        if (form.id === "stackout-form") state.formDirty.stackout = false;
+        if (form.id === "restow-form") state.formDirty.restow = false;
+        if (typeof form.reset === "function") form.reset();
+        if (form.id === "restow-form") {
+            applyOptimisticRestow(payload.container_id, {
+                block: payload.new_block,
+                bay: payload.new_bay,
+                row: payload.new_row,
+                tier: payload.new_tier,
+            });
+            state.selectedContainerId = payload.container_id;
+            state.selectedBlock = payload.new_block;
+            state.selectedSlotKey = getSlotKey(payload.new_block, ["40ft", "45ft"].includes(findContainerById(payload.container_id)?.container_type) ? getSurfaceStartBayFromWideAnchor(String(payload.new_bay).padStart(2, "0")) : String(payload.new_bay).padStart(2, "0"), payload.new_row);
+            ensureSlotVisible(payload.new_block, String(payload.new_bay).padStart(2, "0"), payload.new_row);
+            ensureContainerHistory(payload.container_id);
+            renderDashboard();
+            refreshInventoryInBackground();
+        } else {
+            await loadInventory({ silent: true });
+            if (payload.container_id) {
+                const updatedContainer = findContainerById(payload.container_id);
+                if (updatedContainer) {
+                    state.selectedContainerId = updatedContainer.container_id;
+                    state.selectedBlock = updatedContainer.block;
+                    state.selectedSlotKey = getSlotKey(updatedContainer.block, getSurfaceStartBay(updatedContainer), updatedContainer.row_num);
+                    ensureContainerHistory(updatedContainer.container_id);
+                } else {
+                    state.selectedContainerId = null;
+                    state.selectedSlotKey = null;
+                }
+            }
+            renderDashboard();
+        }
+        showToast(data.message || "Operation completed.", "success");
+    } finally {
+        setOperationBusy("", button?.id || null);
     }
-    showToast(data.message || "Operation completed.", "success");
 }
 
 function preserveSelection() {
@@ -1569,44 +1664,49 @@ async function executeRestowMove(containerIdOrMoveTarget, targetSlotKey) {
         showToast(moveTarget.error, "error");
         return;
     }
-    const resolvedTargetSlotKey = targetSlotKey || getSlotKey(
-        moveTarget.target.block,
-        ["40ft", "45ft"].includes(moveTarget.movingContainer.container_type) ? getSurfaceStartBayFromWideAnchor(moveTarget.target.bay) : moveTarget.target.bay,
-        moveTarget.target.row
-    );
-    const response = await apiFetch(`${API_BASE_URL}/restow`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-            container_id: moveTarget.movingContainer.container_id,
-            new_block: moveTarget.target.block,
-            new_bay: moveTarget.target.bay,
-            new_row: moveTarget.target.row,
-            new_tier: moveTarget.nextTier,
-        }),
-    });
-    const data = await response.json();
-    if (!response.ok) {
-        showToast(data.detail || "Failed to move container.", "error");
-        return;
+    setOperationBusy("Processing Restow...", "confirm-move-button");
+    try {
+        const resolvedTargetSlotKey = targetSlotKey || getSlotKey(
+            moveTarget.target.block,
+            ["40ft", "45ft"].includes(moveTarget.movingContainer.container_type) ? getSurfaceStartBayFromWideAnchor(moveTarget.target.bay) : moveTarget.target.bay,
+            moveTarget.target.row
+        );
+        const response = await apiFetch(`${API_BASE_URL}/restow`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                container_id: moveTarget.movingContainer.container_id,
+                new_block: moveTarget.target.block,
+                new_bay: moveTarget.target.bay,
+                new_row: moveTarget.target.row,
+                new_tier: moveTarget.nextTier,
+            }),
+        });
+        const data = await response.json();
+        if (!response.ok) {
+            showToast(data.detail || "Failed to move container.", "error");
+            return;
+        }
+        state.moveDraftContainerId = null;
+        state.draggingContainerId = null;
+        state.dragOverSlotKey = null;
+        state.pendingMove = null;
+        applyOptimisticRestow(moveTarget.movingContainer.container_id, {
+            block: moveTarget.target.block,
+            bay: moveTarget.target.bay,
+            row: moveTarget.target.row,
+            tier: moveTarget.nextTier,
+        });
+        state.selectedSlotKey = resolvedTargetSlotKey;
+        state.selectedContainerId = moveTarget.movingContainer.container_id;
+        state.selectedBlock = moveTarget.target.block;
+        ensureSlotVisible(moveTarget.target.block, moveTarget.target.bay, moveTarget.target.row);
+        renderDashboard();
+        refreshInventoryInBackground();
+        showToast(data.message || "Container moved.", "success");
+    } finally {
+        setOperationBusy("", "confirm-move-button");
     }
-    state.moveDraftContainerId = null;
-    state.draggingContainerId = null;
-    state.dragOverSlotKey = null;
-    state.pendingMove = null;
-    applyOptimisticRestow(moveTarget.movingContainer.container_id, {
-        block: moveTarget.target.block,
-        bay: moveTarget.target.bay,
-        row: moveTarget.target.row,
-        tier: moveTarget.nextTier,
-    });
-    state.selectedSlotKey = resolvedTargetSlotKey;
-    state.selectedContainerId = moveTarget.movingContainer.container_id;
-    state.selectedBlock = moveTarget.target.block;
-    ensureSlotVisible(moveTarget.target.block, moveTarget.target.bay, moveTarget.target.row);
-    renderDashboard();
-    refreshInventoryInBackground();
-    showToast(data.message || "Container moved.", "success");
 }
 
 function handleSlotDragStart(event) {

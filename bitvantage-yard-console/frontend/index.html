@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>BitVantage Yard Console</title>
     <link rel="icon" type="image/svg+xml" href="assets/bitvantage-logo.svg">
-    <link rel="stylesheet" href="styles.css?v=20260317-5">
+    <link rel="stylesheet" href="styles.css?v=20260317-6">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
@@ -26,7 +26,7 @@
                     <label for="login-password">Password</label>
                     <input id="login-password" type="password" autocomplete="current-password" required placeholder="Enter password">
                 </div>
-                <button type="submit" class="btn-primary auth-submit">Enter BitVantage</button>
+                <button id="auth-submit-button" type="submit" class="btn-primary auth-submit">Enter BitVantage</button>
             </form>
             <p id="auth-error" class="auth-error hidden"></p>
         </div>
@@ -167,6 +167,11 @@
                     </div>
                 </div>
             </header>
+
+            <div id="activity-indicator" class="activity-indicator hidden no-print" aria-live="polite">
+                <span class="activity-spinner" aria-hidden="true"></span>
+                <strong id="activity-text">Syncing yard data...</strong>
+            </div>
 
             <section id="dashboard-tab" class="tab-content active">
                 <div class="dashboard-actions no-print">
@@ -336,7 +341,7 @@
                                 <div><label>Tier</label><input type="number" id="in-tier" required min="1" max="4" placeholder="4"></div>
                             </div>
                         </div>
-                        <button type="submit" class="btn-primary">Confirm Stack In</button>
+                        <button id="stackin-submit-button" type="submit" class="btn-primary">Confirm Stack In</button>
                     </form>
                 </div>
             </section>
@@ -349,7 +354,7 @@
                             <label>Container ID</label>
                             <input type="text" id="out-id" required placeholder="MSKU1234567">
                         </div>
-                        <button type="submit" class="btn-danger">Confirm Stack Out</button>
+                        <button id="stackout-submit-button" type="submit" class="btn-danger">Confirm Stack Out</button>
                     </form>
                 </div>
             </section>
@@ -368,7 +373,7 @@
                                 <div><label>Tier</label><input type="number" id="restow-tier" required min="1" max="4" placeholder="4"></div>
                             </div>
                         </div>
-                        <button type="submit" class="btn-primary">Confirm Restow</button>
+                        <button id="restow-submit-button" type="submit" class="btn-primary">Confirm Restow</button>
                     </form>
                 </div>
             </section>
@@ -464,6 +469,6 @@
     </div>
 
     <div id="toast" class="toast hidden"></div>
-    <script src="app.js?v=20260317-5"></script>
+    <script src="app.js?v=20260317-6"></script>
 </body>
 </html>
