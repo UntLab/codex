@@ -130,6 +130,11 @@
 
     <div id="app-shell" class="app-container app-shell app-shell-hidden">
         <nav class="sidebar">
+            <div class="sidebar-topbar no-print">
+                <button id="sidebar-toggle" type="button" class="sidebar-toggle-btn" aria-label="Toggle sidebar">
+                    <i class="fa-solid fa-bars"></i>
+                </button>
+            </div>
             <div class="brand-lockup">
                 <img class="brand-logo" src="assets/bitvantage-logo.svg" alt="BitVantage">
                 <div class="brand-meta">
@@ -138,11 +143,11 @@
                 </div>
             </div>
             <ul class="nav-links">
-                <li class="active" data-tab="dashboard-tab"><i class="fa-solid fa-table-cells-large"></i> Terminal Map</li>
-                <li data-tab="stackin-tab"><i class="fa-solid fa-boxes-packing"></i> Stack In</li>
-                <li data-tab="stackout-tab"><i class="fa-solid fa-truck-ramp-box"></i> Stack Out</li>
-                <li data-tab="restow-tab"><i class="fa-solid fa-dolly"></i> Restow</li>
-                <li id="admin-nav-item" class="hidden" data-tab="admin-tab"><i class="fa-solid fa-user-shield"></i> Admin</li>
+                <li class="active" data-tab="dashboard-tab" title="Terminal Map"><i class="fa-solid fa-table-cells-large"></i><span class="nav-label">Terminal Map</span></li>
+                <li data-tab="stackin-tab" title="Stack In"><i class="fa-solid fa-boxes-packing"></i><span class="nav-label">Stack In</span></li>
+                <li data-tab="stackout-tab" title="Stack Out"><i class="fa-solid fa-truck-ramp-box"></i><span class="nav-label">Stack Out</span></li>
+                <li data-tab="restow-tab" title="Restow"><i class="fa-solid fa-dolly"></i><span class="nav-label">Restow</span></li>
+                <li id="admin-nav-item" class="hidden" data-tab="admin-tab" title="Admin"><i class="fa-solid fa-user-shield"></i><span class="nav-label">Admin</span></li>
             </ul>
             <div class="sidebar-credit">
                 <span>Built by UntLab</span>
@@ -151,20 +156,10 @@
         </nav>
 
         <main class="content">
-            <header>
+            <header class="app-header">
                 <div class="header-copy">
+                    <span class="header-kicker">Tablet Console</span>
                     <h1>Terminal Yard Map</h1>
-                    <p class="header-subtitle">BitVantage container positioning console for tablet operations</p>
-                </div>
-                <div class="user-badge no-print">
-                    <span class="user-badge-label">Session</span>
-                    <strong id="session-user-name">Not signed in</strong>
-                    <small id="session-user-role">-</small>
-                    <small id="live-status">offline</small>
-                    <div class="user-badge-actions">
-                        <button id="open-settings" type="button" class="badge-action-btn" aria-label="Open settings"><i class="fa-solid fa-sliders"></i></button>
-                        <button id="logout-button" type="button" class="badge-action-btn" aria-label="Log out"><i class="fa-solid fa-right-from-bracket"></i></button>
-                    </div>
                 </div>
             </header>
 
@@ -173,21 +168,10 @@
                 <strong id="activity-text">Syncing yard data...</strong>
             </div>
 
-            <section id="dashboard-tab" class="tab-content active">
-                <div class="dashboard-actions no-print">
-                    <button id="refresh-dashboard" type="button" class="btn-secondary"><i class="fa-solid fa-rotate"></i> Refresh Map</button>
-                    <button id="print-inventory" type="button" class="btn-secondary"><i class="fa-solid fa-print"></i> Print Current State</button>
-                </div>
-                <div class="stats-cards">
-                    <div class="card glass"><div class="card-icon"><i class="fa-solid fa-box"></i></div><div class="card-info"><h3>Total Containers</h3><p id="total-containers">0</p></div></div>
-                    <div class="card glass"><div class="card-icon warning"><i class="fa-solid fa-truck-fast"></i></div><div class="card-info"><h3>Today Stack In</h3><p id="today-in">0</p></div></div>
-                    <div class="card glass"><div class="card-icon accent-alt"><i class="fa-solid fa-truck-arrow-right"></i></div><div class="card-info"><h3>Today Stack Out</h3><p id="today-out">0</p></div></div>
-                    <div class="card glass"><div class="card-icon"><i class="fa-solid fa-layer-group"></i></div><div class="card-info"><h3>Active Block</h3><p id="selected-block-load">-</p></div></div>
-                </div>
-
-                <div class="map-workspace mt-4">
+            <section id="dashboard-tab" class="tab-content active dashboard-layout">
+                <div class="map-workspace compact-workspace top-workspace">
                     <div class="map-column">
-                        <div class="map-panel glass">
+                        <div class="map-panel glass dashboard-overview-panel">
                             <div class="panel-heading">
                                 <div>
                                     <h2>Terminal Overview</h2>
@@ -202,8 +186,50 @@
                             </div>
                             <div id="terminal-overview" class="terminal-overview"></div>
                         </div>
+                    </div>
+                    <aside class="inspector-panel glass dashboard-side-stack no-print">
+                        <div class="header-stats-inline">
+                            <div class="header-stat-pill">
+                                <span class="header-stat-label">Containers</span>
+                                <strong id="total-containers">0</strong>
+                            </div>
+                            <div class="header-stat-pill">
+                                <span class="header-stat-label">In</span>
+                                <strong id="today-in">0</strong>
+                            </div>
+                            <div class="header-stat-pill">
+                                <span class="header-stat-label">Out</span>
+                                <strong id="today-out">0</strong>
+                            </div>
+                            <div class="header-stat-pill">
+                                <span class="header-stat-label">Block</span>
+                                <strong id="selected-block-load">-</strong>
+                            </div>
+                        </div>
+                        <div class="dashboard-actions compact-header-actions">
+                            <button id="refresh-dashboard" type="button" class="btn-secondary"><i class="fa-solid fa-rotate"></i> Refresh</button>
+                            <button id="print-inventory" type="button" class="btn-secondary"><i class="fa-solid fa-print"></i> Print</button>
+                        </div>
+                        <div class="user-badge no-print compact-session">
+                            <div class="compact-session-meta">
+                                <span class="user-badge-label">Session</span>
+                                <strong id="session-user-name">Not signed in</strong>
+                                <div class="compact-session-secondary">
+                                    <small id="session-user-role">-</small>
+                                    <small id="live-status">offline</small>
+                                </div>
+                            </div>
+                            <div class="user-badge-actions">
+                                <button id="open-settings" type="button" class="badge-action-btn" aria-label="Open settings"><i class="fa-solid fa-sliders"></i></button>
+                                <button id="logout-button" type="button" class="badge-action-btn" aria-label="Log out"><i class="fa-solid fa-right-from-bracket"></i></button>
+                            </div>
+                        </div>
+                    </aside>
+                </div>
 
-                        <div class="bay-panel glass mt-4">
+                <div class="map-workspace compact-workspace">
+                    <div class="map-column main-column-stack">
+                        <div class="bay-panel glass">
                             <div class="panel-heading">
                                 <div>
                                     <h2 id="bay-panel-title">Block 01</h2>
@@ -251,6 +277,27 @@
                                 </form>
                             </div>
                             <div id="bay-grid" class="bay-grid"></div>
+                        </div>
+
+                        <div class="inventory-table-container glass inventory-inline-panel">
+                            <div class="panel-heading">
+                                <div>
+                                    <h2>Inventory Snapshot</h2>
+                                    <p>Table view for operational cross-checking and printing the current yard state.</p>
+                                </div>
+                            </div>
+                            <table class="modern-table">
+                                <thead>
+                                    <tr>
+                                        <th>Container</th>
+                                        <th>Type</th>
+                                        <th>Position (Block-Bay-Row-Tier)</th>
+                                        <th>Status</th>
+                                        <th>Direction</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="inventory-list"></tbody>
+                            </table>
                         </div>
                     </div>
 
@@ -320,27 +367,6 @@
                             <div id="activity-feed" class="history-list"></div>
                         </div>
                     </aside>
-                </div>
-
-                <div class="inventory-table-container glass mt-4">
-                    <div class="panel-heading">
-                        <div>
-                            <h2>Inventory Snapshot</h2>
-                            <p>Table view for operational cross-checking and printing the current yard state.</p>
-                        </div>
-                    </div>
-                    <table class="modern-table">
-                        <thead>
-                            <tr>
-                                <th>Container</th>
-                                <th>Type</th>
-                                <th>Position (Block-Bay-Row-Tier)</th>
-                                <th>Status</th>
-                                <th>Direction</th>
-                            </tr>
-                        </thead>
-                        <tbody id="inventory-list"></tbody>
-                    </table>
                 </div>
             </section>
 
@@ -489,6 +515,6 @@
     </div>
 
     <div id="toast" class="toast hidden"></div>
-    <script src="app.js?v=20260317-9"></script>
+    <script src="app.js?v=20260320-8"></script>
 </body>
 </html>

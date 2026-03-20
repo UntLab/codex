@@ -4,6 +4,7 @@ const API_BASE_URL = `${API_ORIGIN}/api/containers`;
 const API_ROOT = `${API_ORIGIN}/api`;
 const STORAGE_TOKEN_KEY = "bitvantage_auth_token";
 const STORAGE_USER_KEY = "bitvantage_user";
+const STORAGE_SIDEBAR_KEY = "bitvantage_sidebar_collapsed";
 const AUTO_REFRESH_MS = 15000;
 const MAX_TIER_COUNT = 4;
 const DEFAULT_VIEWPORT_SIZE = 14;
@@ -108,6 +109,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     setupTabs();
     setupForms();
     setupDashboardActions();
+    setupSidebar();
     setupTargetMoveWidget();
     setupAuth();
     setupSettings();
@@ -129,6 +131,23 @@ document.addEventListener("DOMContentLoaded", async () => {
 function setupTabs() {
     document.querySelectorAll(".nav-links li").forEach((tab) => {
         tab.addEventListener("click", () => openTab(tab.dataset.tab));
+    });
+}
+
+function setupSidebar() {
+    const shell = document.getElementById("app-shell");
+    const toggle = document.getElementById("sidebar-toggle");
+    if (!shell || !toggle) return;
+
+    const collapsed = localStorage.getItem(STORAGE_SIDEBAR_KEY) === "true";
+    shell.classList.toggle("sidebar-collapsed", collapsed);
+    toggle.setAttribute("aria-pressed", String(collapsed));
+
+    toggle.addEventListener("click", () => {
+        const nextCollapsed = !shell.classList.contains("sidebar-collapsed");
+        shell.classList.toggle("sidebar-collapsed", nextCollapsed);
+        toggle.setAttribute("aria-pressed", String(nextCollapsed));
+        localStorage.setItem(STORAGE_SIDEBAR_KEY, String(nextCollapsed));
     });
 }
 
@@ -1248,16 +1267,17 @@ function renderDenseOverviewMiniGrid(layout) {
             const anchoredWideContainer = getAnchoredWideContainer(layout.block, bay, row);
             if (anchoredWideContainer) {
                 if (rendered.has(anchoredWideContainer.container_id)) return;
-                const gridColumn = Math.min(parseBayNumber(anchoredWideContainer.bay), 28);
-                cells.push(`<span class="mini-cell type-${anchoredWideContainer.container_type} wide dense-wide" style="grid-column:${gridColumn} / span 2;grid-row:${rowIndex + 1};"></span>`);
+                const surfaceStartBay = getSurfaceStartBayFromWideAnchor(anchoredWideContainer.bay);
+                const gridColumn = Math.min(parseBayNumber(surfaceStartBay), 28);
+                cells.push(`<span class="mini-cell type-${anchoredWideContainer.container_type} wide dense-part" style="grid-column:${gridColumn} / span 2;grid-row:${rowIndex + 1};"></span>`);
                 rendered.add(anchoredWideContainer.container_id);
                 return;
             }
 
             const visibleContainer = getVisibleContainerForSlot(getSlotContainers(layout.block, bay, row));
             if (!visibleContainer || rendered.has(visibleContainer.container_id)) return;
-            const gridColumn = Math.min(parseBayNumber(bay), 28);
-            cells.push(`<span class="mini-cell type-${visibleContainer.container_type} dense-single" style="grid-column:${gridColumn};grid-row:${rowIndex + 1};"></span>`);
+            const gridColumn = Math.min(parseBayNumber(bay) + 1, 28);
+            cells.push(`<span class="mini-cell type-${visibleContainer.container_type} dense-part" style="grid-column:${gridColumn};grid-row:${rowIndex + 1};"></span>`);
             rendered.add(visibleContainer.container_id);
         });
     });
