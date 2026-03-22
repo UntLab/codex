@@ -3,6 +3,10 @@
 ## Язык
 - Всегда отвечай пользователю на русском языке.
 
+## Старт новой сессии
+- Перед работой с известным проектом сначала смотри `docs/inventory/PROJECT_MAP.md`.
+- Для общей операционной модели и правил маршрутизации смотри `docs/workflow/CODEX_OPERATING_MODEL.md`.
+
 ## Предпочитаемые скиллы
 - Для задач по Python и анализу данных: `jupyter-notebook`.
 - Для задач по веб-автоматизации и UI-потокам: `playwright`.
@@ -19,3 +23,9 @@
   `bash scripts/sync/direct-push.sh main`
 - Backup-копии отдельных проектов лежат в `backups/projects/` и не считаются основным местом разработки.
 - Не предлагай `bash scripts/backup-push.sh` как основной путь для прямой работы в `codex`: этот сценарий зеркалит внешние папки через `rsync --delete`.
+
+## Маршрутизация проектов
+- `codex` — это центральный workspace, knowledge base и backup hub.
+- Отдельные репозитории (`cardsaas`, `bitvantage-yard-console`, `cursor`, `cursor-backups`, `UntLab`, `documentation`) считаются source of truth.
+- Если пользователь просит работать над отдельным продуктом и не оговаривает иное, предпочитай основной репозиторий проекта, а не backup-копию в `codex`.
+- Backup-копии в `backups/projects/` используй для чтения контекста, сверки и резервного хранения.
