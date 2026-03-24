@@ -1,9 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
 import Stripe from "stripe";
+import { isManualBillingMode } from "@/lib/billing";
 import { prisma } from "@/lib/prisma";
 import { getStripe } from "@/lib/stripe";
 
 export async function POST(req: NextRequest) {
+  if (
+    isManualBillingMode() ||
+    !process.env.STRIPE_SECRET_KEY ||
+    !process.env.STRIPE_WEBHOOK_SECRET
+  ) {
+    return NextResponse.json({ received: true, mode: "manual" });
+  }
+
   const body = await req.text();
   const sig = req.headers.get("stripe-signature")!;
 

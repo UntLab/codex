@@ -21,10 +21,11 @@ export default function RegisterPage() {
     setLoading(true);
 
     try {
+      const normalizedEmail = email.trim().toLowerCase();
       const res = await fetch("/api/auth/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, email, password }),
+        body: JSON.stringify({ name, email: normalizedEmail, password }),
       });
 
       const data = await res.json();
@@ -36,7 +37,7 @@ export default function RegisterPage() {
       }
 
       const result = await signIn("credentials", {
-        email,
+        email: normalizedEmail,
         password,
         redirect: false,
       });

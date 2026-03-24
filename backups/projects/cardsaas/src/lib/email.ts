@@ -43,12 +43,12 @@ export async function sendPaymentWarning(
   return getResend().emails.send({
     from: FROM_EMAIL,
     to: userEmail,
-    subject: `Payment overdue — "${cardName}" has been blocked`,
+    subject: `Action needed — "${cardName}" is inactive`,
     html: `
       <div style="font-family: 'JetBrains Mono', monospace; background: #030305; color: #fff; padding: 30px; border-radius: 12px;">
-        <h2 style="color: #ff003c; margin-bottom: 20px;">[ALERT] Subscription overdue</h2>
-        <p>Your card <strong>${cardName}</strong> (/${cardSlug}) was blocked because the payment is overdue.</p>
-        <p style="margin-top: 15px;">Update your billing details in the dashboard to restore the card.</p>
+        <h2 style="color: #ff003c; margin-bottom: 20px;">[ALERT] Card inactive</h2>
+        <p>Your card <strong>${cardName}</strong> (/${cardSlug}) is currently inactive.</p>
+        <p style="margin-top: 15px;">Contact the CardSaaS team if you need it reactivated.</p>
         <p style="color: #5a6b7c; font-size: 12px; margin-top: 20px;">CardSaaS — Digital Business Cards</p>
       </div>
     `,

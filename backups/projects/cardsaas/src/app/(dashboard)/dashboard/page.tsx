@@ -20,7 +20,14 @@ import {
   Users,
   Palette,
   UserPlus,
+  ShieldCheck,
 } from "lucide-react";
+import {
+  clientBillingMode,
+  getManualCardStatus,
+  MANUAL_CARD_STATUS_LABELS,
+  type ManualCardStatus,
+} from "@/lib/billing";
 
 interface CardData {
   id: string;
@@ -33,6 +40,7 @@ interface CardData {
   trialEndsAt?: string | null;
   theme: string;
   accentColor: string;
+  manualStatus?: ManualCardStatus;
   subscription?: {
     status: string;
     currentPeriodEnd?: string;
@@ -43,6 +51,7 @@ interface CardData {
 export default function DashboardPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
+  const isManualMode = clientBillingMode === "manual";
   const [cards, setCards] = useState<CardData[]>([]);
   const [loading, setLoading] = useState(true);
   const [deleting, setDeleting] = useState<string | null>(null);
@@ -99,6 +108,35 @@ export default function DashboardPage() {
   };
 
   const getStatusBadge = (card: CardData) => {
+    if (isManualMode) {
+      const manualStatus = card.manualStatus ?? getManualCardStatus(card);
+
+      if (manualStatus === "active") {
+        return (
+          <span className="flex items-center gap-1 text-xs font-[family-name:var(--font-geist-mono)] text-emerald-300">
+            <CheckCircle className="w-3 h-3" />
+            {MANUAL_CARD_STATUS_LABELS.active}
+          </span>
+        );
+      }
+
+      if (manualStatus === "paused") {
+        return (
+          <span className="flex items-center gap-1 text-xs font-[family-name:var(--font-geist-mono)] text-rose-300">
+            <XCircle className="w-3 h-3" />
+            {MANUAL_CARD_STATUS_LABELS.paused}
+          </span>
+        );
+      }
+
+      return (
+        <span className="flex items-center gap-1 text-xs font-[family-name:var(--font-geist-mono)] text-amber-300">
+          <AlertTriangle className="w-3 h-3" />
+          {MANUAL_CARD_STATUS_LABELS.pending}
+        </span>
+      );
+    }
+
     const sub = card.subscription;
     if (sub?.status === "active") {
       return (
@@ -170,6 +208,15 @@ export default function DashboardPage() {
               <UserPlus className="w-4 h-4" />
               Team
             </Link>
+            {session?.user?.isAdmin && (
+              <Link
+                href="/dashboard/admin"
+                className="flex items-center gap-1.5 text-sm text-[var(--color-text-muted)] hover:text-[var(--color-neon)] transition-colors font-[family-name:var(--font-geist-mono)] hidden md:flex"
+              >
+                <ShieldCheck className="w-4 h-4" />
+                Admin
+              </Link>
+            )}
             <span className="text-sm text-[var(--color-text-muted)] font-[family-name:var(--font-geist-mono)] hidden sm:block">
               {session?.user?.name || session?.user?.email}
             </span>
@@ -278,13 +325,25 @@ export default function DashboardPage() {
                     >
                       <QrCode className="w-3 h-3" />
                     </Link>
-                    {(!card.subscription ||
-                      card.subscription.status !== "active") && (
+                    {(!isManualMode &&
+                      (!card.subscription ||
+                        card.subscription.status !== "active")) && (
                       <Link
                         href="/dashboard/billing"
                         className="flex items-center gap-1 text-xs bg-[var(--color-neon)]/10 border border-[var(--color-neon)]/30 text-[var(--color-neon)] px-3 py-2 rounded-md hover:bg-[var(--color-neon)] hover:text-black transition-all font-[family-name:var(--font-geist-mono)]"
                       >
                         Billing coming soon
+                      </Link>
+                    )}
+                    {isManualMode &&
+                      (card.manualStatus ?? getManualCardStatus(card)) !== "active" && (
+                      <Link
+                        href="/dashboard/billing"
+                        className="flex items-center gap-1 text-xs bg-[var(--color-neon)]/10 border border-[var(--color-neon)]/30 text-[var(--color-neon)] px-3 py-2 rounded-md hover:bg-[var(--color-neon)] hover:text-black transition-all font-[family-name:var(--font-geist-mono)]"
+                      >
+                        {(card.manualStatus ?? getManualCardStatus(card)) === "paused"
+                          ? "Reactivation"
+                          : "Activation"}
                       </Link>
                     )}
                     <button
@@ -299,6 +358,17 @@ export default function DashboardPage() {
                       )}
                     </button>
                   </div>
+
+                  {isManualMode && (
+                    <p className="mt-3 text-xs text-[var(--color-text-muted)] font-[family-name:var(--font-geist-mono)]">
+                      {(card.manualStatus ?? getManualCardStatus(card)) === "active"
+                        ? "This card is live and accessible."
+                        : (card.manualStatus ?? getManualCardStatus(card)) ===
+                            "paused"
+                          ? "This card is hidden until manual reactivation."
+                          : "This card is waiting for manual approval."}
+                    </p>
+                  )}
                 </div>
               </div>
             ))}

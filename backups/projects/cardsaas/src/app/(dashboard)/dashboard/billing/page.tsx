@@ -5,10 +5,12 @@ import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
 import { CreditCard, LogOut, Sparkles } from "lucide-react";
+import { clientBillingMode, MANUAL_BILLING_MESSAGE } from "@/lib/billing";
 
 export default function BillingPage() {
   const { status } = useSession();
   const router = useRouter();
+  const isManualMode = clientBillingMode === "manual";
 
   useEffect(() => {
     if (status === "unauthenticated") {
@@ -45,11 +47,13 @@ export default function BillingPage() {
           <div className="w-16 h-16 mx-auto mb-6 rounded-2xl bg-[var(--color-neon)]/10 border border-[var(--color-neon)]/30 flex items-center justify-center">
             <Sparkles className="w-8 h-8 text-[var(--color-neon)]" />
           </div>
-          <h1 className="text-3xl font-bold mb-3">Billing coming soon</h1>
+          <h1 className="text-3xl font-bold mb-3">
+            {isManualMode ? "Manual activation" : "Billing"}
+          </h1>
           <p className="text-[var(--color-text-muted)] max-w-2xl mx-auto leading-7">
-            Paid billing is currently paused while we finalize the payment setup.
-            Every newly created card receives a 14-day trial window in the system.
-            Your cards remain available while billing is being prepared.
+            {isManualMode
+              ? `${MANUAL_BILLING_MESSAGE} New cards now start in a pending state and are activated or paused manually from the admin panel.`
+              : "Paid billing is currently paused while we finalize the payment setup."}
           </p>
           <div className="mt-8">
             <Link

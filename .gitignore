@@ -2,6 +2,7 @@
 .DS_Store
 Thumbs.db
 *.log
+.playwright-cli/
 
 # Dependencies and build output inside backup copies
 backups/projects/**/node_modules/

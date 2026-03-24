@@ -1,4 +1,8 @@
 import { notFound } from "next/navigation";
+import {
+  getManualCardStatus,
+  getManualCardStatusMessage,
+} from "@/lib/billing";
 import { prisma } from "@/lib/prisma";
 import type { Metadata } from "next";
 import CyberpunkCard from "@/components/CyberpunkCard";
@@ -53,11 +57,16 @@ const themeComponents: Record<
 
 export default async function CardPage({ params }: Props) {
   const { slug } = await params;
-  const card = await prisma.card.findUnique({ where: { slug } });
+  const card = await prisma.card.findUnique({
+    where: { slug },
+    include: { subscription: true },
+  });
 
   if (!card) notFound();
 
-  if (!card.active) {
+  const manualStatus = getManualCardStatus(card);
+
+  if (manualStatus !== "active") {
     return (
       <div className="min-h-screen bg-[var(--color-bg-base)] flex items-center justify-center px-4">
         <div className="text-center">
@@ -65,9 +74,9 @@ export default async function CardPage({ params }: Props) {
             [BLOCKED]
           </div>
           <p className="text-[var(--color-text-muted)] font-[family-name:var(--font-geist-mono)]">
-            This card is temporarily unavailable.
+            {getManualCardStatusMessage(manualStatus)}
             <br />
-            Billing access is being finalized.
+            Access is managed manually by the CardSaaS team.
           </p>
         </div>
       </div>

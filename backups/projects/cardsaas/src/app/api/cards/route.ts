@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
+import { getManualCardStatus, getServerBillingMode } from "@/lib/billing";
 import { prisma } from "@/lib/prisma";
 
 export async function GET() {
@@ -17,7 +18,12 @@ export async function GET() {
     orderBy: { createdAt: "desc" },
   });
 
-  return NextResponse.json({ cards });
+  return NextResponse.json({
+    cards: cards.map((card) => ({
+      ...card,
+      manualStatus: getManualCardStatus(card),
+    })),
+  });
 }
 
 export async function POST(req: NextRequest) {
@@ -28,8 +34,11 @@ export async function POST(req: NextRequest) {
 
   try {
     const data = await req.json();
-    const trialEndsAt = new Date();
-    trialEndsAt.setDate(trialEndsAt.getDate() + 14);
+    const isManualMode = getServerBillingMode() === "manual";
+    const trialEndsAt =
+      !isManualMode
+        ? new Date(Date.now() + 14 * 24 * 60 * 60 * 1000)
+        : null;
 
     const slugBase = data.slug || data.fullName
       .toLowerCase()
@@ -46,6 +55,7 @@ export async function POST(req: NextRequest) {
       data: {
         slug,
         userId: session.user.id,
+        active: !isManualMode,
         fullName: data.fullName,
         jobTitle: data.jobTitle || null,
         company: data.company || null,
@@ -69,10 +79,29 @@ export async function POST(req: NextRequest) {
         tags: data.tags || [],
         webhookUrl: data.webhookUrl || null,
         trialEndsAt,
+        subscription: isManualMode
+          ? {
+              create: {
+                userId: session.user.id,
+                status: "pending",
+              },
+            }
+          : undefined,
+      },
+      include: {
+        subscription: true,
       },
     });
 
-    return NextResponse.json({ card }, { status: 201 });
+    return NextResponse.json(
+      {
+        card: {
+          ...card,
+          manualStatus: getManualCardStatus(card),
+        },
+      },
+      { status: 201 }
+    );
   } catch {
     return NextResponse.json(
       { error: "Failed to create card" },

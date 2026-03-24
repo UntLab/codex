@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
+import { MANUAL_BILLING_MESSAGE, isManualBillingMode } from "@/lib/billing";
 import { prisma } from "@/lib/prisma";
 import { createCheckoutSession, createOrGetCustomer } from "@/lib/stripe";
 
@@ -7,6 +8,13 @@ export async function POST(req: NextRequest) {
   const session = await auth();
   if (!session?.user?.id || !session.user.email) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  if (isManualBillingMode()) {
+    return NextResponse.json(
+      { error: MANUAL_BILLING_MESSAGE },
+      { status: 503 }
+    );
   }
 
   if (!process.env.STRIPE_SECRET_KEY || !process.env.STRIPE_PRICE_ID) {
