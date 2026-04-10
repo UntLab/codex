@@ -1,0 +1,1203 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <title>FormagBaku Dashboard</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="icon" type="image/png" href="logo.png" />
+  <link rel="stylesheet" href="style.css">
+
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
+  
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+  
+  <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@300;400;500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+
+  <style>
+    body {
+      display: block; /* Временно отключено для локального просмотра */
+    }
+
+    /* === СТИЛИ ДЛЯ КАРТЫ === */
+    #map-widget-container {
+        position: relative;
+        width: 100%;
+        height: 500px;
+        background: #1a1d21;
+        border-radius: 12px;
+        overflow: hidden;
+        margin-top: 15px;
+        border: 1px solid #333;
+    }
+    #custom-map { width: 100%; height: 100%; z-index: 1; }
+    
+    /* Боковая панель карты (Старая, внутри виджета) */
+    .map-sidebar {
+        position: absolute;
+        top: 0; right: -320px;
+        width: 280px; height: 100%;
+        background: rgba(26, 29, 33, 0.95);
+        border-left: 1px solid #444;
+        box-shadow: -5px 0 20px rgba(0,0,0,0.5);
+        z-index: 1000;
+        transition: right 0.4s ease;
+        padding: 20px;
+        box-sizing: border-box;
+        display: flex; flex-direction: column;
+        backdrop-filter: blur(5px);
+    }
+    .map-sidebar.active { right: 0; }
+    
+    .sb-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 1px solid #444; padding-bottom: 10px; }
+    .sb-title { color: #fff; font-size: 20px; font-weight: bold; margin: 0; }
+    .sb-close { color: #888; cursor: pointer; font-size: 18px; }
+    .sb-close:hover { color: #fff; }
+    
+    .sb-card { background: #25282e; border: 1px solid #444; border-radius: 8px; padding: 15px; margin-bottom: 15px; }
+    .sb-label { font-size: 10px; color: #888; text-transform: uppercase; letter-spacing: 1px; }
+    .sb-val { font-size: 26px; color: #00d4ff; font-weight: bold; margin-top: 5px; }
+    
+    .sb-btn {
+        width: 100%; padding: 10px; border-radius: 6px; border: none; cursor: pointer; font-weight: 600; margin-top: 8px; display: flex; align-items: center; justify-content: center; text-decoration: none; font-size: 13px;
+    }
+    .btn-blue { background: linear-gradient(90deg, #007bff, #00d4ff); color: white; }
+    .btn-blue:hover { opacity: 0.9; }
+    .btn-trans { background: transparent; border: 1px solid #00d4ff; color: #00d4ff; }
+    .btn-trans:hover { background: rgba(0, 212, 255, 0.1); }
+
+    /* ================================================= */
+    /* === НОВЫЕ СТИЛИ ДЛЯ ТЕХНО-ПАНЕЛИ ИИ (С 2ai.az) === */
+    /* ================================================= */
+    :root {
+        --cyber-blue: #00f0ff;
+        --cyber-bg: rgba(2, 2, 10, 0.95);
+        --cyber-border: rgba(0, 240, 255, 0.3);
+    }
+
+    .cyber-sidebar {
+        position: fixed;
+        top: 0; right: -450px; /* Скрыта справа */
+        width: 400px; /* Чуть шире для удобства чтения */
+        height: 100%;
+        background: var(--cyber-bg);
+        border-left: 1px solid var(--cyber-border);
+        box-shadow: -10px 0 50px rgba(0, 0, 0, 0.9);
+        z-index: 9999; /* Поверх всего */
+        transition: right 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        display: flex;
+        flex-direction: column;
+        backdrop-filter: blur(10px);
+        font-family: 'Share Tech Mono', monospace;
+    }
+
+    .cyber-sidebar.active { right: 0; }
+
+    .cyber-header {
+        padding: 20px;
+        background: rgba(255, 255, 255, 0.02);
+        border-bottom: 1px solid rgba(0, 240, 255, 0.1);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    .cyber-title {
+        color: var(--cyber-blue);
+        font-size: 16px;
+        letter-spacing: 2px;
+        font-weight: bold;
+        text-shadow: 0 0 10px rgba(0, 240, 255, 0.3);
+    }
+
+    .cyber-chat-area {
+        flex: 1;
+        padding: 20px;
+        overflow-y: auto;
+        color: #cfcfcf;
+        font-size: 14px;
+        line-height: 1.6;
+    }
+    .cyber-chat-area::-webkit-scrollbar { width: 6px; }
+    .cyber-chat-area::-webkit-scrollbar-track { background: transparent; }
+    .cyber-chat-area::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); }
+
+    .cyber-input-zone {
+        padding: 20px;
+        background: rgba(0, 0, 0, 0.6);
+        border-top: 1px solid rgba(255, 255, 255, 0.05);
+        position: relative;
+    }
+    .cyber-input {
+        width: 100%;
+        background: transparent;
+        border: none;
+        color: white;
+        font-family: 'Share Tech Mono', monospace;
+        font-size: 14px;
+        letter-spacing: 1px;
+        outline: none;
+        padding-bottom: 8px;
+    }
+    .cyber-input::placeholder { color: rgba(0, 240, 255, 0.3); }
+    
+    .cyber-line {
+        position: absolute;
+        bottom: 20px; left: 20px; right: 20px;
+        height: 1px;
+        background: var(--cyber-blue);
+        width: 0%;
+        transition: width 0.3s ease;
+        box-shadow: 0 0 10px var(--cyber-blue);
+    }
+    .cyber-input:focus ~ .cyber-line { width: calc(100% - 40px); }
+
+    /* Стили сообщений в чате */
+    .msg-system { color: #94a3b8; margin-bottom: 10px; opacity: 0.8; font-size: 12px; }
+    .msg-user { color: white; text-align: right; margin-bottom: 15px; border-right: 2px solid var(--cyber-blue); padding-right: 10px; }
+    .msg-ai { color: #a5b4fc; margin-bottom: 20px; position: relative; padding-left: 15px; border-left: 1px dotted #333; }
+    .msg-ai::before { content: '>'; position: absolute; left: 0; color: var(--cyber-blue); font-weight: bold;}
+
+    .close-btn { color: #555; cursor: pointer; transition: 0.3s; font-size: 18px; }
+    .close-btn:hover { color: var(--cyber-blue); transform: rotate(90deg); }
+
+    /* Анимация загрузки */
+    @keyframes pulse-fast { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+    .animate-pulse { animation: pulse-fast 1s infinite; }
+    /* ====================================== */
+    /* === СТИЛИ ДЛЯ МОДАЛЬНОГО ОКНА ОФФЕРА === */
+    /* ====================================== */
+    .modal-overlay {
+      position: fixed; inset: 0;
+      background: rgba(0, 0, 0, 0.75);
+      backdrop-filter: blur(8px);
+      z-index: 99999;
+      display: flex; align-items: center; justify-content: center;
+      opacity: 0; visibility: hidden;
+      transition: all 0.3s ease;
+    }
+    .modal-overlay.active { opacity: 1; visibility: visible; }
+
+    .modal-box {
+      background: rgba(18, 20, 26, 0.98);
+      border: 1px solid rgba(0, 212, 255, 0.3);
+      border-radius: 16px;
+      padding: 36px;
+      width: 92%; max-width: 560px;
+      max-height: 90vh; overflow-y: auto;
+      box-shadow: 0 0 60px rgba(0, 212, 255, 0.15);
+      transform: translateY(20px);
+      transition: transform 0.3s ease;
+      position: relative;
+    }
+    .modal-overlay.active .modal-box { transform: translateY(0); }
+
+    .modal-box::-webkit-scrollbar { width: 4px; }
+    .modal-box::-webkit-scrollbar-thumb { background: rgba(0,212,255,0.2); border-radius: 10px; }
+
+    .modal-title {
+      color: #fff; font-size: 22px; font-weight: 700;
+      margin: 0 0 4px 0;
+    }
+    .modal-sub {
+      color: #00d4ff; font-size: 12px; letter-spacing: 2px;
+      text-transform: uppercase; margin-bottom: 28px;
+    }
+    .modal-close {
+      position: absolute; top: 20px; right: 24px;
+      color: #555; font-size: 20px; cursor: pointer;
+      transition: color 0.2s, transform 0.2s;
+      background: none; border: none;
+    }
+    .modal-close:hover { color: #00d4ff; transform: rotate(90deg); }
+
+    .m-group { margin-bottom: 18px; }
+    .m-group label {
+      display: block; color: #888; font-size: 11px;
+      text-transform: uppercase; letter-spacing: 1px; margin-bottom: 7px;
+    }
+    .m-group input, .m-group select, .m-group textarea {
+      width: 100%; padding: 11px 14px;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 8px; color: #fff; font-size: 14px;
+      outline: none; transition: border 0.2s;
+      box-sizing: border-box; font-family: inherit;
+    }
+    .m-group input:focus, .m-group select:focus, .m-group textarea:focus {
+      border-color: #00d4ff;
+      background: rgba(0, 212, 255, 0.04);
+    }
+    .m-group select option { background: #1a1d21; color: #fff; }
+    .m-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+
+    .m-divider {
+      border: none; border-top: 1px solid rgba(255,255,255,0.06);
+      margin: 22px 0;
+    }
+    .m-section-label {
+      font-size: 11px; letter-spacing: 2px; text-transform: uppercase;
+      color: #00d4ff; margin-bottom: 16px; margin-top: -6px;
+    }
+
+    .transport-grid {
+      display: grid; grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 8px; padding: 14px;
+    }
+    .transport-grid label {
+      display: flex; align-items: center; gap: 7px;
+      color: #ddd; font-size: 13px;
+      text-transform: none; letter-spacing: 0; margin: 0;
+      cursor: pointer;
+    }
+    .transport-grid input[type=checkbox] {
+      width: auto; accent-color: #00d4ff; cursor: pointer;
+    }
+
+    .m-btn-submit {
+      width: 100%; padding: 14px;
+      background: linear-gradient(90deg, #007bff, #00d4ff);
+      color: white; border: none; border-radius: 8px;
+      font-size: 15px; font-weight: 700;
+      cursor: pointer; transition: opacity 0.2s;
+      margin-top: 8px;
+    }
+    .m-btn-submit:hover { opacity: 0.88; }
+    .m-btn-submit:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    .sidebar-profile {
+      margin: 18px 12px 10px;
+      padding: 14px 16px;
+      border-radius: 14px;
+      background: rgba(0, 212, 255, 0.06);
+      border: 1px solid rgba(0, 212, 255, 0.16);
+      box-shadow: 0 10px 30px rgba(0,0,0,0.18);
+    }
+    .sidebar-profile-name {
+      color: #fff;
+      font-size: 15px;
+      font-weight: 700;
+      margin-bottom: 4px;
+    }
+    .sidebar-profile-email {
+      color: rgba(255,255,255,0.6);
+      font-size: 12px;
+      margin-bottom: 10px;
+      word-break: break-word;
+    }
+    .sidebar-profile-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      border-radius: 999px;
+      padding: 4px 10px;
+      font-size: 10px;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      font-weight: 700;
+      color: #00f0ff;
+      background: rgba(0, 240, 255, 0.14);
+      border: 1px solid rgba(0, 240, 255, 0.22);
+    }
+    .sidebar-profile-note {
+      margin-top: 10px;
+      color: rgba(255,255,255,0.56);
+      font-size: 11px;
+      line-height: 1.45;
+    }
+    .menu-section-label {
+      padding: 12px 20px 8px;
+      color: rgba(0, 240, 255, 0.68);
+      font-size: 10px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      font-weight: 700;
+    }
+    .legacy-panel {
+      margin-top: 18px;
+      padding: 16px 18px;
+      border-radius: 16px;
+      border: 1px solid rgba(251, 191, 36, 0.18);
+      background: rgba(251, 191, 36, 0.05);
+    }
+    .legacy-panel[hidden] { display: none !important; }
+    .legacy-title {
+      color: #fde68a;
+      font-size: 11px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+    .legacy-note {
+      color: rgba(255,255,255,0.6);
+      font-size: 12px;
+      line-height: 1.5;
+      margin-bottom: 14px;
+    }
+    .pill-row-title {
+      color: rgba(255,255,255,0.55);
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      margin-bottom: 12px;
+    }
+    [hidden] { display: none !important; }
+
+    #offer-toast {
+      position: fixed; bottom: 30px; left: 50%;
+      transform: translateX(-50%);
+      background: rgba(18,20,26,0.95); backdrop-filter: blur(10px);
+      color: #fff; border: 1px solid #10b981;
+      border-radius: 10px; padding: 14px 24px;
+      font-size: 14px; z-index: 999999;
+      opacity: 0; visibility: hidden;
+      transition: all 0.4s ease;
+      white-space: nowrap;
+    }
+    #offer-toast.show { opacity: 1; visibility: visible; bottom: 50px; }
+    #offer-toast.error { border-color: #ef4444; color: #ef4444; }
+  </style>
+</head>
+
+<body>
+
+    <div id="chat-sidebar" class="cyber-sidebar">
+        <div class="cyber-header">
+            <div>
+                <span class="cyber-title">/// QUICK_ANALYSIS</span>
+                <div style="font-size: 10px; opacity: 0.5; margin-top: 2px; color:white;">SECURE_UPLINK: ACTIVE</div>
+            </div>
+            <i class="fas fa-times close-btn" onclick="toggleChat(false)"></i>
+        </div>
+
+        <div id="chat-web" class="cyber-chat-area">
+            <div class="msg-system">
+                > Neural Link Established.<br>
+                > Ready for logistics query...
+            </div>
+        </div>
+
+        <div class="cyber-input-zone">
+            <input type="text" id="input-web" class="cyber-input" placeholder="INPUT_COMMAND..." autocomplete="off">
+            <div class="cyber-line"></div>
+        </div>
+    </div>
+    <div class="shell">
+
+    <aside class="sidebar">
+
+      <div class="logo-block">
+        <img src="logo.png" alt="Formag Forwarding">
+      </div>
+
+      <div class="sidebar-profile">
+        <div class="sidebar-profile-name" id="dashboard-user-name">Loading...</div>
+        <div class="sidebar-profile-email" id="dashboard-user-email">Connecting workspace...</div>
+        <span class="sidebar-profile-badge" id="dashboard-user-badge">—</span>
+        <div class="sidebar-profile-note" id="dashboard-user-note">
+          Preparing your workspace modules and permissions.
+        </div>
+      </div>
+
+      <div class="menu">
+        <div class="menu-section-label">Core Workspace</div>
+
+        <a class="menu-item" href="#" onclick="openOfferModal(event)">
+          <div class="icon offer-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round">
+              <rect x="3" y="5" width="18" height="14" rx="2"></rect>
+              <polyline points="3 7 12 13 21 7"></polyline>
+            </svg>
+          </div>
+          Get Offer
+        </a>
+
+        <a class="menu-item" href="quotation.html" data-capabilities="Sales,Admin,HR">
+          <div class="icon pricing-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 1v22"></path>
+              <path d="M5 6h8a4 4 0 0 1 0 8H7a4 4 0 0 0 0 8h9"></path>
+            </svg>
+          </div>
+          Sales Workspace
+        </a>
+
+        <a class="menu-item" href="operations.html" data-capabilities="Operations,Admin,HR">
+          <div class="icon oper-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="3"></circle>
+              <path
+                d="M19.4 15a1.8 1.8 0 0 0 .3 2l.1.1a2 2 0 0 1-2.8 2.8l-.1-.1a1.8 1.8 0 0 0-2-.3 1.8 1.8 0 0 0-1 1.5V21a2 2 0 0 1-4 0v-.1a1.8 1.8 0 0 0-1-1.5 1.8 1.8 0 0 0-2 .3l-.1.1A2 2 0 0 1 2.2 17l.1-.1a1.8 1.8 0 0 0 .3-2 1.8 1.8 0 0 0-1.5-1H1a2 2 0 0 1 0-4h.1a1.8 1.8 0 0 0 1.5-1 1.8 1.8 0 0 0-.3-2l-.1-.1A2 2 0 0 1 4.2 2.2l.1.1a1.8 1.8 0 0 0 2 .3h1A1.8 1.8 0 0 0 9 1.1V1a2 2 0 0 1 4 0v.1a1.8 1.8 0 0 0 1 1.5h1a1.8 1.8 0 0 0 2-.3l.1-.1A2 2 0 0 1 21.8 4.2l-.1.1a1.8 1.8 0 0 0-.3 2 1.8 1.8 0 0 0 1.5 1H23a2 2 0 0 1 0 4h-.1a1.8 1.8 0 0 0-1.5 1z">
+              </path>
+            </svg>
+          </div>
+          Operations
+        </a>
+
+        <a class="menu-item" href="finance.html" data-capabilities="Sales,Operations,Admin,HR">
+          <div class="icon fin-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round">
+              <rect x="2" y="7" width="20" height="14" rx="2"></rect>
+              <path d="M16 3H8v4h8V3z"></path>
+            </svg>
+          </div>
+          Finance
+        </a>
+
+        <a class="menu-item" href="clients.html" data-capabilities="Sales,Admin,HR">
+          <div class="icon client-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="9" cy="7" r="4"></circle>
+              <circle cx="17" cy="9" r="3"></circle>
+              <path d="M3 21v-1a6 6 0 0 1 12 0v1"></path>
+              <path d="M14 21v-1a5 5 0 0 1 6-4"></path>
+            </svg>
+          </div>
+          CRM & Clients
+        </a>
+
+        <a class="menu-item" href="tank_storage.html" data-capabilities="Operations,Admin,HR">
+          <div class="icon agent-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round">
+              <rect x="3" y="6" width="18" height="10" rx="2"></rect>
+              <rect x="6" y="8" width="11" height="6" rx="3"></rect>
+              <ellipse cx="11.5" cy="7.5" rx="2" ry="1"></ellipse>
+              <line x1="6" y1="14" x2="8" y2="16"></line>
+              <line x1="8" y1="14" x2="10" y2="16"></line>
+              <line x1="10" y1="14" x2="12" y2="16"></line>
+              <line x1="12" y1="14" x2="14" y2="16"></line>
+              <line x1="14" y1="14" x2="16" y2="16"></line>
+              <line x1="3" y1="8" x2="6" y2="6"></line>
+              <line x1="3" y1="14" x2="6" y2="16"></line>
+              <line x1="21" y1="8" x2="18" y2="6"></line>
+              <line x1="21" y1="14" x2="18" y2="16"></line>
+            </svg>
+          </div>
+          Tank Storage
+        </a>
+
+        <div class="menu-section-label">Control & QA</div>
+
+        <a class="menu-item"
+          href="https://docs.google.com/spreadsheets/d/17l9HdLywizf7BpYm5EtVdHgVaP0KTxhjUQ1ZKZDGR3s/edit?gid=0#gid=0"
+          target="_blank"
+          data-legacy="true">
+          <div class="icon sales-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="3 17 9 11 13 15 21 7"></polyline>
+            </svg>
+          </div>
+          Legacy Sales Sheet
+        </a>
+
+        <a class="menu-item" href="settings.html">
+          <div class="icon oper-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 2l2.2 2.1 3-.4.9 2.9 2.8 1.2-1 2.9 1 2.9-2.8 1.2-.9 2.9-3-.4L12 22l-2.2-2.1-3 .4-.9-2.9-2.8-1.2 1-2.9-1-2.9 2.8-1.2.9-2.9 3 .4L12 2z"></path>
+              <circle cx="12" cy="12" r="3"></circle>
+            </svg>
+          </div>
+          Settings
+        </a>
+
+        <a class="menu-item" href="uat.html">
+          <div class="icon sales-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round">
+              <path d="M9 11l3 3L22 4"></path>
+              <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path>
+            </svg>
+          </div>
+          UAT Center
+        </a>
+
+        <a class="ai-button ai-button-cyber" href="https://2ai.az" target="_blank" data-legacy="true">
+          <div class="ai-bg"></div>
+          <div class="ai-glow"></div>
+          <div class="ai-scan"></div>
+          <div class="ai-content">
+            <div class="ai-icon">
+              <div class="ai-orb"></div>
+              <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"
+                stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="3"></circle>
+                <path d="M12 3v2"></path>
+                <path d="M12 19v2"></path>
+                <path d="M3 12h2"></path>
+                <path d="M19 12h2"></path>
+                <path d="M5 5l1.5 1.5"></path>
+                <path d="M17.5 17.5l1.5 1.5"></path>
+                <path d="M17.5 6.5L19 5"></path>
+                <path d="M5 19l1.5-1.5"></path>
+              </svg>
+            </div>
+            <span class="ai-label">Ask AI</span>
+          </div>
+        </a>
+
+      </div>
+      <div class="sidebar-actions-row">
+        <button class="action-btn logout-btn" id="logout-btn" type="button">
+          <span class="theme-toggle-icon">🚪</span> <span class="theme-toggle-label">Log Out</span>
+        </button>
+
+        <button class="action-btn theme-toggle-btn" id="theme-toggle" type="button">
+          <span class="theme-toggle-icon">🌙</span>
+          <span class="theme-toggle-label">Mode</span>
+        </button>
+      </div>
+
+    </aside>
+
+    <main class="main">
+
+      <div class="top-row">
+
+        <div class="left-col">
+
+          <section class="card map-card">
+            <div class="card-title">Global Reference Price Map</div>
+            <div class="card-subtitle">Reference market widget during migration</div>
+            
+            <div id="map-widget-container">
+                <div id="custom-map"></div>
+            
+                <div class="map-sidebar" id="mapSidebar">
+                    <div class="sb-header">
+                        <h3 class="sb-title" id="sbCountry">Select</h3>
+                        <i class="fas fa-times sb-close" onclick="closeMapSidebar()"></i>
+                    </div>
+                    <div class="sb-card">
+                        <div class="sb-label">Average Rate (40' HC)</div>
+                        <div class="sb-val" id="sbPrice">---</div>
+                    </div>
+                    <div style="margin-top:auto">
+                        <a href="#" onclick="openOfferModal(event)" class="sb-btn btn-blue">
+                            <i class="fas fa-paper-plane" style="margin-right:8px"></i> Get Offer
+                        </a>
+                        <button class="sb-btn btn-trans" onclick="transferToChat()">
+                            <i class="fas fa-microchip" style="margin-right:8px"></i> AI Risk Analysis
+                        </button>
+                    </div>
+                </div>
+            </div>
+            </section>
+
+          <div class="bottom-left">
+            <div class="bottom-inner">
+
+              <a class="reg-card" href="agent_registration.html">
+                <div class="reg-inner">
+                  <div class="reg-icon icon-agent">
+                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"
+                      stroke-linecap="round" stroke-linejoin="round">
+                      <circle cx="12" cy="7" r="4"></circle>
+                      <path d="M6 21v-2a6 6 0 0 1 12 0v2"></path>
+                    </svg>
+                  </div>
+                  <div class="reg-title reg-title-agent">Agent Registration Form</div>
+                  <div class="reg-sub">Register as a new agent</div>
+                </div>
+              </a>
+
+              <a class="reg-card" href="client_registration.html">
+                <div class="reg-inner">
+                  <div class="reg-icon icon-client">
+                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"
+                      stroke-linecap="round" stroke-linejoin="round">
+                      <circle cx="12" cy="7" r="4"></circle>
+                      <path d="M6 21v-2a6 6 0 0 1 12 0v2"></path>
+                    </svg>
+                  </div>
+                  <div class="reg-title reg-title-client">Client Registration Form</div>
+                  <div class="reg-sub">Register as a new client</div>
+                </div>
+              </a>
+
+            </div>
+          </div>
+        </div>
+
+        <div class="right-col">
+
+          <aside class="card cba-card">
+            <div class="card-title" style="font-size:15px;">CBA Exchange Rates (AZN)</div>
+            <table>
+              <thead>
+                <tr>
+                  <th>Currency</th>
+                  <th>Nominal</th>
+                  <th>Rate (AZN)</th>
+                </tr>
+              </thead>
+              <tbody id="currency-tbody">
+                <tr>
+                  <td colspan="3">Loading...</td>
+                </tr>
+              </tbody>
+            </table>
+            <p id="last-update"></p>
+          </aside>
+
+          <section class="card actions-card">
+            <div class="pill-row-title">Internal Shortcuts</div>
+            <div class="right-pills">
+                
+              <a class="pill pill-ai" href="Search_with_AI.html">
+                <span class="pill-icon">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="11" cy="11" r="7"></circle>
+                    <line x1="16.65" y1="16.65" x2="21" y2="21"></line>
+                  </svg>
+                </span>
+                Search with AI
+              </a>
+
+              <a class="pill pill-green" href="https://sender.2ai.az" target="_blank" data-legacy="true">
+                 <span class="pill-icon">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path>
+                    </svg>
+                </span>
+                WhatsApp Sender with AI
+              </a>
+
+              <a class="pill pill-blue" href="https://forms.gle/i6n6asgyfEVR4ish9" target="_blank" data-legacy="true">
+                <span class="pill-icon">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="20 6 9 17 4 12"></polyline>
+                  </svg>
+                </span>
+                Statement
+              </a>
+
+
+              <a class="pill pill-hr"
+                href="https://docs.google.com/spreadsheets/d/1C-HxaVqlAhCovA5uqIHGHzsqYD5JCl3vD2DB776kryQ/edit?gid=1610622160#gid=1610622160"
+                target="_blank"
+                data-legacy="true">
+                <span class="pill-icon">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M12 12a5 5 0 1 0-5-5"></path>
+                    <path d="M3 21v-2a6 6 0 0 1 12 0v2"></path>
+                  </svg>
+                </span>
+                HR
+              </a>
+
+            </div>
+
+            <div class="legacy-panel" id="legacy-panel" hidden>
+              <div class="legacy-title">Legacy & External Tools</div>
+              <div class="legacy-note">
+                These shortcuts stay available only as migration references. Core daily work should happen inside the new system modules above.
+              </div>
+            </div>
+          </section>
+
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- ============================================ -->
+  <!-- === МОДАЛЬНОЕ ОКНО «GET OFFER» === -->
+  <!-- ============================================ -->
+  <div class="modal-overlay" id="offer-modal">
+    <div class="modal-box">
+      <button class="modal-close" onclick="closeOfferModal()"><i class="fas fa-times"></i></button>
+      <div class="modal-title"><i class="fas fa-paper-plane" style="color:#00d4ff;margin-right:10px;"></i>Get a Freight Quote</div>
+      <div class="modal-sub">/// FORMAG_FORWARDING · SECURE_REQUEST</div>
+
+      <form id="offer-form">
+        <!-- Контактные данные -->
+        <div class="m-section-label">Contact Information</div>
+        <div class="m-row">
+          <div class="m-group">
+            <label>Full Name *</label>
+            <input type="text" id="of-name" required placeholder="Your name">
+          </div>
+          <div class="m-group">
+            <label>Company</label>
+            <input type="text" id="of-company" placeholder="Company name">
+          </div>
+        </div>
+        <div class="m-row">
+          <div class="m-group">
+            <label>E-Mail *</label>
+            <input type="email" id="of-email" required placeholder="you@company.com">
+          </div>
+          <div class="m-group">
+            <label>Phone / WhatsApp</label>
+            <input type="text" id="of-phone" placeholder="+994 XX XXX XX XX">
+          </div>
+        </div>
+
+        <hr class="m-divider">
+        <div class="m-section-label">Cargo Details</div>
+
+        <!-- Тип транспорта (чекбоксы) -->
+        <div class="m-group">
+          <label>Transportation Type *</label>
+          <div class="transport-grid">
+            <label><input type="checkbox" class="offer-transport" value="FCL"> FCL</label>
+            <label><input type="checkbox" class="offer-transport" value="LCL"> LCL</label>
+            <label><input type="checkbox" class="offer-transport" value="FTL"> FTL</label>
+            <label><input type="checkbox" class="offer-transport" value="LTL"> LTL</label>
+            <label><input type="checkbox" class="offer-transport" value="AIR"> Air</label>
+            <label><input type="checkbox" class="offer-transport" value="RailWay"> Rail</label>
+            <label><input type="checkbox" class="offer-transport" value="BreakBulk"> Break Bulk</label>
+            <label><input type="checkbox" class="offer-transport" value="Project"> Project</label>
+            <label><input type="checkbox" class="offer-transport" value="DG"> DG-cargo</label>
+          </div>
+        </div>
+
+        <div class="m-row">
+          <div class="m-group">
+            <label>Origin (POL)</label>
+            <input type="text" id="of-origin" placeholder="Port / City of loading">
+          </div>
+          <div class="m-group">
+            <label>Destination (POD)</label>
+            <input type="text" id="of-dest" placeholder="Port / City of delivery">
+          </div>
+        </div>
+
+        <div class="m-row">
+          <div class="m-group">
+            <label>Departure Date</label>
+            <input type="date" id="of-dep-date">
+          </div>
+          <div class="m-group">
+            <label>Commodity / Cargo Description</label>
+            <input type="text" id="of-commodity" placeholder="Steel, chemicals, general...">
+          </div>
+        </div>
+
+        <div class="m-group">
+          <label>Additional Notes</label>
+          <textarea id="of-notes" rows="3" placeholder="Any special requirements, DG class, temperature control, etc."></textarea>
+        </div>
+
+        <button type="submit" class="m-btn-submit" id="offer-submit-btn">
+          <i class="fas fa-paper-plane" style="margin-right:8px;"></i> Send Offer Request
+        </button>
+      </form>
+    </div>
+  </div>
+  <div id="offer-toast"></div>
+
+  <script>
+    // === ЛОГИКА МОДАЛЬНОГО ОКНА GET OFFER ===
+    function openOfferModal(e) {
+      if (e) e.preventDefault();
+      document.getElementById('offer-modal').classList.add('active');
+    }
+    function closeOfferModal() {
+      document.getElementById('offer-modal').classList.remove('active');
+    }
+    // Закрытие кликом по фону
+    document.getElementById('offer-modal').addEventListener('click', function(e) {
+      if (e.target === this) closeOfferModal();
+    });
+    // Закрытие Escape
+    document.addEventListener('keydown', function(e) {
+      if (e.key === 'Escape') closeOfferModal();
+    });
+
+    function showOfferToast(msg, isError = false) {
+      const t = document.getElementById('offer-toast');
+      t.textContent = msg;
+      t.classList.toggle('error', isError);
+      t.classList.add('show');
+      setTimeout(() => t.classList.remove('show'), 3500);
+    }
+
+    document.getElementById('offer-form').addEventListener('submit', async function(e) {
+      e.preventDefault();
+      const btn = document.getElementById('offer-submit-btn');
+      btn.disabled = true;
+      btn.innerHTML = '<i class="fas fa-spinner fa-spin" style="margin-right:8px"></i>Sending...';
+
+      // Собираем выбранные типы транспорта
+      const transports = Array.from(document.querySelectorAll('.offer-transport:checked')).map(cb => cb.value);
+
+      if (transports.length === 0) {
+        showOfferToast('Please select at least one Transportation Type.', true);
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-paper-plane" style="margin-right:8px;"></i> Send Offer Request';
+        return;
+      }
+
+      const payload = {
+        full_name: document.getElementById('of-name').value,
+        company: document.getElementById('of-company').value,
+        email: document.getElementById('of-email').value,
+        phone: document.getElementById('of-phone').value,
+        transportation_type: transports,
+        origin: document.getElementById('of-origin').value,
+        destination: document.getElementById('of-dest').value,
+        departure_date: document.getElementById('of-dep-date').value || null,
+        commodity: document.getElementById('of-commodity').value,
+        notes: document.getElementById('of-notes').value,
+      };
+
+      try {
+        const res = await fetch('/api/offers/submit', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        if (res.ok) {
+          const reqNumber = data.data && data.data[0] ? data.data[0].req_number : null;
+          const suffix = reqNumber ? ` Reference: ${reqNumber}.` : '';
+          showOfferToast(`✅ Your request has been sent! We will contact you soon.${suffix}`);
+          e.target.reset();
+          setTimeout(closeOfferModal, 2000);
+        } else {
+          showOfferToast('Error: ' + (data.detail || 'Unknown error'), true);
+        }
+      } catch (err) {
+        showOfferToast('Network error. Please try again.', true);
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-paper-plane" style="margin-right:8px;"></i> Send Offer Request';
+      }
+    });
+  </script>
+
+  <script>
+    const originalCsvUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSUPfR_xEK0sahWgn1oYwqBXc-0t2hJVjzMuVEF3g5Tcytxo8ZHDePSSXDbTWmsG7-b9_17dYZYsg4R/pub?gid=1045220167&single=true&output=csv';
+    // ✅ ИСПРАВЛЕННАЯ ССЫЛКА (без опечаток)
+    const MY_PROXY = 'https://formag-proxy.formagstatus.workers.dev';
+
+    // Внимание: добавляем слеш перед знаком вопроса /?url=
+    const csvUrl = MY_PROXY + '/?url=' + encodeURIComponent(originalCsvUrl);
+    let mapObj;
+    let isMapInitialized = false;
+
+    function initMap() {
+        if (isMapInitialized) return;
+        isMapInitialized = true;
+        console.log("Сайт открылся! Рисуем карту...");
+
+        mapObj = L.map('custom-map', { 
+            center: [30, 40], 
+            zoom: 2, 
+            zoomControl: false, 
+            attributionControl: false,
+            worldCopyJump: true 
+        });
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { maxZoom: 18 }).addTo(mapObj);
+        
+        loadData();
+        mapObj.on('click', closeMapSidebar);
+        
+        setTimeout(() => { mapObj.invalidateSize(); mapObj.setView([30, 40], 2); }, 300);
+    }
+
+    const checkVisibility = setInterval(function() {
+        const container = document.getElementById('map-widget-container');
+        if (container && container.offsetWidth > 0) {
+            clearInterval(checkVisibility);
+            initMap();
+            setTimeout(() => { if(mapObj) mapObj.invalidateSize(); }, 500);
+        }
+    }, 500);
+    
+    window.addEventListener('resize', function() { if(mapObj) mapObj.invalidateSize(); });
+
+    function loadData() {
+        Promise.all([
+            fetch('https://raw.githubusercontent.com/johan/world.geo.json/master/countries.geo.json').then(r => r.json()),
+            new Promise(resolve => Papa.parse(csvUrl, { 
+                download: true, header: true, 
+                complete: r => resolve(r.data), 
+                error: (err) => { console.error("Ошибка загрузки CSV:", err); resolve([]); }
+            }))
+        ]).then(([geo, csv]) => {
+            const prices = {};
+            csv.forEach(r => {
+                let ck = Object.keys(r).find(k => k.trim().toLowerCase() === 'country');
+                let pk = Object.keys(r).find(k => k.trim().toLowerCase() === 'price');
+                if(ck && pk && r[ck]) prices[r[ck].trim()] = parseFloat(r[pk].replace(/[^0-9.]/g,''));
+            });
+            
+            L.geoJson(geo, {
+                style: f => ({ fillColor: getColor(prices[f.properties.name] || 0), weight: 1, color: '#333', fillOpacity: (prices[f.properties.name] ? 0.7 : 0) }),
+                onEachFeature: (f, l) => {
+                    if(prices[f.properties.name]) {
+                        l.on('mouseover', e => e.target.setStyle({ weight: 2, color: '#fff', fillOpacity: 0.9 }));
+                        l.on('mouseout', e => l.setStyle({ weight: 1, color: '#333', fillOpacity: 0.7 }));
+                        l.on('click', e => { L.DomEvent.stopPropagation(e); openMapSidebar(f.properties.name, prices[f.properties.name]); });
+                    }
+                }
+            }).addTo(mapObj);
+        }).catch(err => console.error("Ошибка загрузки данных карты:", err));
+    }
+
+    function getColor(p) { return p > 4000 ? '#ef4444' : p > 2500 ? '#f59e0b' : p > 0 ? '#00d4ff' : 'transparent'; }
+    function openMapSidebar(c, p) {
+        document.getElementById('sbCountry').innerText = c;
+        document.getElementById('sbPrice').innerText = '$' + p;
+        document.getElementById('mapSidebar').classList.add('active');
+    }
+    function closeMapSidebar() { document.getElementById('mapSidebar').classList.remove('active'); }
+  </script>
+
+  <script>
+    const N8N_WEBHOOK_URL = 'https://n8n.2ai.az/webhook/agent-chat-2ai.az'; 
+    const API_KEY = 'zxc9900!AA'; 
+
+    // 1. Управление панелью (выезжает справа)
+    function toggleChat(show) {
+        const chat = document.getElementById('chat-sidebar');
+        if (show) {
+            chat.classList.add('active');
+            document.getElementById('mapSidebar').classList.remove('active');
+            setTimeout(() => document.getElementById('input-web').focus(), 100);
+        } else {
+            chat.classList.remove('active');
+        }
+    }
+
+    // 2. ТЕЛЕПОРТ: Карта -> Чат (С ОЧИСТКОЙ ИСТОРИИ)
+    function transferToChat() {
+        const country = document.getElementById('sbCountry').innerText;
+        if (!country || country === 'Select') { alert("ACCESS DENIED: Select target sector on map."); return; }
+
+        // 1. Очищаем старую историю чата (Сброс)
+        const chatBox = document.getElementById('chat-web');
+        chatBox.innerHTML = ''; 
+
+        // 2. Добавляем красивое системное сообщение о новой цели
+        const msgDiv = document.createElement('div');
+        msgDiv.className = 'msg-system';
+        msgDiv.innerHTML = '> TARGET ACQUIRED: ' + country.toUpperCase() + '<br>> INITIATING SCAN...';
+        chatBox.appendChild(msgDiv);
+
+        toggleChat(true); // Открываем панель
+
+        // 3. Отправляем запрос
+        const prompt = country;
+        const inputField = document.getElementById('input-web');
+        inputField.value = prompt;
+        handleInput({ key: 'Enter', target: inputField }, 'web');
+    }
+
+    // 3. ОБРАБОТКА ВВОДА
+    async function handleInput(e, type) {
+        if (e.key === 'Enter' && e.target.value.trim() !== '') {
+            const text = e.target.value;
+            
+            addCyberMessage('user', text);
+            e.target.value = '';
+
+            const loadingId = addCyberMessage('system', 'COMPUTING_VECTOR_DATA...', true);
+
+            try {
+                const response = await fetch(N8N_WEBHOOK_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'x-api-key': API_KEY },
+                    body: JSON.stringify({ chatInput: text })
+                });
+
+                if (!response.ok) throw new Error("Server Error");
+                const responseText = await response.text();
+
+                document.getElementById(loadingId).remove();
+                addCyberMessage('ai', responseText);
+
+            } catch (error) {
+                console.error(error);
+                document.getElementById(loadingId).innerHTML = "> CRITICAL_ERROR: UPLINK_LOST.";
+                document.getElementById(loadingId).style.color = "#ff003c";
+            }
+        }
+    }
+
+    // 4. РЕНДЕР СООБЩЕНИЙ (Техно-стиль)
+    function addCyberMessage(type, text, isLoading = false) {
+        const chatBox = document.getElementById('chat-web');
+        const msgDiv = document.createElement('div');
+        
+        if (type === 'user') {
+            msgDiv.className = 'msg-user';
+            msgDiv.innerText = text;
+        } else if (type === 'system') {
+            msgDiv.className = 'msg-system animate-pulse';
+            msgDiv.innerText = '> ' + text;
+        } else {
+            msgDiv.className = 'msg-ai';
+            let formatted = text
+                .replace(/\*\*(.*?)\*\*/g, '<span style="color:#facc15; text-shadow:0 0 5px rgba(250,204,21,0.5)">$1</span>')
+                .replace(/^### (.*$)/gm, '<div style="color:#00f0ff; margin-top:15px; border-bottom:1px solid rgba(0,240,255,0.3); padding-bottom:3px; margin-bottom:5px;">$1</div>')
+                .replace(/\[(.*?)\]\((.*?)\)/g, '<a href="$2" target="_blank" style="color:#00f0ff; text-decoration:none; border-bottom:1px dotted #00f0ff;">$1</a>')
+                .replace(/\n/g, '<br>');
+            msgDiv.innerHTML = formatted;
+        }
+
+        if (isLoading) msgDiv.id = "loading-" + Date.now();
+        chatBox.appendChild(msgDiv);
+        chatBox.scrollTop = chatBox.scrollHeight;
+        return msgDiv.id;
+    }
+
+    document.getElementById('input-web').addEventListener('keydown', (e) => handleInput(e, 'web'));
+  </script>
+
+  <script>
+    document.addEventListener("DOMContentLoaded", function () {
+      const tbody = document.getElementById("currency-tbody");
+      const lastUpdateEl = document.getElementById("last-update");
+
+      function setLoading() { tbody.innerHTML = "<tr><td colspan='3'>Loading...</td></tr>"; }
+      function setError(msg) { tbody.innerHTML = "<tr><td colspan='3' style='color:#c00'>" + msg + "</td></tr>"; }
+      function today() { return new Intl.DateTimeFormat("en-GB", { timeZone: "Asia/Baku", day: "2-digit", month: "2-digit", year: "numeric" }).format(new Date()).replace(/\//g, "."); }
+      const ALLOWED = ["USD", "EUR", "GBP", "TRY", "AED", "UAH", "GEL", "KZT", "JPY", "SEK", "CAD", "PLN", "NOK"];
+
+      function parseXml(text) {
+        const xml = new DOMParser().parseFromString(text, "text/xml");
+        const dateAttr = xml.documentElement.getAttribute("Date") || "";
+        const rows = [];
+        xml.querySelectorAll("Valute").forEach(v => {
+          const code = v.getAttribute("Code");
+          if (!ALLOWED.includes(code)) return;
+          rows.push({
+            code,
+            name: v.querySelector("Name")?.textContent || "",
+            nominal: v.querySelector("Nominal")?.textContent || "",
+            value: v.querySelector("Value")?.textContent || ""
+          });
+        });
+        rows.sort((a, b) => a.code.localeCompare(b.code));
+        return { date: dateAttr, rates: rows };
+      }
+
+      async function loadRates() {
+        setLoading();
+        
+        const proxyBase = 'https://formag-proxy.formagstatus.workers.dev';
+        const targetXml = "https://www.cbar.az/currencies/" + today() + ".xml";
+        const xmlUrl = proxyBase + "/?url=" + encodeURIComponent(targetXml);
+        
+        try {
+          const res = await fetch(xmlUrl);
+          if (!res.ok) throw new Error("Server returned " + res.status);
+          const text = await res.text();
+          const { date, rates } = parseXml(text);
+          tbody.innerHTML = "";
+          rates.forEach(r => {
+            const tr = document.createElement("tr");
+            tr.innerHTML = "<td>" + r.name + " (" + r.code + ")</td>" + "<td>" + r.nominal + "</td>" + "<td>" + r.value + "</td>";
+            tbody.appendChild(tr);
+          });
+          lastUpdateEl.textContent = "As of: " + date;
+        } catch (err) {
+          console.error(err);
+          setError("Error loading rates");
+        }
+      }
+      loadRates();
+    });
+  </script>
+
+  <script>
+    document.addEventListener("DOMContentLoaded", function () {
+      const btn = document.getElementById("theme-toggle");
+      if (!btn) return;
+      const iconEl = btn.querySelector(".theme-toggle-icon");
+      const labelEl = btn.querySelector(".theme-toggle-label");
+      const body = document.body;
+      const saved = localStorage.getItem("theme");
+      if (saved === "dark") {
+        body.classList.add("dark-mode");
+        if (iconEl) iconEl.textContent = "🌞";
+        if (labelEl) labelEl.textContent = "Light Mode";
+      }
+      btn.addEventListener("click", function () {
+        const isDark = body.classList.toggle("dark-mode");
+        localStorage.setItem("theme", isDark ? "dark" : "light");
+        if (iconEl) iconEl.textContent = isDark ? "🌞" : "🌙";
+        if (labelEl) labelEl.textContent = isDark ? "Light Mode" : "Dark Mode";
+      });
+    });
+  </script>
+
+  <script type="module">
+    import { requireAuth, wireLogout, getCapabilities, hasAnyCapability, isAdminLike } from "./auth.js";
+
+    function applyDashboardAccess(user) {
+      const capabilities = getCapabilities(user);
+      const adminLike = isAdminLike(user);
+
+      document.getElementById('dashboard-user-name').textContent = user.full_name || 'Formag Team Member';
+      document.getElementById('dashboard-user-email').textContent = user.email || 'No email attached';
+      document.getElementById('dashboard-user-badge').textContent = capabilities.join(' / ') || user.role || 'Staff';
+      document.getElementById('dashboard-user-note').textContent = adminLike
+        ? 'You can review the full workspace, QA center, and migration fallback tools.'
+        : 'Your dashboard now shows only the modules that belong to your current work domains.';
+
+      document.querySelectorAll('[data-capabilities]').forEach((element) => {
+        const required = (element.dataset.capabilities || '')
+          .split(',')
+          .map((value) => value.trim())
+          .filter(Boolean);
+        element.hidden = required.length > 0 && !hasAnyCapability(user, required);
+      });
+
+      const legacyItems = Array.from(document.querySelectorAll('[data-legacy]'));
+      legacyItems.forEach((element) => {
+        element.hidden = !adminLike;
+      });
+
+      const legacyPanel = document.getElementById('legacy-panel');
+      if (legacyPanel) {
+        legacyPanel.hidden = !adminLike;
+      }
+    }
+
+    try {
+      const user = await requireAuth();
+      if (user) {
+        applyDashboardAccess(user);
+        document.body.style.display = 'block';
+        setTimeout(() => { if(typeof mapObj !== 'undefined' && mapObj) mapObj.invalidateSize(); }, 300);
+      }
+    } catch (error) {
+      console.error("Auth bootstrap failed:", error);
+      window.location.replace("login.html");
+    }
+
+    await wireLogout("#logout-btn");
+  </script>
+  
+  <script>
+      setTimeout(() => {
+        if (document.body.style.display === 'none' || document.body.style.display === '') {
+             console.warn("Авторизация заняла много времени, включаю сайт...");
+             document.body.style.display = 'block';
+             if(typeof mapObj !== 'undefined') mapObj.invalidateSize();
+        }
+      }, 4000);
+  </script>
+
+</body>
+</html>

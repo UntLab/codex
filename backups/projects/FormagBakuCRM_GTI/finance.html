@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>FormagBaku - Finance Module</title>
+  <meta name="description" content="Finance tracking, Invoices, and Receivables/Payables." />
+  <link rel="icon" type="image/png" href="logo.png" />
+  <link rel="stylesheet" href="style.css">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; }
+    body { margin:0; background:#0a0c10; color:#fff; font-family:'Inter',sans-serif; min-height:100vh; }
+    .page-wrap { max-width:1440px; margin:0 auto; padding:32px 24px 80px; }
+
+    .back-btn { display:inline-flex; align-items:center; gap:8px; color:#00d4ff;
+      text-decoration:none; font-size:13px; margin-bottom:24px; transition:all 0.2s; opacity:.75; }
+    .back-btn:hover { opacity:1; transform:translateX(-3px); }
+
+    .page-header { display:flex; align-items:flex-start; justify-content:space-between;
+      margin-bottom:28px; padding-bottom:20px; border-bottom:1px solid rgba(255,255,255,.07); }
+    .page-header h1 { margin:0; font-size:24px; font-weight:700;
+      background:linear-gradient(90deg,#fff 55%,#00d4ff);
+      -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent; }
+    .page-sub { color:#00d4ff; font-size:10px; letter-spacing:2px; text-transform:uppercase; margin-top:4px; opacity:.6; }
+    .role-banner { display:flex; align-items:center; gap:10px;
+      background:rgba(0,212,255,.06); border:1px solid rgba(0,212,255,.18);
+      border-radius:10px; padding:10px 16px; margin-bottom:24px; font-size:13px; }
+    .role-badge { background:rgba(0,212,255,.15); color:#00d4ff; border-radius:20px;
+      padding:3px 12px; font-size:11px; font-weight:700; letter-spacing:1px; }
+    .notice { margin-bottom:18px; padding:12px 16px; border-radius:12px;
+      border:1px solid rgba(251,191,36,.22); background:rgba(251,191,36,.07); color:#fde68a; font-size:13px; }
+    .btn[hidden] { display:none !important; }
+
+    /* FINANCE WIDGETS */
+    .widgets { display:grid; grid-template-columns:repeat(auto-fit, minmax(280px, 1fr)); gap:20px; margin-bottom:28px; }
+    .widget { background:rgba(18,21,28,.88); backdrop-filter:blur(14px);
+      border:1px solid rgba(255,255,255,.07); border-radius:14px; padding:24px;
+      display:flex; flex-direction:column; gap:8px; }
+    .w-title { font-size:12px; color:#aaa; text-transform:uppercase; letter-spacing:1px; font-weight:600; }
+    .w-val { font-size:28px; font-weight:700; color:#fff; }
+    .w-val.green { color:#10b981; }
+    .w-val.red { color:#ef4444; }
+
+    /* TABS */
+    .tabs-container { display:flex; gap:8px; overflow-x:auto; margin-bottom:16px; padding-bottom:8px; }
+    .tab-btn { background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.1);
+      color:#aaa; padding:8px 16px; border-radius:20px; font-size:12px; cursor:pointer;
+      transition:all .2s; font-weight:600; }
+    .tab-btn:hover { background:rgba(255,255,255,.1); color:#fff; }
+    .tab-btn.active { background:rgba(0,212,255,.15); border-color:#00d4ff; color:#00d4ff; }
+
+    .glass-card { background:rgba(18,21,28,.88); backdrop-filter:blur(14px);
+      border:1px solid rgba(255,255,255,.07); border-radius:14px;
+      padding:26px; margin-bottom:22px; box-shadow:0 8px 30px rgba(0,0,0,.4); }
+
+    .tbl-wrap { overflow-x:auto; padding-bottom:4px; }
+    table.q-tbl { width:100%; border-collapse:collapse; font-size:13px; min-width:900px; }
+    table.q-tbl th { text-align:left; padding:9px 14px; font-size:10px; letter-spacing:1px;
+      text-transform:uppercase; color:#00d4ff; background:rgba(0,0,0,.25);
+      border-bottom:1px solid rgba(255,255,255,.06); }
+    table.q-tbl td { padding:10px 14px; border-bottom:1px solid rgba(255,255,255,.04); vertical-align:middle; white-space:nowrap; }
+    table.q-tbl tr:hover td { background:rgba(255,255,255,.025); }
+    
+    .fw { color:#fff; font-weight:500; }
+    .dim { color:#666; font-size:12px; }
+    .accent { color:#00d4ff; font-weight:600; }
+
+    .sbadge { display:inline-block; padding:3px 10px; border-radius:20px; font-size:10px; font-weight:700; }
+    .s-pending  { background:rgba(245,158,11,.15); color:#fbbf24; border:1px solid rgba(245,158,11,.3); }
+    .s-paid     { background:rgba(16,185,129,.15); color:#34d399; border:1px solid rgba(16,185,129,.3); }
+    .s-overdue  { background:rgba(239,68,68,.15);  color:#f87171; border:1px solid rgba(239,68,68,.3); }
+
+    .btn { border:none; border-radius:7px; padding:7px 13px; font-size:12px; font-weight:600; cursor:pointer; transition:opacity .2s; }
+    .btn-primary { background:linear-gradient(90deg,#007bff,#00d4ff); color:#fff; }
+    .btn-success { background:linear-gradient(90deg,#059669,#10b981); color:#fff; }
+
+    /* MODAL */
+    .overlay { position:fixed; inset:0; background:rgba(0,0,0,.82); backdrop-filter:blur(8px);
+      z-index:9999; display:flex; align-items:center; justify-content:center;
+      opacity:0; visibility:hidden; transition:all .3s; }
+    .overlay.active { opacity:1; visibility:visible; }
+    .modal { background:rgba(14,17,24,.99); border:1px solid rgba(0,212,255,.22);
+      border-radius:14px; padding:30px; width:100%; max-width:600px; position:relative;
+      box-shadow:0 20px 80px rgba(0,0,0,.5); transform:scale(0.95); transition:all .3s; }
+    .overlay.active .modal { transform:scale(1); }
+
+    .modal-title { font-size:20px; font-weight:700; margin:0 0 20px; color:#fff; }
+    .m-close { position:absolute; top:20px; right:20px; background:none; border:none;
+      color:#aaa; font-size:20px; cursor:pointer; transition:color .2s; }
+    .m-close:hover { color:#00d4ff; }
+
+    .f-row { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:12px; }
+    .f-g { margin-bottom:12px; }
+    .f-g label { display:block; color:#888; font-size:10px; text-transform:uppercase; letter-spacing:1px; margin-bottom:4px; }
+    .f-g input, .f-g select {
+      width:100%; padding:9px 12px; background:rgba(255,255,255,.03); border:1px solid rgba(255,255,255,.08);
+      border-radius:6px; color:#fff; font-size:12px; outline:none; transition:border .2s; }
+    .f-g input:focus, .f-g select:focus { border-color:#00d4ff; background:rgba(0,212,255,.05); }
+    .f-g select option { background:#12151e; }
+    
+    .empty { text-align:center; padding:36px 20px; color:#444; }
+  </style>
+</head>
+<body>
+
+<div class="page-wrap">
+  <div class="page-header">
+    <div>
+      <h1><i class="fas fa-file-invoice-dollar" style="color:#00d4ff;margin-right:10px;"></i>Finance & Billing</h1>
+      <div class="page-sub">/// INVOICING · MARGIN_CALCULATION · RECONCILIATION</div>
+    </div>
+    <button class="btn btn-primary" id="create-invoice-btn" onclick="openInvoiceModal()"><i class="fas fa-plus"></i> Create Invoice</button>
+  </div>
+
+  <div class="role-banner" id="role-banner">
+    <i class="fas fa-user-shield" style="color:#00d4ff;"></i>
+    <span id="role-name">Loading...</span>
+    <span class="role-badge" id="role-badge">—</span>
+  </div>
+
+  <div class="notice" id="finance-notice" hidden>
+    Finance write actions are disabled for this account. You can review invoices that belong to your work queue, but only Operations, Admin, or HR can create invoices and record payments.
+  </div>
+
+  <div class="widgets">
+    <div class="widget">
+      <div class="w-title">Total Receivables (Clients)</div>
+      <div class="w-val green" id="w-rec">$0.00</div>
+    </div>
+    <div class="widget">
+      <div class="w-title">Total Payables (Agents)</div>
+      <div class="w-val red" id="w-pay">$0.00</div>
+    </div>
+    <div class="widget" style="border-color:rgba(0,212,255,.3);">
+      <div class="w-title" style="color:#00d4ff;">Gross Margin (Calculated)</div>
+      <div class="w-val" id="w-margin">$0.00</div>
+    </div>
+  </div>
+
+  <div class="tabs-container">
+    <button class="tab-btn active" data-type="Receivable">Receivables (From Clients)</button>
+    <button class="tab-btn" data-type="Payable">Payables (To Agents/Vendors)</button>
+  </div>
+
+  <div class="glass-card">
+    <div class="tbl-wrap">
+      <table class="q-tbl">
+        <thead><tr>
+          <th>Inv # / Date</th>
+          <th>Type / BK-Number</th>
+          <th>Counterparty</th>
+          <th>Amount (Net + VAT)</th>
+          <th>Due Date</th>
+          <th>Status</th>
+          <th>Action</th>
+        </tr></thead>
+        <tbody id="inv-tbody">
+          <tr><td colspan="7" class="empty"><i class="fas fa-spinner fa-spin"></i> Loading...</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ================= INVOICE MODAL ================= -->
+<div class="overlay" id="inv-modal">
+  <div class="modal">
+    <button class="m-close" onclick="closeModal('inv-modal')"><i class="fas fa-times"></i></button>
+    <div class="modal-title">Issue New Invoice</div>
+    <form id="inv-form">
+      <div class="f-row">
+        <div class="f-g">
+          <label>Shipment (BK Number) *</label>
+          <select id="i-ship" required><option value="">— Select —</option></select>
+        </div>
+        <div class="f-g">
+          <label>Invoice Type *</label>
+          <select id="i-type" required onchange="toggleCounterparty()">
+            <option value="Receivable">Receivable (Bill to Client)</option>
+            <option value="Payable">Payable (Bill from Agent)</option>
+          </select>
+        </div>
+      </div>
+      <div class="f-row">
+        <div class="f-g" id="box-client">
+          <label>Client *</label>
+          <select id="i-client"><option value="">— Select —</option></select>
+        </div>
+        <div class="f-g" id="box-agent" style="display:none;">
+          <label>Agent / Vendor *</label>
+          <select id="i-agent"><option value="">— Select —</option></select>
+        </div>
+        <div class="f-g">
+          <label>Invoice Number *</label>
+          <input type="text" id="i-num" required>
+        </div>
+      </div>
+      <div class="f-row">
+        <div class="f-g"><label>Issue Date *</label><input type="date" id="i-issue" required></div>
+        <div class="f-g"><label>Due Date</label><input type="date" id="i-due"></div>
+      </div>
+      <div class="f-row" style="grid-template-columns: 1fr 1fr 1fr;">
+        <div class="f-g"><label>Net Amount *</label><input type="number" id="i-net" step="0.01" required oninput="calcTotal()"></div>
+        <div class="f-g">
+          <label>VAT % (e.g. 18)</label>
+          <input type="number" id="i-vat-pct" value="18" oninput="calcTotal()">
+        </div>
+        <div class="f-g"><label>Total Amount</label><input type="number" id="i-tot" readonly style="background:rgba(255,255,255,.1);"></div>
+      </div>
+      <div class="f-g" style="width:50%;">
+        <label>Currency *</label>
+        <select id="i-cur">
+          <option value="USD">USD</option>
+          <option value="AZN">AZN</option>
+          <option value="EUR">EUR</option>
+        </select>
+      </div>
+      
+      <button type="submit" class="btn btn-primary" id="i-btn" style="width:100%; margin-top:16px;">Save Invoice</button>
+    </form>
+  </div>
+</div>
+
+<!-- ================= PAYMENT MODAL ================= -->
+<div class="overlay" id="pay-modal">
+  <div class="modal" style="max-width:400px;">
+    <button class="m-close" onclick="closeModal('pay-modal')"><i class="fas fa-times"></i></button>
+    <div class="modal-title">Log Payment</div>
+    <form id="pay-form">
+      <input type="hidden" id="p-inv-id">
+      <div class="f-g" style="margin-bottom:20px; color:#aaa; font-size:12px;" id="p-inv-desc"></div>
+      
+      <div class="f-g"><label>Amount Paid *</label><input type="number" id="p-amt" step="0.01" required></div>
+      <div class="f-g"><label>Date *</label><input type="date" id="p-date" required></div>
+      <button type="submit" class="btn btn-success" style="width:100%; margin-top:16px;">Confirm Payment</button>
+    </form>
+  </div>
+</div>
+
+<script type="module">
+  import { authFetch, requireAuth, getCapabilities, hasAnyCapability } from "./auth.js";
+
+  window._invoices = [];
+  window._currentTab = 'Receivable';
+  window._currentUser = null;
+  window.authFetch = authFetch;
+  window._financeCanRead = false;
+  window._financeCanWrite = false;
+
+  function updateRoleBanner(user) {
+    document.getElementById('role-name').textContent = `Signed in as ${user.full_name || user.email || 'Staff'}`;
+    document.getElementById('role-badge').textContent = getCapabilities(user).join(' / ') || user.role || 'Staff';
+  }
+
+  function renderFinanceAccessState() {
+    const canRead = window._financeCanRead;
+    const canWrite = window._financeCanWrite;
+    document.getElementById('create-invoice-btn').hidden = !canWrite;
+    document.getElementById('finance-notice').hidden = !canRead || canWrite;
+
+    if (!canRead) {
+      document.getElementById('inv-tbody').innerHTML = '<tr><td colspan="7" class="empty">Finance access is not enabled for your account.</td></tr>';
+      document.getElementById('w-rec').innerText = '$0.00';
+      document.getElementById('w-pay').innerText = '$0.00';
+      document.getElementById('w-margin').innerText = '$0.00';
+    }
+  }
+
+  (async () => {
+    try {
+      const user = await requireAuth();
+      if (!user) return;
+      window._currentUser = user;
+      window._financeCanRead = hasAnyCapability(user, ['Sales', 'Operations', 'Admin', 'HR']);
+      window._financeCanWrite = hasAnyCapability(user, ['Operations', 'Admin', 'HR']);
+      updateRoleBanner(user);
+      renderFinanceAccessState();
+      if (!window._financeCanRead) return;
+      if (window._financeCanWrite) {
+        await loadDropdowns();
+      }
+      await loadInvoices();
+    } catch (error) {
+      console.error("Auth bootstrap failed:", error);
+      window.location.replace("login.html");
+    }
+  })();
+
+  window.loadDropdowns = async function() {
+    try {
+      const [sRes, cRes, aRes] = await Promise.all([
+        window.authFetch('/api/shipments'), window.authFetch('/api/clients/dropdown'), window.authFetch('/api/agents/dropdown')
+      ]);
+      if (!sRes.ok || !cRes.ok || !aRes.ok) {
+        return;
+      }
+      const sData = await sRes.json();
+      const cData = await cRes.json();
+      const aData = await aRes.json();
+
+      const sSel = document.getElementById('i-ship');
+      sData.forEach(s => sSel.add(new Option((s.bk_number||('ID:'+s.id.substring(0,5))), s.id)));
+
+      const cSel = document.getElementById('i-client');
+      cData.forEach(c => cSel.add(new Option(c.full_name, c.id)));
+
+      const aSel = document.getElementById('i-agent');
+      aData.forEach(a => aSel.add(new Option(a.company_name, a.id)));
+    } catch(e) {}
+  };
+
+  window.loadInvoices = async function() {
+    document.getElementById('inv-tbody').innerHTML = '<tr><td colspan="7" class="empty">Loading...</td></tr>';
+    try {
+      const res = await window.authFetch('/api/invoices');
+      if (res.status === 403) {
+        window._financeCanRead = false;
+        renderFinanceAccessState();
+        return;
+      }
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.detail || 'Unable to load finance data');
+      }
+      window._invoices = data;
+      calcWidgets();
+      renderInvoices();
+    } catch(e) {
+      document.getElementById('inv-tbody').innerHTML = `<tr><td colspan="7" class="empty">${e.message || 'Unable to load finance records.'}</td></tr>`;
+    }
+  }
+
+  function calcWidgets() {
+    let rec = 0, pay = 0;
+    window._invoices.forEach(i => {
+      // Very basic margin calculation ignoring currency differences for the demo
+      if(i.invoice_type === 'Receivable') rec += i.amount_net;
+      if(i.invoice_type === 'Payable') pay += i.amount_net;
+    });
+    document.getElementById('w-rec').innerText = '$' + rec.toLocaleString(undefined, {minimumFractionDigits:2});
+    document.getElementById('w-pay').innerText = '$' + pay.toLocaleString(undefined, {minimumFractionDigits:2});
+    document.getElementById('w-margin').innerText = '$' + (rec - pay).toLocaleString(undefined, {minimumFractionDigits:2});
+  }
+
+  window.renderInvoices = function() {
+    const data = window._invoices.filter(i => i.invoice_type === window._currentTab);
+    const tbody = document.getElementById('inv-tbody');
+    if(!data.length) { tbody.innerHTML = '<tr><td colspan="7" class="empty">No records found</td></tr>'; return; }
+    
+    tbody.innerHTML = '';
+    data.forEach(i => {
+      let cp = window._currentTab === 'Receivable' 
+        ? (i.clients?i.clients.full_name:'—') 
+        : (i.agents?i.agents.company_name:'—');
+      let bk = i.shipments ? i.shipments.bk_number : '—';
+      
+      let badgeInfo = getBadge(i.status);
+
+      // Check payments sum
+      let paidAmt = 0;
+      if(i.payments) i.payments.forEach(p => paidAmt += p.amount_paid);
+
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td><div class="fw">${i.invoice_number}</div><div class="dim">${i.issue_date}</div></td>
+        <td><div class="fw">BK: ${bk}</div><div class="dim">${i.invoice_type}</div></td>
+        <td><div class="accent">${cp}</div></td>
+        <td><div class="fw">${i.amount_total} ${i.currency}</div><div class="dim">VAT: ${i.vat_18} (Paid: ${paidAmt})</div></td>
+        <td>${i.due_date||'—'}</td>
+        <td><span class="sbadge ${badgeInfo.cls}">${badgeInfo.lbl}</span></td>
+        <td>
+          ${i.status !== 'Paid' && window._financeCanWrite ? `<button class="btn btn-success" style="padding:4px 8px;" onclick="openPaymentModal('${i.id}', '${i.invoice_number}', ${i.amount_total}, ${paidAmt})"><i class="fas fa-money-bill-wave"></i> Pay</button>` : '—'}
+        </td>
+      `;
+      tbody.appendChild(tr);
+    });
+  }
+
+  function getBadge(s) {
+    if(s === 'Paid') return {cls:'s-paid', lbl:'PAID'};
+    if(s === 'Overdue') return {cls:'s-overdue', lbl:'OVERDUE'};
+    return {cls:'s-pending', lbl:'PENDING'};
+  }
+
+  // Interactivity
+  document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.addEventListener('click', e => {
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      e.target.classList.add('active');
+      window._currentTab = e.target.getAttribute('data-type');
+      renderInvoices();
+    });
+  });
+
+  window.toggleCounterparty = function() {
+    const t = document.getElementById('i-type').value;
+    document.getElementById('box-client').style.display = t === 'Receivable' ? 'block' : 'none';
+    document.getElementById('box-agent').style.display = t === 'Payable' ? 'block' : 'none';
+  }
+
+  window.calcTotal = function() {
+    const net = parseFloat(document.getElementById('i-net').value) || 0;
+    const vatPct = parseFloat(document.getElementById('i-vat-pct').value) || 0;
+    const vatVal = net * (vatPct/100);
+    document.getElementById('i-tot').value = (net + vatVal).toFixed(2);
+  }
+
+  window.openInvoiceModal = function() {
+    if (!window._financeCanWrite) {
+      alert('Invoice creation is not enabled for your account.');
+      return;
+    }
+    document.getElementById('inv-form').reset();
+    toggleCounterparty();
+    document.getElementById('inv-modal').classList.add('active');
+  }
+  window.closeModal = function(id) { document.getElementById(id).classList.remove('active'); }
+
+  document.getElementById('inv-form').addEventListener('submit', async e => {
+    e.preventDefault();
+    if (!window._financeCanWrite) {
+      alert('Invoice creation is not enabled for your account.');
+      return;
+    }
+    const net = parseFloat(document.getElementById('i-net').value) || 0;
+    const vatPct = parseFloat(document.getElementById('i-vat-pct').value) || 0;
+    const isRec = document.getElementById('i-type').value === 'Receivable';
+
+    const payload = {
+      shipment_id: document.getElementById('i-ship').value,
+      invoice_number: document.getElementById('i-num').value,
+      issue_date: document.getElementById('i-issue').value,
+      due_date: document.getElementById('i-due').value,
+      invoice_type: document.getElementById('i-type').value,
+      client_id: isRec ? document.getElementById('i-client').value : null,
+      agent_id: !isRec ? document.getElementById('i-agent').value : null,
+      amount_net: net,
+      vat_18: net * (vatPct/100),
+      amount_total: net + (net * (vatPct/100)),
+      currency: document.getElementById('i-cur').value
+    };
+
+    try {
+      const response = await window.authFetch('/api/invoices/create', {
+        method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload)
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(result.detail || 'Error saving invoice');
+      }
+      closeModal('inv-modal');
+      loadInvoices();
+    } catch(e) { alert(e.message || "Error saving invoice");}
+  });
+
+  window.openPaymentModal = function(invId, invNum, total, paid) {
+    if (!window._financeCanWrite) {
+      alert('Payment logging is not enabled for your account.');
+      return;
+    }
+    document.getElementById('pay-form').reset();
+    document.getElementById('p-inv-id').value = invId;
+    document.getElementById('p-inv-desc').innerText = `Invoice #${invNum} | Total: ${total} | Remaining: ${(total-paid).toFixed(2)}`;
+    document.getElementById('p-amt').value = (total - paid).toFixed(2);
+    // Auto set date to today
+    document.getElementById('p-date').value = new Date().toISOString().split('T')[0];
+    document.getElementById('pay-modal').classList.add('active');
+  }
+
+  document.getElementById('pay-form').addEventListener('submit', async e => {
+    e.preventDefault();
+    if (!window._financeCanWrite) {
+      alert('Payment logging is not enabled for your account.');
+      return;
+    }
+    const invId = document.getElementById('p-inv-id').value;
+    const payload = {
+      invoice_id: invId,
+      amount_paid: parseFloat(document.getElementById('p-amt').value),
+      payment_date: document.getElementById('p-date').value
+    };
+
+    try {
+      const paymentResponse = await window.authFetch('/api/payments/create', {
+        method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload)
+      });
+      const paymentResult = await paymentResponse.json().catch(() => ({}));
+      if (!paymentResponse.ok) {
+        throw new Error(paymentResult.detail || 'Error saving payment');
+      }
+      // Optionally update invoice status to Paid if fully paid (omitted here for simplicity, do manually for now)
+      const statusResponse = await window.authFetch(`/api/invoices/${invId}/status`, {
+        method:'PATCH', headers:{'Content-Type':'application/json'}, body:JSON.stringify({status:'Paid'})
+      });
+      const statusResult = await statusResponse.json().catch(() => ({}));
+      if (!statusResponse.ok) {
+        throw new Error(statusResult.detail || 'Error updating invoice status');
+      }
+      closeModal('pay-modal');
+      loadInvoices();
+    } catch(e) { alert(e.message || "Error saving payment");}
+  });
+
+</script>
+</body>
+</html>

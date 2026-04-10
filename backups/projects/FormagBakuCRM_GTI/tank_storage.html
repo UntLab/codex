@@ -1,0 +1,651 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <title>FormagBaku - Tank Storage</title>
+  <link rel="icon" type="image/png" href="logo.png" />
+  <link rel="stylesheet" href="style.css">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      background: #0a0c10;
+      color: #fff;
+      font-family: 'Inter', sans-serif;
+      min-height: 100vh;
+    }
+
+    .page-wrap {
+      max-width: 1600px;
+      margin: 0 auto;
+      padding: 32px 24px 80px;
+    }
+
+    .back-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      color: #00d4ff;
+      text-decoration: none;
+      font-size: 13px;
+      margin-bottom: 24px;
+      transition: all 0.2s;
+      opacity: .75;
+    }
+
+    .back-btn:hover {
+      opacity: 1;
+      transform: translateX(-3px);
+    }
+
+    .page-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      margin-bottom: 28px;
+      padding-bottom: 20px;
+      border-bottom: 1px solid rgba(255, 255, 255, .07);
+    }
+
+    .page-header h1 {
+      margin: 0;
+      font-size: 24px;
+      font-weight: 700;
+      background: linear-gradient(90deg, #fff 55%, #00d4ff);
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .page-sub {
+      color: #00d4ff;
+      font-size: 10px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      margin-top: 4px;
+      opacity: .6;
+    }
+
+    .role-banner {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: rgba(0, 212, 255, .06);
+      border: 1px solid rgba(0, 212, 255, .18);
+      border-radius: 10px;
+      padding: 10px 16px;
+      margin-bottom: 24px;
+      font-size: 13px;
+    }
+
+    .role-badge {
+      background: rgba(0, 212, 255, .15);
+      color: #00d4ff;
+      border-radius: 20px;
+      padding: 3px 12px;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 1px;
+    }
+
+    .notice {
+      margin-bottom: 18px;
+      padding: 12px 16px;
+      border-radius: 12px;
+      border: 1px solid rgba(251, 191, 36, .22);
+      background: rgba(251, 191, 36, .07);
+      color: #fde68a;
+      font-size: 13px;
+    }
+
+    .btn[hidden] {
+      display: none !important;
+    }
+
+    .glass-card {
+      background: rgba(18, 21, 28, .88);
+      backdrop-filter: blur(14px);
+      border: 1px solid rgba(255, 255, 255, .07);
+      border-radius: 14px;
+      padding: 20px 20px 30px;
+      margin-bottom: 22px;
+      box-shadow: 0 8px 30px rgba(0, 0, 0, .4);
+    }
+
+    .tbl-wrap {
+      overflow-x: auto;
+      padding-bottom: 10px;
+    }
+
+    table.q-tbl {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+      min-width: 1400px;
+    }
+
+    table.q-tbl th {
+      text-align: left;
+      padding: 9px 10px;
+      font-size: 10px;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+      color: #00d4ff;
+      background: rgba(0, 0, 0, .25);
+      border-bottom: 1px solid rgba(255, 255, 255, .06);
+      white-space: nowrap;
+    }
+
+    /* Specific styling to match the Google Sheet Headers */
+    th.blue-th {
+      background: rgba(59, 130, 246, .2) !important;
+      color: #93c5fd !important;
+    }
+
+    th.red-th {
+      background: rgba(220, 38, 38, .2) !important;
+      color: #fca5a5 !important;
+    }
+
+    table.q-tbl td {
+      padding: 8px 10px;
+      border-bottom: 1px solid rgba(255, 255, 255, .04);
+      vertical-align: middle;
+      white-space: nowrap;
+    }
+
+    table.q-tbl tr:hover td {
+      background: rgba(255, 255, 255, .025);
+    }
+
+    .btn {
+      border: none;
+      border-radius: 7px;
+      padding: 7px 13px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity .2s;
+    }
+
+    .btn-primary {
+      background: linear-gradient(90deg, #007bff, #00d4ff);
+      color: #fff;
+    }
+
+    .btn-danger {
+      background: linear-gradient(90deg, #dc2626, #ef4444);
+      color: #fff;
+    }
+
+    /* Tags */
+    .badge {
+      padding: 3px 8px;
+      border-radius: 12px;
+      font-size: 11px;
+      font-weight: 700;
+    }
+
+    .bg-red {
+      background: rgba(239, 68, 68, .15);
+      color: #f87171;
+      border: 1px solid rgba(239, 68, 68, .3);
+    }
+
+    /* System Toast Alerts */
+    #toast-container {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      z-index: 9999;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .toast {
+      background: rgba(14, 17, 24, .95);
+      backdrop-filter: blur(10px);
+      border-radius: 8px;
+      padding: 16px 20px;
+      box-shadow: 0 10px 40px rgba(0, 0, 0, .5);
+      border-left: 4px solid #00d4ff;
+      font-size: 13px;
+      max-width: 350px;
+      animation: slideIn 0.3s ease forwards;
+      position: relative;
+    }
+
+    .toast.t-warning {
+      border-color: #f87171;
+    }
+
+    .toast .t-title {
+      font-weight: 700;
+      margin-bottom: 4px;
+    }
+
+    .toast .t-close {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      color: #aaa;
+      cursor: pointer;
+      font-size: 12px;
+    }
+
+    @keyframes slideIn {
+      from {
+        opacity: 0;
+        transform: translateX(30px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateX(0);
+      }
+    }
+
+    /* Modal */
+    .overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, .82);
+      backdrop-filter: blur(8px);
+      z-index: 9999;
+      display: flex;
+      align-items: flex-start;
+      justify-content: center;
+      opacity: 0;
+      visibility: hidden;
+      transition: all .3s;
+      overflow-y: auto;
+      padding: 40px 0;
+    }
+
+    .overlay.active {
+      opacity: 1;
+      visibility: visible;
+    }
+
+    .modal {
+      background: rgba(14, 17, 24, .99);
+      border: 1px solid rgba(0, 212, 255, .22);
+      border-radius: 14px;
+      padding: 30px;
+      width: 100%;
+      max-width: 600px;
+      position: relative;
+      margin: auto;
+    }
+
+    .f-g {
+      margin-bottom: 12px;
+    }
+
+    .f-g label {
+      display: block;
+      color: #888;
+      font-size: 10px;
+      text-transform: uppercase;
+      margin-bottom: 4px;
+    }
+
+    .f-g input,
+    .f-g select,
+    .f-g textarea {
+      width: 100%;
+      padding: 9px 12px;
+      background: rgba(255, 255, 255, .03);
+      border: 1px solid rgba(255, 255, 255, .08);
+      border-radius: 6px;
+      color: #fff;
+      font-size: 12px;
+      font-family: inherit;
+    }
+  </style>
+</head>
+
+<body>
+
+  <div id="toast-container"></div>
+
+  <div class="page-wrap">
+    <a href="/" class="back-btn"><i class="fas fa-arrow-left"></i> Back to Dashboard</a>
+
+    <div class="page-header">
+      <div>
+        <h1><i class="fas fa-truck-front" style="color:#00d4ff;margin-right:10px;"></i>Tank Container Storage
+          Calculation</h1>
+        <div class="page-sub">/// STORAGE_ALERTS · ONE_TO_ONE_CALCULATION</div>
+      </div>
+      <button class="btn btn-primary" id="add-container-btn" onclick="openCreateModal()">
+        <i class="fas fa-plus"></i> Add Container Row
+      </button>
+    </div>
+
+    <div class="role-banner" id="role-banner">
+      <i class="fas fa-user-shield" style="color:#00d4ff;"></i>
+      <span id="role-name">Loading...</span>
+      <span class="role-badge" id="role-badge">—</span>
+    </div>
+
+    <div class="notice" id="tank-notice" hidden>
+      Tank storage tools are only available to Operations, Admin, and HR users. This module mirrors the live Google calculation logic and should stay restricted to the operational team.
+    </div>
+
+    <div class="glass-card">
+      <div class="tbl-wrap">
+        <table class="q-tbl">
+          <thead>
+            <tr>
+              <th class="blue-th">Container Number</th>
+              <th class="blue-th">Arrival Date</th>
+              <th class="blue-th">Stop Date</th>
+              <th class="blue-th">Free days</th>
+              <th class="red-th">Rate $ / per day 16-30 days</th>
+              <th class="red-th">Rate $ / per day 31-60 days</th>
+              <th class="red-th">Rate $ / per day + 60 days</th>
+              <th>Warning Limit Amount $</th>
+              <th class="blue-th">Total Stayed Days</th>
+              <th class="red-th">Total Amount $</th>
+              <th>Comments</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody id="ts-tbody">
+            <tr>
+              <td colspan="12" style="text-align:center; padding:20px; color:#666;">Loading calculations...</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Create Tank -->
+  <div class="overlay" id="ts-modal">
+    <div class="modal">
+      <div style="font-size:20px; font-weight:700; margin-bottom:20px; color:#fff;">Add Container Reference</div>
+      <form id="ts-form">
+        <div class="f-g">
+          <label>CONTAINER NUMBER *</label>
+          <input type="text" id="i-container" required />
+        </div>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+          <div class="f-g">
+            <label>ARRIVAL DATE *</label>
+            <input type="date" id="i-arrival" required />
+          </div>
+          <div class="f-g">
+            <label>FREE DAYS *</label>
+            <input type="number" id="i-free" value="15" required />
+          </div>
+        </div>
+        <h3
+          style="font-size:12px; color:#fff; border-bottom:1px solid rgba(255,255,255,.1); padding-bottom:5px; margin:20px 0 10px;">
+          Daily Rates Setup</h3>
+        <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px;">
+          <div class="f-g">
+            <label>16-30 DAYS ($) *</label>
+            <input type="number" step="0.01" id="i-r1" value="2.00" required />
+          </div>
+          <div class="f-g">
+            <label>31-60 DAYS ($) *</label>
+            <input type="number" step="0.01" id="i-r2" value="2.50" required />
+          </div>
+          <div class="f-g">
+            <label>>60 DAYS ($) *</label>
+            <input type="number" step="0.01" id="i-r3" value="4.00" required />
+          </div>
+        </div>
+        <h3
+          style="font-size:12px; color:#fff; border-bottom:1px solid rgba(255,255,255,.1); padding-bottom:5px; margin:20px 0 10px;">
+          Alerts & Meta</h3>
+        <div class="f-g">
+          <label>WARNING LIMIT AMOUNT ($) *</label>
+          <input type="number" step="0.01" id="i-limit" value="100.00" required />
+        </div>
+        <div class="f-g">
+          <label>COMMENTS</label>
+          <textarea id="i-comments" rows="2"></textarea>
+        </div>
+        <div style="display:flex; justify-content:space-between; margin-top:25px;">
+          <button type="button" class="btn" style="background:#333;"
+            onclick="document.getElementById('ts-modal').classList.remove('active')">Cancel</button>
+          <button type="submit" class="btn btn-primary">Add Row</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal: Stop Timer -->
+  <div class="overlay" id="stop-modal">
+    <div class="modal" style="max-width:400px;">
+      <div style="font-size:20px; font-weight:700; margin-bottom:10px; color:#fff;">Stop Storage Timer</div>
+      <div style="color:#aaa; font-size:12px; margin-bottom:20px;">Input the final stop date to conclude the demurrage
+        calculation for this container.</div>
+      <form id="stop-form">
+        <input type="hidden" id="s-id">
+        <div class="f-g">
+          <label>STOP DATE *</label>
+          <input type="date" id="s-date" required />
+        </div>
+        <div style="display:flex; justify-content:space-between; margin-top:20px;">
+          <button type="button" class="btn" style="background:#333;"
+            onclick="document.getElementById('stop-modal').classList.remove('active')">Cancel</button>
+          <button type="submit" class="btn btn-danger">Confirm Stop</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script type="module">
+    import { authFetch, requireAuth, getCapabilities, hasAnyCapability } from "./auth.js";
+
+    window.authFetch = authFetch;
+    window._currentUser = null;
+    window._tankCanRead = false;
+    window._tankCanWrite = false;
+
+    function showToast(title, message, isWarning = false) {
+      const container = document.getElementById('toast-container');
+      const toast = document.createElement('div');
+      toast.className = 'toast' + (isWarning ? ' t-warning' : '');
+      toast.innerHTML = `
+      <div class="t-close" onclick="this.parentElement.remove()"><i class="fas fa-times"></i></div>
+      <div class="t-title">${isWarning ? '<i class="fas fa-exclamation-triangle" style="color:#f87171;"></i> ' : ''}${title}</div>
+      <div style="color:#bbb;">${message}</div>
+    `;
+      container.appendChild(toast);
+      setTimeout(() => toast.remove(), 10000);
+    }
+
+    function updateRoleBanner(user) {
+      document.getElementById('role-name').textContent = `Signed in as ${user.full_name || user.email || 'Staff'}`;
+      document.getElementById('role-badge').textContent = getCapabilities(user).join(' / ') || user.role || 'Staff';
+    }
+
+    function renderTankAccessState() {
+      document.getElementById('add-container-btn').hidden = !window._tankCanWrite;
+      document.getElementById('tank-notice').hidden = window._tankCanRead;
+      if (!window._tankCanRead) {
+        document.getElementById('ts-tbody').innerHTML = '<tr><td colspan="12" style="text-align:center; padding:20px; color:#666;">Tank storage access is not enabled for your account.</td></tr>';
+      }
+    }
+
+    async function fetchTanks() {
+      try {
+        const res = await window.authFetch('/api/tank_storage');
+        const data = await res.json().catch(() => []);
+        if (res.status === 403) {
+          window._tankCanRead = false;
+          renderTankAccessState();
+          return;
+        }
+        if (!res.ok) {
+          throw new Error(data.detail || 'Unable to load tank storage data.');
+        }
+        const tbody = document.getElementById('ts-tbody');
+        tbody.innerHTML = '';
+
+        if (data.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="12" style="text-align:center; padding:20px; color:#666;">No rows added yet. Click "Add Container Row".</td></tr>';
+          return;
+        }
+
+        data.forEach(item => {
+          const days = item.calculated_total_days;
+          const amt = item.calculated_amount;
+
+          // Exact matching logic for "Total Amount $" coloring:
+          // In the sheet it's colored red if amount exceeds warning limit (e.g. >100) or total stayed > 15 maybe
+          let amtStyle = '';
+          if (amt >= item.warning_limit) {
+            amtStyle = 'background: #dc2626; color: white; text-align: center; font-weight: 700;';
+          } else {
+            amtStyle = 'text-align: center;';
+          }
+
+          const isStopped = item.status === 'Stopped';
+
+          // UI alerts
+          if (!isStopped) {
+            if (item.alert_warning_sent && amt >= item.warning_limit) {
+              showToast("Limit Alert", `Container ${item.container_number} penalty is $${amt.toFixed(2)}.`, true);
+            }
+          }
+
+          const tr = document.createElement('tr');
+          tr.innerHTML = `
+          <td style="font-family:monospace; color:#00d4ff;">${item.container_number}</td>
+          <td>${item.arrival_date}</td>
+          <td>${item.stop_date ? item.stop_date : ''}</td>
+          <td style="text-align:center;">${item.free_days}</td>
+          <td style="text-align:center;">$${parseFloat(item.rate_tier1).toFixed(2)}</td>
+          <td style="text-align:center;">$${parseFloat(item.rate_tier2).toFixed(2)}</td>
+          <td style="text-align:center;">$${parseFloat(item.rate_tier3).toFixed(2)}</td>
+          <td style="text-align:center;">$${parseFloat(item.warning_limit).toFixed(2)}</td>
+          <td style="text-align:center;">${days}</td>
+          <td style="${amtStyle}">$${amt.toFixed(2)}</td>
+          <td style="font-size:11px; max-width:200px; overflow:hidden; text-overflow:ellipsis;">${item.comments || ''}</td>
+          <td>
+            ${!isStopped ?
+              (window._tankCanWrite
+                ? `<button class="btn btn-danger" style="padding:4px 8px; font-size:11px;" onclick="openStopModal('${item.id}')">Stop Date</button>`
+                : `<span style="font-size:10px; color:#aaa;">Read only</span>`)
+              : `<span style="font-size:10px; color:#aaa;"><i class="fas fa-check"></i> Finished</span>`
+            }
+          </td>
+        `;
+          tbody.appendChild(tr);
+        });
+      } catch (e) {
+        document.getElementById('ts-tbody').innerHTML = `<tr><td colspan="12" style="text-align:center; padding:20px; color:#666;">${e.message || 'Unable to load tank storage data.'}</td></tr>`;
+      }
+    }
+
+    window.openCreateModal = function () {
+      if (!window._tankCanWrite) {
+        alert('Tank storage editing is not enabled for your account.');
+        return;
+      }
+      document.getElementById('ts-modal').classList.add('active');
+    };
+
+    document.getElementById('ts-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      if (!window._tankCanWrite) {
+        alert('Tank storage editing is not enabled for your account.');
+        return;
+      }
+      const payload = {
+        container_number: document.getElementById('i-container').value,
+        arrival_date: document.getElementById('i-arrival').value,
+        free_days: parseInt(document.getElementById('i-free').value),
+        rate_tier1: parseFloat(document.getElementById('i-r1').value),
+        rate_tier2: parseFloat(document.getElementById('i-r2').value),
+        rate_tier3: parseFloat(document.getElementById('i-r3').value),
+        warning_limit: parseFloat(document.getElementById('i-limit').value),
+        comments: document.getElementById('i-comments').value
+      };
+      try {
+        const response = await window.authFetch('/api/tank_storage/create', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
+        });
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok) {
+          throw new Error(result.detail || 'Error saving container data.');
+        }
+        document.getElementById('ts-modal').classList.remove('active');
+        document.getElementById('ts-form').reset();
+        // Restore default values for next use
+        document.getElementById('i-free').value = "15";
+        document.getElementById('i-r1').value = "2.00";
+        document.getElementById('i-r2').value = "2.50";
+        document.getElementById('i-r3').value = "4.00";
+        document.getElementById('i-limit').value = "100.00";
+        fetchTanks();
+      } catch (e) { alert(e.message || "Error saving container data.") }
+    });
+
+    window.openStopModal = function (id) {
+      if (!window._tankCanWrite) {
+        alert('Tank storage editing is not enabled for your account.');
+        return;
+      }
+      document.getElementById('s-id').value = id;
+      document.getElementById('s-date').value = new Date().toISOString().split('T')[0];
+      document.getElementById('stop-modal').classList.add('active');
+    }
+
+    document.getElementById('stop-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      if (!window._tankCanWrite) {
+        alert('Tank storage editing is not enabled for your account.');
+        return;
+      }
+      const id = document.getElementById('s-id').value;
+      const date = document.getElementById('s-date').value;
+      try {
+        const response = await window.authFetch(`/api/tank_storage/${id}/stop`, {
+          method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ stop_date: date })
+        });
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok) {
+          throw new Error(result.detail || 'Error stopping timer.');
+        }
+        document.getElementById('stop-modal').classList.remove('active');
+        fetchTanks();
+      } catch (e) { alert(e.message || "Error stopping timer.") }
+    });
+
+    (async () => {
+      try {
+        const user = await requireAuth();
+        if (!user) return;
+        window._currentUser = user;
+        window._tankCanRead = hasAnyCapability(user, ['Operations', 'Admin', 'HR']);
+        window._tankCanWrite = hasAnyCapability(user, ['Operations', 'Admin', 'HR']);
+        updateRoleBanner(user);
+        renderTankAccessState();
+        if (!window._tankCanRead) return;
+        await fetchTanks();
+      } catch (error) {
+        console.error('Tank storage auth bootstrap failed:', error);
+        window.location.replace('login.html');
+      }
+    })();
+  </script>
+
+</body>
+
+</html>

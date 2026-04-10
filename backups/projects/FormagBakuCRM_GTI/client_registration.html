@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>FormagBaku - Client Management</title>
+  <link rel="icon" type="image/png" href="logo.png" />
+  <link rel="stylesheet" href="style.css">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@300;400;500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+  <style>
+    body {
+        margin: 0;
+        background: #000;
+        color: #fff;
+        font-family: Arial, sans-serif;
+    }
+    .container {
+        max-width: 800px;
+        margin: 0 auto;
+        padding: 40px;
+    }
+    .back-btn {
+      color: #00d4ff; text-decoration: none; margin-bottom: 20px; display: inline-block;
+      font-size: 16px; transition: 0.3s;
+    }
+    .back-btn:hover { color: #fff; transform: translateX(-5px); }
+
+    .glass-form {
+      background: rgba(26, 29, 33, 0.8);
+      backdrop-filter: blur(10px);
+      border: 1px solid #444;
+      border-radius: 12px;
+      padding: 30px;
+      margin-bottom: 20px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+    }
+    .glass-form h2 {
+        color: white; margin-top: 0; border-bottom: 1px solid #444; padding-bottom: 15px;
+    }
+    .form-group {
+      margin-bottom: 20px;
+    }
+    .form-group label {
+      display: block;
+      color: #888;
+      font-size: 13px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 8px;
+    }
+    .form-group input {
+      width: 100%;
+      padding: 12px 15px;
+      background: rgba(0,0,0,0.5);
+      border: 1px solid #333;
+      border-radius: 6px;
+      color: #fff;
+      font-size: 15px;
+      outline: none;
+      transition: border 0.3s;
+      box-sizing: border-box;
+    }
+    .form-group input:focus {
+      border: 1px solid #00d4ff;
+    }
+    .btn-submit {
+      width: 100%;
+      padding: 15px;
+      background: linear-gradient(90deg, #007bff, #00d4ff);
+      color: white;
+      border: none;
+      border-radius: 6px;
+      font-size: 16px;
+      font-weight: bold;
+      cursor: pointer;
+      transition: opacity 0.3s;
+    }
+    .btn-submit:hover { opacity: 0.9; }
+    
+    .bulk-import-zone {
+      border: 2px dashed #444;
+      padding: 40px;
+      text-align: center;
+      border-radius: 12px;
+      cursor: pointer;
+      background: rgba(0,0,0,0.2);
+      transition: all 0.3s;
+    }
+    .bulk-import-zone:hover {
+      border-color: #00d4ff;
+      background: rgba(0, 212, 255, 0.05);
+    }
+    .upload-icon {
+      font-size: 40px;
+      color: #00d4ff;
+      margin-bottom: 15px;
+    }
+    .hidden-input { display: none; }
+    
+    .table-container {
+      overflow-x: auto;
+      margin-top: 15px;
+    }
+    table.glass-table {
+      width: 100%;
+      border-collapse: collapse;
+      color: #fff;
+      font-size: 14px;
+    }
+    table.glass-table th, table.glass-table td {
+      padding: 12px;
+      text-align: left;
+      border-bottom: 1px solid rgba(255,255,255,0.1);
+    }
+    table.glass-table th {
+      background: rgba(0,0,0,0.3);
+      color: #00d4ff;
+      font-size: 12px;
+      text-transform: uppercase;
+    }
+    table.glass-table tr:hover {
+      background: rgba(255,255,255,0.05);
+    }
+
+    #toast {
+      visibility: hidden;
+      min-width: 250px;
+      background-color: rgba(26, 29, 33, 0.95);
+      backdrop-filter: blur(10px);
+      color: #fff;
+      text-align: center;
+      border-radius: 8px;
+      padding: 16px;
+      position: fixed;
+      z-index: 1000;
+      left: 50%;
+      bottom: 30px;
+      transform: translateX(-50%);
+      border: 1px solid #00d4ff;
+      box-shadow: 0 5px 15px rgba(0,0,0,0.5);
+      font-size: 14px;
+      transition: opacity 0.5s, bottom 0.5s;
+      opacity: 0;
+    }
+    #toast.show {
+      visibility: visible;
+      opacity: 1;
+      bottom: 50px;
+    }
+    #toast.error {
+      border-color: #ef4444;
+      color: #ef4444;
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <a href="/" class="back-btn">
+    <i class="fas fa-arrow-left"></i> Back to Dashboard
+  </a>
+
+  <!-- Одиночная регистрация -->
+  <div class="glass-form" id="registration-block">
+    <h2>Single Client Registration</h2>
+    <form id="client-form">
+      <div class="form-group">
+        <label>Company / Full Name *</label>
+        <input type="text" id="full_name" required placeholder="Enter client's name...">
+      </div>
+      <div class="form-group">
+        <label>Contact (new) e-mail *</label>
+        <input type="email" id="contact_email" required placeholder="example@domain.com">
+      </div>
+      <div class="form-group">
+        <label>E-mail (with comma ,)</label>
+        <input type="text" id="additional_emails" placeholder="other1@domain.com, other2@domain.com">
+      </div>
+      <div class="form-group">
+        <label>Contact (new) mobile *</label>
+        <input type="tel" id="contact_mobile" required placeholder="+994...">
+      </div>
+      <div class="form-group">
+        <label>Telephone</label>
+        <input type="tel" id="telephone" placeholder="Landline phone...">
+      </div>
+      <div class="form-group">
+        <label>Client Tax ID *</label>
+        <input type="text" id="tax_id" required placeholder="Company Tax ID">
+      </div>
+      <div class="form-group">
+        <label>Address *</label>
+        <input type="text" id="address" required placeholder="Physical Address">
+      </div>
+      <div class="form-group">
+        <label>Website</label>
+        <input type="url" id="website" placeholder="https://...">
+      </div>
+      <div class="form-group" style="display: flex; align-items: center; gap: 10px;">
+        <input type="checkbox" id="is_new_client" style="width: auto;">
+        <label style="margin-bottom: 0;">Conditions (optional): Please select "New" here if it's New client</label>
+      </div>
+      <div class="form-group">
+        <label>Sales Manager *</label>
+        <select id="sales_manager_id" required style="width: 100%; padding: 12px 15px; background: rgba(0,0,0,0.5); border: 1px solid #333; border-radius: 6px; color: #fff; font-size: 15px; outline: none; appearance: none; -moz-appearance: none; -webkit-appearance: none;">
+          <option value="" disabled selected>Select a Sales Manager</option>
+        </select>
+      </div>
+      <button type="submit" class="btn-submit">
+        <i class="fas fa-user-plus"></i> Register Client
+      </button>
+    </form>
+  </div>
+
+  <!-- Массовый Импорт -->
+  <div class="glass-form" id="bulk-block">
+    <h2>Bulk Import (Excel / CSV)</h2>
+    <div class="bulk-import-zone" id="drop-zone" onclick="document.getElementById('file-input').click()">
+      <div class="upload-icon"><i class="fas fa-cloud-upload-alt"></i></div>
+      <h3 style="color: white; margin-bottom: 10px;">Drag & Drop file here</h3>
+      <p style="color: #888; margin: 0;">or click to browse your computer (must have column "full_name")</p>
+      <input type="file" class="hidden-input" id="file-input" accept=".csv, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel">
+    </div>
+    <div id="upload-status" style="margin-top: 15px; color: #00d4ff; text-align: center; display: none;">Uploading...</div>
+  </div>
+
+  <!-- Список клиентов -->
+  <div class="glass-form">
+    <h2><i class="fas fa-list" style="color: #00d4ff; margin-right: 8px;"></i> Recently Registered Clients</h2>
+    <div class="table-container">
+      <table class="glass-table">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Full Name</th>
+            <th>Email</th>
+            <th>Mobile</th>
+            <th>Tax ID</th>
+            <th>Address</th>
+          </tr>
+        </thead>
+        <tbody id="clients-tbody">
+          <tr><td colspan="6" style="text-align: center;">Loading...</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+  function showToast(message, isError = false) {
+    const toast = document.getElementById("toast");
+    toast.innerText = message;
+    if (isError) {
+      toast.classList.add("error");
+    } else {
+      toast.classList.remove("error");
+    }
+    toast.classList.add("show");
+    setTimeout(() => { toast.classList.remove("show"); }, 3000);
+  }
+
+  async function loadClients() {
+    try {
+      const response = await fetch('/api/clients');
+      const data = await response.json();
+      const tbody = document.getElementById('clients-tbody');
+      tbody.innerHTML = '';
+      if (!data || data.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: #888;">No clients found</td></tr>';
+        return;
+      }
+      data.forEach(client => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${client.id ? client.id.substring(0, 8) + '...' : '-'}</td>
+          <td style="font-weight: bold; color: #fff;">${client.full_name || '-'}</td>
+          <td style="color: #ccc;">${client.contact_email || '-'}</td>
+          <td style="color: #ccc;">${client.contact_mobile || '-'}</td>
+          <td style="color: #ccc;">${client.tax_id || '-'}</td>
+          <td style="color: #ccc;">${client.address || '-'}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+    } catch (err) {
+      document.getElementById('clients-tbody').innerHTML = '<tr><td colspan="6" style="text-align: center; color: #ef4444;">Failed to load clients</td></tr>';
+    }
+  }
+
+  // Load clients & sales managers on startup
+  async function initPage() {
+    loadClients();
+    
+    // Load Sales Managers
+    try {
+      const response = await fetch('/api/staff/sales_managers');
+      const data = await response.json();
+      const select = document.getElementById('sales_manager_id');
+      if (data && data.length > 0) {
+        data.forEach(manager => {
+          const opt = document.createElement('option');
+          opt.value = manager.id;
+          opt.innerText = manager.full_name;
+          select.appendChild(opt);
+        });
+      }
+    } catch (e) {
+      console.error("Failed to load sales managers.");
+    }
+  }
+
+  window.addEventListener("DOMContentLoaded", initPage);
+
+  // 1. Одиночная отправка
+  document.getElementById('client-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const btn = e.target.querySelector('.btn-submit');
+    const ogText = btn.innerHTML;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving to Database...';
+    btn.disabled = true;
+
+    const payload = {
+      full_name: document.getElementById('full_name').value,
+      contact_email: document.getElementById('contact_email').value,
+      additional_emails: document.getElementById('additional_emails').value,
+      contact_mobile: document.getElementById('contact_mobile').value,
+      telephone: document.getElementById('telephone').value,
+      tax_id: document.getElementById('tax_id').value,
+      address: document.getElementById('address').value,
+      website: document.getElementById('website').value,
+      is_new_client: document.getElementById('is_new_client').checked,
+      sales_manager_id: document.getElementById('sales_manager_id').value,
+    };
+
+    try {
+      const response = await fetch('/api/clients/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const data = await response.json();
+      
+      if(response.ok) {
+        showToast("Client registered successfully!");
+        e.target.reset();
+        loadClients(); // refresh table
+      } else {
+        showToast("Error: " + (data.detail || JSON.stringify(data)), true);
+      }
+    } catch (err) {
+      showToast("Network error. Backend seems offline.", true);
+    } finally {
+      btn.innerHTML = ogText;
+      btn.disabled = false;
+    }
+  });
+
+  // 2. Массовый импорт
+  const fileInput = document.getElementById('file-input');
+  fileInput.addEventListener('change', async (e) => {
+    const file = e.target.files[0];
+    if(!file) return;
+
+    const status = document.getElementById('upload-status');
+    status.style.display = 'block';
+    status.style.color = '#00d4ff';
+    status.innerText = `Uploading and parsing ${file.name}...`;
+
+    const formData = new FormData();
+    formData.append('file', file);
+
+    try {
+      const response = await fetch('/api/clients/import', {
+        method: 'POST',
+        body: formData
+      });
+      const data = await response.json();
+      
+      if(response.ok) {
+        status.style.color = '#10b981';
+        status.innerText = `Success! Imported ${data.inserted} clients.`;
+        showToast(`Imported ${data.inserted} clients!`);
+        loadClients(); // refresh table
+      } else {
+        status.style.color = '#ef4444';
+        status.innerText = `Error: ${data.detail || data.message}`;
+        showToast(`Error: ${data.detail || data.message}`, true);
+      }
+    } catch(err) {
+      status.style.color = '#ef4444';
+      status.innerText = "Network error during upload.";
+      showToast("Network error during upload.", true);
+    }
+  });
+</script>
+</body>
+</html>

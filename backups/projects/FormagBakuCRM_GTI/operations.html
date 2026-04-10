@@ -1,0 +1,625 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>FormagBaku - Operations Dashboard</title>
+  <meta name="description" content="Shipments and Operations tracking for Formag Forwarding." />
+  <link rel="icon" type="image/png" href="logo.png" />
+  <link rel="stylesheet" href="style.css">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; }
+    body { margin:0; background:#0a0c10; color:#fff; font-family:'Inter',sans-serif; min-height:100vh; }
+    .page-wrap { max-width:1440px; margin:0 auto; padding:32px 24px 80px; }
+
+    .back-btn { display:inline-flex; align-items:center; gap:8px; color:#00d4ff;
+      text-decoration:none; font-size:13px; margin-bottom:24px; transition:all 0.2s; opacity:.75; }
+    .back-btn:hover { opacity:1; transform:translateX(-3px); }
+
+    .page-header { display:flex; align-items:flex-start; justify-content:space-between;
+      margin-bottom:28px; padding-bottom:20px; border-bottom:1px solid rgba(255,255,255,.07); }
+    .page-header h1 { margin:0; font-size:24px; font-weight:700;
+      background:linear-gradient(90deg,#fff 55%,#00d4ff);
+      -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent; }
+    .page-sub { color:#00d4ff; font-size:10px; letter-spacing:2px; text-transform:uppercase; margin-top:4px; opacity:.6; }
+
+    .role-banner { display:flex; align-items:center; gap:10px;
+      background:rgba(0,212,255,.06); border:1px solid rgba(0,212,255,.18);
+      border-radius:10px; padding:10px 16px; margin-bottom:24px; font-size:13px; }
+    .role-badge { background:rgba(0,212,255,.15); color:#00d4ff; border-radius:20px;
+      padding:3px 12px; font-size:11px; font-weight:700; letter-spacing:1px; }
+
+    /* FILTERS / TABS */
+    .tabs-container { display:flex; gap:8px; overflow-x:auto; margin-bottom:16px; 
+      padding-bottom:8px; }
+    .tabs-container::-webkit-scrollbar { height:4px; }
+    .tabs-container::-webkit-scrollbar-thumb { background:rgba(0,212,255,.2); border-radius:10px; }
+    .tab-btn { background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.1);
+      color:#aaa; padding:8px 16px; border-radius:20px; font-size:12px; cursor:pointer;
+      transition:all .2s; white-space:nowrap; font-weight:600; font-family:'Inter'; }
+    .tab-btn:hover { background:rgba(255,255,255,.1); color:#fff; }
+    .tab-btn.active { background:rgba(0,212,255,.15); border-color:#00d4ff; color:#00d4ff; }
+
+    .glass-card { background:rgba(18,21,28,.88); backdrop-filter:blur(14px);
+      border:1px solid rgba(255,255,255,.07); border-radius:14px;
+      padding:26px; margin-bottom:22px; box-shadow:0 8px 30px rgba(0,0,0,.4); }
+    .card-head { display:flex; align-items:center; justify-content:space-between;
+      margin-bottom:18px; padding-bottom:14px; border-bottom:1px solid rgba(255,255,255,.06); }
+    .card-title { font-size:15px; font-weight:600; display:flex; align-items:center; gap:9px; }
+    .card-title i { color:#00d4ff; }
+    .badge { background:rgba(0,212,255,.12); color:#00d4ff; border-radius:12px; padding:2px 9px; font-size:11px; font-weight:600; }
+
+    .tbl-wrap { overflow-x:auto; padding-bottom:4px; }
+    .tbl-wrap::-webkit-scrollbar { height:6px; }
+    table.q-tbl { width:100%; border-collapse:collapse; font-size:13px; min-width:1100px; }
+    table.q-tbl th { text-align:left; padding:9px 14px; font-size:10px; letter-spacing:1px;
+      text-transform:uppercase; color:#00d4ff; background:rgba(0,0,0,.25);
+      border-bottom:1px solid rgba(255,255,255,.06); position:sticky; top:0; z-index:2; }
+    table.q-tbl td { padding:10px 14px; border-bottom:1px solid rgba(255,255,255,.04); vertical-align:middle; white-space:nowrap; }
+    table.q-tbl tr:hover td { background:rgba(255,255,255,.025); cursor:pointer; }
+    
+    .fw { color:#fff; font-weight:500; }
+    .dim { color:#666; font-size:12px; }
+    .accent { color:#00d4ff; font-size:12px; }
+
+    .sbadge { display:inline-block; padding:3px 10px; border-radius:20px; font-size:10px; font-weight:700; }
+    .s-pending  { background:rgba(100,116,139,.15); color:#94a3b8; border:1px solid rgba(100,116,139,.3); }
+    .s-transit  { background:rgba(59,130,246,.15); color:#60a5fa; border:1px solid rgba(59,130,246,.3); }
+    .s-customs  { background:rgba(245,158,11,.15); color:#fbbf24; border:1px solid rgba(245,158,11,.3); }
+    .s-delivered{ background:rgba(16,185,129,.15); color:#34d399; border:1px solid rgba(16,185,129,.3); }
+    .s-issue    { background:rgba(239,68,68,.15);  color:#f87171; border:1px solid rgba(239,68,68,.3); }
+
+    .btn { border:none; border-radius:7px; padding:7px 13px; font-size:12px; font-weight:600; cursor:pointer; transition:opacity .2s; }
+    .btn-primary { background:linear-gradient(90deg,#007bff,#00d4ff); color:#fff; }
+    .btn-ghost { background:transparent; border:1px solid rgba(255,255,255,.12); color:#aaa; }
+
+    /* ADVANCED MODAL (SIDEBAR STYLE) */
+    .overlay { position:fixed; inset:0; background:rgba(0,0,0,.82); backdrop-filter:blur(8px);
+      z-index:9999; display:flex; align-items:flex-start; justify-content:flex-end;
+      opacity:0; visibility:hidden; transition:all .3s; }
+    .overlay.active { opacity:1; visibility:visible; }
+    .modal { background:rgba(14,17,24,.99); border-left:1px solid rgba(0,212,255,.22);
+      padding:34px; width:100%; max-width:960px; height:100vh; overflow-y:auto; position:relative;
+      box-shadow:-20px 0 80px rgba(0,0,0,.5);
+      transform:translateX(100%); transition:transform .4s cubic-bezier(0.16, 1, 0.3, 1); }
+    .overlay.active .modal { transform:translateX(0); }
+    .modal::-webkit-scrollbar { width:4px; }
+    .modal::-webkit-scrollbar-thumb { background:rgba(0,212,255,.3); border-radius:10px; }
+
+    .modal-title { font-size:22px; font-weight:700; margin:0 0 3px; color:#fff; }
+    .modal-sub { font-size:10px; color:#00d4ff; letter-spacing:2px; text-transform:uppercase; margin-bottom:26px; opacity:.7; }
+    .m-close { position:absolute; top:24px; right:24px; background:none; border:none;
+      color:#aaa; font-size:22px; cursor:pointer; transition:color .2s; }
+    .m-close:hover { color:#00d4ff; }
+
+    /* FORM GRID */
+    .block-title { font-size:11px; text-transform:uppercase; letter-spacing:2px; color:#00d4ff; 
+      margin:24px 0 12px; border-bottom:1px solid rgba(0,212,255,.15); padding-bottom:6px; font-weight:700; }
+    
+    .f-row { display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:12px; margin-bottom:12px; }
+    .f-g label { display:block; color:#888; font-size:10px; text-transform:uppercase; letter-spacing:1px; margin-bottom:4px; }
+    .f-g input, .f-g select, .f-g textarea {
+      width:100%; padding:9px 12px; background:rgba(255,255,255,.03); border:1px solid rgba(255,255,255,.08);
+      border-radius:6px; color:#fff; font-size:12px; outline:none; transition:border .2s; font-family:inherit; }
+    .f-g input:focus, .f-g select:focus, .f-g textarea:focus { border-color:#00d4ff; background:rgba(0,212,255,.05); }
+    .f-g select option { background:#12151e; }
+    
+    .empty { text-align:center; padding:36px 20px; color:#444; }
+
+    #toast { position:fixed; bottom:28px; left:50%; transform:translateX(-50%); background:rgba(12,15,22,.97); 
+      color:#fff; border:1px solid #10b981; border-radius:10px; padding:12px 22px; z-index:99999;
+      opacity:0; visibility:hidden; transition:all .35s; }
+    #toast.show { opacity:1; visibility:visible; bottom:46px; }
+    #toast.err { border-color:#ef4444; color:#f87171; }
+  </style>
+</head>
+<body>
+
+<div class="page-wrap">
+  <div class="page-header">
+    <div>
+      <h1><i class="fas fa-route" style="color:#00d4ff;margin-right:10px;"></i>Operations & Shipments</h1>
+      <div class="page-sub">/// LOGISTICS_TRACKING · ADVANCED_VIEW</div>
+    </div>
+    <button class="btn btn-primary" onclick="openModal()"><i class="fas fa-plus"></i> New File</button>
+  </div>
+
+  <div class="role-banner" id="role-banner">
+    <i class="fas fa-user-shield" style="color:#00d4ff;"></i>
+    <span id="role-name">Loading...</span>
+    <span class="role-badge" id="role-badge">—</span>
+  </div>
+
+  <div class="tabs-container" id="tabs">
+    <button class="tab-btn active" data-type="All">All Operations</button>
+    <button class="tab-btn" data-type="ImportFCL">Import FCL</button>
+    <button class="tab-btn" data-type="TransitFCL">Transit FCL</button>
+    <button class="tab-btn" data-type="ExportFCL">Export FCL</button>
+    <button class="tab-btn" data-type="AIR">AIR Freight</button>
+    <button class="tab-btn" data-type="LCL">LCL</button>
+    <button class="tab-btn" data-type="FTL">FTL</button>
+    <button class="tab-btn" data-type="LTL">LTL</button>
+    <button class="tab-btn" data-type="RailWay">RailWay</button>
+  </div>
+
+  <div class="glass-card">
+    <div class="tbl-wrap">
+      <table class="q-tbl">
+        <thead><tr>
+          <th>Sys ID / BK / SO</th>
+          <th>Client & Shipper</th>
+          <th>Type / Mode</th>
+          <th>ETD / ETA (Trans/POD)</th>
+          <th>Status</th>
+          <th>Operating Agent(s)</th>
+          <th>Action</th>
+        </tr></thead>
+        <tbody id="ship-tbody">
+          <tr><td colspan="7" class="empty"><i class="fas fa-spinner fa-spin"></i> Loading data...</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- =================== ADVANCED MODAL =================== -->
+<div class="overlay" id="modal-overlay">
+  <div class="modal">
+    <button class="m-close" onclick="closeModal()"><i class="fas fa-times"></i></button>
+    <div class="modal-title"><i class="fas fa-box-open" style="color:#00d4ff;margin-right:9px;"></i>Shipment Profile</div>
+    <div class="modal-sub" id="shipment-modal-sub">/// 54_FIELDS_INTEGRATION</div>
+
+    <form id="ship-form">
+      <input type="hidden" id="s-id">
+      <div class="block-title">01. General & References</div>
+      <div class="f-row" style="grid-template-columns: 1fr 1fr 1fr 1fr;">
+        <div class="f-g">
+          <label>Shipment Type *</label>
+          <select id="s-type" required>
+            <option value="ImportFCL">Import FCL</option>
+            <option value="TransitFCL">Transit FCL</option>
+            <option value="ExportFCL">Export FCL</option>
+            <option value="AIR">AIR</option>
+            <option value="LCL">LCL</option>
+            <option value="FTL">FTL</option>
+            <option value="LTL">LTL</option>
+            <option value="RailWay">RailWay</option>
+          </select>
+        </div>
+        <div class="f-g">
+          <label>Current Status *</label>
+          <select id="s-status" required>
+            <option value="Pending">Pending / Booking</option>
+            <option value="In Transit">In Transit</option>
+            <option value="Customs">Customs Clearance</option>
+            <option value="Delivered">Delivered</option>
+            <option value="Issue">Issue / Held</option>
+          </select>
+        </div>
+        <div class="f-g">
+          <label>Assign Client *</label>
+          <select id="s-client" required><option value="">— Select —</option></select>
+        </div>
+        <div class="f-g"><label>BK-number</label><input type="text" id="bk-num"></div>
+      </div>
+      <div class="f-row">
+        <div class="f-g"><label>SO Number</label><input type="text" id="so-num"></div>
+        <div class="f-g"><label>REQ-number</label><input type="text" id="req-num"></div>
+        <div class="f-g"><label>Shipper</label><input type="text" id="shipper"></div>
+        <div class="f-g"><label>Incoterms</label><input type="text" id="incoterms"></div>
+      </div>
+      <div class="f-row" id="operation-manager-row">
+        <div class="f-g">
+          <label>Operation Manager</label>
+          <select id="s-op-manager"><option value="">— Unassigned —</option></select>
+        </div>
+        <div class="f-g">
+          <label>Sales Manager</label>
+          <input type="text" id="s-sales-manager-display" readonly placeholder="From quotation / booking flow">
+        </div>
+      </div>
+
+      <div class="block-title">02. Routing, Ports & Agents</div>
+      <div class="f-row">
+        <div class="f-g"><label>POL (Port of Loading)</label><input type="text" id="pol"></div>
+        <div class="f-g">
+          <label>POL Agent</label>
+          <select id="s-pol-agent"><option value="">— Select —</option></select>
+        </div>
+        <div class="f-g"><label>POD (Port of Discharge)</label><input type="text" id="pod"></div>
+        <div class="f-g">
+          <label>POD Agent</label>
+          <select id="s-pod-agent"><option value="">— Select —</option></select>
+        </div>
+      </div>
+      <div class="f-row">
+        <div class="f-g"><label>Departure (ETD)</label><input type="date" id="etd"></div>
+        <div class="f-g"><label>ETA Transshipment</label><input type="date" id="eta-trans"></div>
+        <div class="f-g"><label>ETD Transshipment</label><input type="date" id="etd-trans"></div>
+        <div class="f-g"><label>Est. Delivery (ETA)</label><input type="date" id="eta"></div>
+      </div>
+
+      <div class="block-title">03. Container & Cargo Info</div>
+      <div class="f-row">
+        <div class="f-g"><label>Container Quantity</label><input type="number" id="cont-qty"></div>
+        <div class="f-g"><label>Container Type</label><input type="text" id="cont-type" placeholder="e.g. 40HQ"></div>
+        <div class="f-g"><label>Container Number(s)</label><input type="text" id="cont-num"></div>
+        <div class="f-g"><label>Empty Return Date</label><input type="date" id="empty-ret"></div>
+      </div>
+      <div class="f-row">
+        <div class="f-g"><label>Stuffing Date</label><input type="date" id="stuff-date"></div>
+        <div class="f-g"><label>Driver Information</label><input type="text" id="driver-info"></div>
+        <div class="f-g"><label>Short Declaration</label><input type="text" id="short-decl"></div>
+      </div>
+
+      <div class="block-title">04. Ocean Freight / Vessel Details</div>
+      <div class="f-row">
+        <div class="f-g"><label>MBL Number</label><input type="text" id="mbl-num"></div>
+        <div class="f-g"><label>Shipping Line</label><input type="text" id="ship-line"></div>
+        <div class="f-g"><label>Feeder Vessel Name</label><input type="text" id="feeder-name"></div>
+        <div class="f-g"><label>ETA Vessel at POD</label><input type="date" id="eta-vessel"></div>
+      </div>
+
+      <div class="block-title">05. Documentation & Delivery</div>
+      <div class="f-row">
+        <div class="f-g"><label>Receipt of Docs (Client)</label><input type="date" id="doc-receipt"></div>
+        <div class="f-g"><label>Docs Sent to Agent</label><input type="date" id="doc-agent"></div>
+        <div class="f-g"><label>MBL Release Date</label><input type="date" id="mbl-rel"></div>
+        <div class="f-g"><label>HBL Release Date</label><input type="date" id="hbl-rel"></div>
+      </div>
+      <div class="f-row">
+        <div class="f-g"><label>Border Arrival Date</label><input type="date" id="border-arr"></div>
+        <div class="f-g"><label>Terminal Name</label><input type="text" id="terminal"></div>
+        <div class="f-g"><label>D/O Date</label><input type="date" id="do-date"></div>
+        <div class="f-g"><label>Cargo Delivery Date</label><input type="date" id="cargo-del"></div>
+      </div>
+
+      <div class="block-title">06. Notes & Quality Control</div>
+      <div class="f-row" style="grid-template-columns: 1fr 1fr;">
+        <div class="f-g"><label>Operation Notes</label><textarea id="opr-notes" rows="2"></textarea></div>
+        <div class="f-g"><label>Sales Manager Notes</label><textarea id="sales-notes" rows="2"></textarea></div>
+      </div>
+
+      <button type="submit" class="btn btn-primary" id="s-submit" style="width:100%; margin-top:24px; padding:12px 0;">
+        <i class="fas fa-save" style="margin-right:8px;"></i> Save & Update Shipment File
+      </button>
+    </form>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script type="module">
+  import { authFetch, requireAuth } from "./auth.js";
+
+  window._allShipments = [];
+  window._currentUser = null;
+  window._operationManagers = [];
+  window.authFetch = authFetch;
+
+  (async () => {
+    try {
+      const user = await requireAuth();
+      if (!user) return;
+      window._currentUser = user;
+      document.getElementById('role-name').textContent = user.full_name || 'Unknown';
+      document.getElementById('role-badge').textContent = getCapabilities(user).join(' / ') || user.role || 'Staff';
+      loadDropdowns();
+      loadShipments();
+    } catch (error) {
+      console.error("Auth bootstrap failed:", error);
+      window.location.replace("login.html");
+    }
+  })();
+
+  window.loadDropdowns = async function() {
+    try {
+      const cRes = await window.authFetch('/api/clients/dropdown');
+      const cData = await cRes.json();
+      const cSel = document.getElementById('s-client');
+      cData.forEach(c => { cSel.add(new Option(c.full_name, c.id)); });
+
+      const aRes = await window.authFetch('/api/agents/dropdown');
+      const aData = await aRes.json();
+      const p1 = document.getElementById('s-pol-agent');
+      const p2 = document.getElementById('s-pod-agent');
+      aData.forEach(a => { 
+        p1.add(new Option(a.company_name, a.id)); 
+        p2.add(new Option(a.company_name, a.id)); 
+      });
+
+      const opRes = await window.authFetch('/api/staff/operations_managers');
+      const opData = await opRes.json();
+      window._operationManagers = opData;
+      const opSel = document.getElementById('s-op-manager');
+      opData.forEach(op => {
+        opSel.add(new Option(op.full_name, op.id));
+      });
+    } catch(e) {}
+  };
+
+  window.loadShipments = async function() {
+    document.getElementById('ship-tbody').innerHTML = '<tr><td colspan="7" class="empty"><i class="fas fa-spinner fa-spin"></i></td></tr>';
+    try {
+      const res = await window.authFetch('/api/shipments?scope=operations');
+      const data = await res.json();
+      window._allShipments = data;
+      filterShipments('All');
+    } catch(e) {}
+  }
+</script>
+
+<script>
+  function getCapabilities(user = window._currentUser || {}) {
+    return Array.isArray(user.capabilities) ? user.capabilities : [user.role].filter(Boolean);
+  }
+
+  function hasCapability(name) {
+    return getCapabilities().includes(name);
+  }
+
+  function isAdminLike() {
+    return hasCapability('Admin') || hasCapability('HR');
+  }
+
+  function toast(msg, err=false) {
+    const t = document.getElementById('toast');
+    t.textContent = msg; t.className = err ? 'err show' : 'show';
+    setTimeout(() => t.className = '', 3500);
+  }
+
+  function getBadgeClass(s) {
+    if(!s) return 's-pending';
+    const l = s.toLowerCase();
+    if(l.includes('transit')) return 's-transit';
+    if(l.includes('customs')) return 's-customs';
+    if(l.includes('delivered')) return 's-delivered';
+    if(l.includes('issue')) return 's-issue';
+    return 's-pending';
+  }
+
+  // TABS LOGIC
+  document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      e.target.classList.add('active');
+      filterShipments(e.target.getAttribute('data-type'));
+    });
+  });
+
+  function filterShipments(type) {
+    const data = type === 'All' ? window._allShipments : window._allShipments.filter(s => s.shipment_type === type);
+    renderShipments(data);
+  }
+
+  function renderShipments(data) {
+    const tbody = document.getElementById('ship-tbody');
+    if (!data || !data.length) {
+      tbody.innerHTML = '<tr><td colspan="7" class="empty">No shipments found for this category</td></tr>';
+      return;
+    }
+    tbody.innerHTML = '';
+    data.forEach(s => {
+      const user = window._currentUser || {};
+      const cName = s.clients && s.clients.full_name ? s.clients.full_name : '—';
+      const operationOwner = s.operation_manager_name || 'Unassigned';
+      const salesOwner = s.sales_manager_name || '—';
+      const agentSummary = [
+        s.pol_agent_name ? `POL: ${s.pol_agent_name}` : '',
+        s.pod_agent_name ? `POD: ${s.pod_agent_name}` : ''
+      ].filter(Boolean).join('<br>') || 'Agents: —';
+      const shortId = s.id.substring(0,6).toUpperCase();
+      const canClaim = hasCapability('Operations') && !isAdminLike() && !s.operation_manager_id;
+      const canRelease = (
+        (hasCapability('Operations') && !isAdminLike() && s.operation_manager_id === user.staff_id) ||
+        (isAdminLike() && s.operation_manager_id)
+      );
+      
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td><div class="dim">ID: ${shortId}</div><div class="fw">BK: ${s.bk_number||'—'}</div></td>
+        <td><div class="fw">${cName}</div><div class="dim">Shp: ${s.shipper||'—'}</div><div class="dim">Sales: ${salesOwner}</div></td>
+        <td><div class="accent">${s.shipment_type}</div><div class="dim">${s.pol||'—'} to ${s.pod||'—'}</div></td>
+        <td class="dim">D: ${s.departure_date||'—'}<br>A: ${s.delivery_date||'—'}</td>
+        <td><span class="sbadge ${getBadgeClass(s.status)}">${s.status}</span></td>
+        <td class="dim" style="font-size:10px;">${agentSummary}<br><span style="color:#7dd3fc;">Ops: ${operationOwner}</span></td>
+        <td>
+          <div style="display:flex;gap:4px;flex-wrap:wrap;">
+            ${canClaim ? `<button class="btn btn-sm btn-primary" onclick="claimShipment('${s.id}')">Take</button>` : ''}
+            ${canRelease ? `<button class="btn btn-sm btn-ghost" onclick="releaseShipment('${s.id}')">Release</button>` : ''}
+            <button class="btn btn-sm btn-ghost" onclick="openModal(${JSON.stringify(s).replace(/"/g,'&quot;')})"><i class="fas fa-expand-alt"></i></button>
+          </div>
+        </td>
+      `;
+      tbody.appendChild(tr);
+    });
+  }
+
+  async function claimShipment(id) {
+    try {
+      const res = await window.authFetch(`/api/shipments/${id}/claim`, {
+        method: 'PATCH',
+        headers: {'Content-Type':'application/json'}
+      });
+      const data = await res.json();
+      if (res.ok) {
+        toast('✅ Shipment assigned to you.');
+        window.loadShipments();
+      } else {
+        toast('Error: ' + (data.detail || '?'), true);
+      }
+    } catch(e) {
+      toast('Network error', true);
+    }
+  }
+
+  async function releaseShipment(id) {
+    try {
+      const res = await window.authFetch(`/api/shipments/${id}/release`, {
+        method: 'PATCH',
+        headers: {'Content-Type':'application/json'}
+      });
+      const data = await res.json();
+      if (res.ok) {
+        toast('✅ Shipment released back to the queue.');
+        window.loadShipments();
+      } else {
+        toast('Error: ' + (data.detail || '?'), true);
+      }
+    } catch(e) {
+      toast('Network error', true);
+    }
+  }
+
+  function applyRoleToOperationManagerField(shipmentData=null) {
+    const user = window._currentUser || {};
+    const opRow = document.getElementById('operation-manager-row');
+    const opSelect = document.getElementById('s-op-manager');
+    opRow.style.display = 'grid';
+    opSelect.disabled = false;
+
+    if (hasCapability('Operations') && !isAdminLike()) {
+      opSelect.value = user.staff_id || '';
+      opSelect.disabled = true;
+    } else if (hasCapability('Sales') && !hasCapability('Operations') && !isAdminLike()) {
+      opSelect.disabled = true;
+    } else if (shipmentData && shipmentData.operation_manager_id) {
+      opSelect.value = shipmentData.operation_manager_id;
+    }
+  }
+
+  function openModal(shipmentData=null) {
+    document.getElementById('ship-form').reset();
+    document.getElementById('s-id').value = '';
+    document.querySelector('.modal-title').innerHTML = '<i class="fas fa-box-open" style="color:#00d4ff;margin-right:9px;"></i>Shipment Profile';
+    document.getElementById('shipment-modal-sub').textContent = '/// 54_FIELDS_INTEGRATION';
+    document.getElementById('s-submit').innerHTML = '<i class="fas fa-save" style="margin-right:8px;"></i> Save & Update Shipment File';
+    document.getElementById('s-sales-manager-display').value = '';
+    document.getElementById('s-op-manager').value = '';
+    applyRoleToOperationManagerField();
+
+    if (shipmentData) {
+      document.getElementById('s-id').value = shipmentData.id || '';
+      document.querySelector('.modal-title').innerHTML = '<i class="fas fa-pen-to-square" style="color:#00d4ff;margin-right:9px;"></i>Edit Shipment Profile';
+      document.getElementById('shipment-modal-sub').textContent = '/// OPERATIONS_HANDOFF · UPDATE_EXISTING_FILE';
+      document.getElementById('s-submit').innerHTML = '<i class="fas fa-save" style="margin-right:8px;"></i> Save Shipment Updates';
+
+      document.getElementById('s-type').value = shipmentData.shipment_type || 'ImportFCL';
+      document.getElementById('s-status').value = shipmentData.status || 'Pending';
+      document.getElementById('s-client').value = shipmentData.client_id || '';
+      document.getElementById('bk-num').value = shipmentData.bk_number || '';
+      document.getElementById('so-num').value = shipmentData.so_number || '';
+      document.getElementById('req-num').value = shipmentData.req_number || '';
+      document.getElementById('shipper').value = shipmentData.shipper || '';
+      document.getElementById('incoterms').value = shipmentData.incoterms || '';
+      document.getElementById('pol').value = shipmentData.pol || '';
+      document.getElementById('s-pol-agent').value = shipmentData.pol_agent_id || '';
+      document.getElementById('pod').value = shipmentData.pod || '';
+      document.getElementById('s-pod-agent').value = shipmentData.pod_agent_id || '';
+      document.getElementById('etd').value = shipmentData.departure_date || '';
+      document.getElementById('eta-trans').value = shipmentData.eta_transshipment_port || '';
+      document.getElementById('etd-trans').value = shipmentData.etd_transshipment_port || '';
+      document.getElementById('eta').value = shipmentData.delivery_date || '';
+      document.getElementById('cont-qty').value = shipmentData.container_quantity ?? '';
+      document.getElementById('cont-type').value = shipmentData.container_type || '';
+      document.getElementById('cont-num').value = shipmentData.container_number || '';
+      document.getElementById('empty-ret').value = shipmentData.empty_container_return_date_at_pod || '';
+      document.getElementById('stuff-date').value = shipmentData.stuffing_date || '';
+      document.getElementById('driver-info').value = shipmentData.driver_information || '';
+      document.getElementById('short-decl').value = shipmentData.short_declaration || '';
+      document.getElementById('mbl-num').value = shipmentData.mbl_number || '';
+      document.getElementById('ship-line').value = shipmentData.shipping_line || '';
+      document.getElementById('feeder-name').value = shipmentData.feeder_vessel_name || '';
+      document.getElementById('eta-vessel').value = shipmentData.eta_vessel_at_pod || '';
+      document.getElementById('doc-receipt').value = shipmentData.date_of_receipt_of_documents || '';
+      document.getElementById('doc-agent').value = shipmentData.doc_sent_to_agent_date || '';
+      document.getElementById('mbl-rel').value = shipmentData.mbl_release_date || '';
+      document.getElementById('hbl-rel').value = shipmentData.hbl_release_date || '';
+      document.getElementById('border-arr').value = shipmentData.border_arrival_date || '';
+      document.getElementById('terminal').value = shipmentData.terminal_name || '';
+      document.getElementById('do-date').value = shipmentData.d_o_date || '';
+      document.getElementById('cargo-del').value = shipmentData.cargo_delivery_date || '';
+      document.getElementById('opr-notes').value = shipmentData.operation_notes || '';
+      document.getElementById('sales-notes').value = shipmentData.sales_manager_notes || '';
+      document.getElementById('s-sales-manager-display').value = shipmentData.sales_manager_name || '—';
+      document.getElementById('s-op-manager').value = shipmentData.operation_manager_id || '';
+      applyRoleToOperationManagerField(shipmentData);
+    }
+    document.getElementById('modal-overlay').classList.add('active');
+  }
+  function closeModal() { document.getElementById('modal-overlay').classList.remove('active'); }
+  document.getElementById('modal-overlay').addEventListener('click', e => { if(e.target===e.currentTarget) closeModal(); });
+
+  document.getElementById('ship-form').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    const btn = document.getElementById('s-submit');
+    const shipmentId = document.getElementById('s-id').value || null;
+    const user = window._currentUser || {};
+    btn.disabled=true; btn.innerHTML='<i class="fas fa-spinner fa-spin"></i> Saving...';
+
+    const payload = {
+      shipment_type: document.getElementById('s-type').value,
+      status: document.getElementById('s-status').value,
+      client_id: document.getElementById('s-client').value,
+      bk_number: document.getElementById('bk-num').value,
+      so_number: document.getElementById('so-num').value,
+      req_number: document.getElementById('req-num').value,
+      shipper: document.getElementById('shipper').value,
+      incoterms: document.getElementById('incoterms').value,
+      pol: document.getElementById('pol').value,
+      pol_agent_id: document.getElementById('s-pol-agent').value,
+      pod: document.getElementById('pod').value,
+      pod_agent_id: document.getElementById('s-pod-agent').value,
+      departure_date: document.getElementById('etd').value,
+      eta_transshipment_port: document.getElementById('eta-trans').value,
+      etd_transshipment_port: document.getElementById('etd-trans').value,
+      delivery_date: document.getElementById('eta').value,
+      container_quantity: parseInt(document.getElementById('cont-qty').value) || null,
+      container_type: document.getElementById('cont-type').value,
+      container_number: document.getElementById('cont-num').value,
+      empty_container_return_date_at_pod: document.getElementById('empty-ret').value,
+      stuffing_date: document.getElementById('stuff-date').value,
+      driver_information: document.getElementById('driver-info').value,
+      short_declaration: document.getElementById('short-decl').value,
+      mbl_number: document.getElementById('mbl-num').value,
+      shipping_line: document.getElementById('ship-line').value,
+      feeder_vessel_name: document.getElementById('feeder-name').value,
+      eta_vessel_at_pod: document.getElementById('eta-vessel').value,
+      date_of_receipt_of_documents: document.getElementById('doc-receipt').value,
+      doc_sent_to_agent_date: document.getElementById('doc-agent').value,
+      mbl_release_date: document.getElementById('mbl-rel').value,
+      hbl_release_date: document.getElementById('hbl-rel').value,
+      border_arrival_date: document.getElementById('border-arr').value,
+      terminal_name: document.getElementById('terminal').value,
+      d_o_date: document.getElementById('do-date').value,
+      cargo_delivery_date: document.getElementById('cargo-del').value,
+      operation_notes: document.getElementById('opr-notes').value,
+      sales_manager_notes: document.getElementById('sales-notes').value
+    };
+
+    if (isAdminLike() || hasCapability('Operations')) {
+      payload.operation_manager_id = document.getElementById('s-op-manager').value || null;
+    }
+
+    try {
+      const endpoint = shipmentId ? `/api/shipments/${shipmentId}` : '/api/shipments/register';
+      const method = shipmentId ? 'PATCH' : 'POST';
+      const res = await window.authFetch(endpoint, {
+        method, headers:{'Content-Type':'application/json'},
+        body:JSON.stringify(payload)
+      });
+      if(res.ok) {
+        toast(shipmentId ? '✅ Shipment file updated!' : '✅ Shipment file created!');
+        closeModal();
+        window.loadShipments();
+      } else {
+        const d=await res.json(); toast('Error: '+(d.detail||'?'), true);
+      }
+    } catch(err) { toast('Network error', true); }
+    finally { btn.disabled=false; btn.innerHTML='<i class="fas fa-save"></i> Save & Update Shipment File'; }
+  });
+</script>
+
+</body>
+</html>

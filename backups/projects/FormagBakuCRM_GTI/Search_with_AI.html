@@ -1,0 +1,1202 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">-a
+  <title>Search with AI – Formag</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <!-- Favicon -->
+  <link rel="icon" type="image/png" href="logo.png">
+
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    :root {
+      --bg-deep: #050611;
+      --bg-panel: rgba(15, 18, 36, 0.92);
+      --border-soft: rgba(129, 140, 248, 0.45);
+      --accent: #c084fc;
+      --accent-strong: #a855f7;
+      --accent-pink: #ec4899;
+      --text-main: #e5e7eb;
+      --text-muted: #9ca3af;
+      --error: #fb7185;
+      --success: #4ade80;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: var(--text-main);
+      background:
+        radial-gradient(circle at top left, #1e1b4b 0, transparent 55%),
+        radial-gradient(circle at bottom right, #4c1d95 0, transparent 55%),
+        radial-gradient(circle at top right, #020617 0, #020617 60%);
+      position: relative;
+      overflow-x: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Decorative grid */
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      background-image:
+        linear-gradient(rgba(148, 163, 184, 0.06) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(148, 163, 184, 0.06) 1px, transparent 1px);
+      background-size: 24px 24px;
+      mix-blend-mode: soft-light;
+      opacity: .7;
+      z-index: 0;
+    }
+
+    /* Center glow pulse */
+    body::after {
+      content: "";
+      position: fixed;
+      width: 420px;
+      height: 420px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(192, 132, 252, .32), transparent 70%);
+      top: 48%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      filter: blur(6px);
+      opacity: 0.7;
+      z-index: 0;
+      animation: corePulse 12s ease-in-out infinite;
+      pointer-events: none;
+    }
+
+    @keyframes corePulse {
+
+      0%,
+      100% {
+        transform: translate(-50%, -50%) scale(1);
+        opacity: .6;
+      }
+
+      50% {
+        transform: translate(-50%, -52%) scale(1.12);
+        opacity: .9;
+      }
+    }
+
+    /* ==================== TOP BAR ==================== */
+
+    .top-bar {
+      z-index: 1;
+      padding: 10px 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: radial-gradient(circle at top left, rgba(76, 29, 149, 0.25), transparent 55%),
+        rgba(15, 23, 42, 0.95);
+      border-bottom: 1px solid rgba(148, 163, 184, 0.25);
+      backdrop-filter: blur(14px);
+    }
+
+    .top-left {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .top-left img {
+      height: 30px;
+      filter: brightness(1.25) contrast(1.1);
+    }
+
+    .top-left span {
+      font-size: 11px;
+      letter-spacing: .32em;
+      text-transform: uppercase;
+      color: #a5b4fc;
+    }
+
+    .back-link {
+      padding: 6px 12px;
+      border: 1px solid rgba(148, 163, 184, 0.35);
+      border-radius: 999px;
+      text-decoration: none;
+      color: #e5e7eb;
+      font-size: 13px;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: .2s;
+    }
+
+    .back-link:hover {
+      border-color: rgba(192, 132, 252, 0.8);
+      box-shadow:
+        0 0 15px rgba(129, 140, 248, 0.4),
+        0 0 25px rgba(76, 29, 149, 0.5);
+      transform: translateY(-1px);
+    }
+
+    /* ==================== BODY ==================== */
+
+    .page-body {
+      z-index: 1;
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 32px 16px;
+    }
+
+    .container {
+      width: 900px;
+      max-width: 100%;
+      padding: 28px 24px;
+      border-radius: 24px;
+      background:
+        radial-gradient(circle at top left, rgba(168, 85, 247, 0.25), transparent 60%),
+        radial-gradient(circle at bottom right, rgba(236, 72, 153, 0.18), transparent 70%),
+        var(--bg-panel);
+      border: 1px solid rgba(129, 140, 248, 0.35);
+      box-shadow:
+        0 22px 60px rgba(15, 23, 42, 0.8),
+        0 0 0 1px rgba(15, 23, 42, 0.9);
+      text-align: left;
+      position: relative;
+      overflow: hidden;
+      backdrop-filter: blur(18px);
+      display: grid;
+      grid-template-columns: minmax(0, 2fr) minmax(260px, 1.1fr);
+      gap: 22px;
+    }
+
+    .container::before {
+      content: "";
+      position: absolute;
+      left: -40%;
+      right: -40%;
+      top: -80%;
+      height: 60%;
+      background: linear-gradient(to bottom,
+          transparent,
+          rgba(236, 72, 153, 0.18),
+          rgba(192, 132, 252, 0.14),
+          transparent);
+      filter: blur(12px);
+      opacity: 0;
+      animation: panelScan 9s linear infinite;
+    }
+
+    @keyframes panelScan {
+      0% {
+        top: -80%;
+        opacity: 0;
+      }
+
+      25% {
+        opacity: .7;
+      }
+
+      50% {
+        top: 110%;
+        opacity: .2;
+      }
+
+      100% {
+        top: 110%;
+        opacity: 0;
+      }
+    }
+
+    /* ===== LEFT COLUMN (MAIN PANEL) ===== */
+
+    .left-panel {
+      position: relative;
+      z-index: 1;
+    }
+
+    .panel-header {
+      margin-bottom: 18px;
+    }
+
+    .panel-kicker {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: .18em;
+      color: #a5b4fc;
+      margin-bottom: 4px;
+    }
+
+    .panel-title {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 21px;
+      font-weight: 600;
+      margin-bottom: 4px;
+    }
+
+    .panel-title .icon-orb {
+      width: 28px;
+      height: 28px;
+      border-radius: 999px;
+      background: radial-gradient(circle, #f9a8ff, #a855f7);
+      box-shadow:
+        0 0 18px rgba(236, 72, 153, 0.8),
+        0 0 32px rgba(168, 85, 247, 0.7);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      animation: orbPulse 4.5s infinite ease-in-out;
+      font-size: 15px;
+    }
+
+    @keyframes orbPulse {
+
+      0%,
+      100% {
+        transform: scale(1);
+        box-shadow: 0 0 14px rgba(236, 72, 153, 0.75);
+      }
+
+      50% {
+        transform: scale(1.12);
+        box-shadow: 0 0 30px rgba(236, 72, 153, 1);
+      }
+    }
+
+    .panel-subtitle {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-bottom: 8px;
+    }
+
+    .panel-badge {
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-size: 11px;
+      letter-spacing: .14em;
+      border: 1px solid rgba(192, 132, 252, 0.6);
+      background: linear-gradient(135deg, rgba(76, 29, 149, 0.7), rgba(129, 140, 248, 0.3));
+      display: inline-block;
+      margin-bottom: 16px;
+    }
+
+    .field-label {
+      display: block;
+      font-size: 11px;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: .06em;
+      margin-bottom: 6px;
+    }
+
+    .input-shell {
+      position: relative;
+      margin-bottom: 10px;
+    }
+
+    .input-shell::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      border-radius: 14px;
+      border: 1px solid rgba(148, 163, 184, 0.4);
+      pointer-events: none;
+    }
+
+    .input-shell:focus-within::before {
+      border-color: rgba(192, 132, 252, 0.95);
+      box-shadow:
+        0 0 0 1px rgba(192, 132, 252, 0.9),
+        0 0 28px rgba(147, 51, 234, 0.6);
+    }
+
+    .input-prefix {
+      position: absolute;
+      top: 50%;
+      left: 13px;
+      transform: translateY(-50%);
+      font-size: 12px;
+      color: #9ca3af;
+      pointer-events: none;
+    }
+
+    input {
+      width: 100%;
+      padding: 11px 12px 11px 70px;
+      background: radial-gradient(circle at top left, rgba(15, 23, 42, 0.9), rgba(15, 23, 42, 0.95));
+      color: #f9fafb;
+      border-radius: 14px;
+      border: none;
+      outline: none;
+      font-size: 14px;
+    }
+
+    input::placeholder {
+      color: #6b7280;
+      font-style: italic;
+    }
+
+    /* ===== AUTOCOMPLETE SUGGESTIONS ===== */
+
+    .suggestions {
+      margin-top: 4px;
+      border-radius: 10px;
+      background: rgba(15, 23, 42, 0.96);
+      border: 1px solid rgba(129, 140, 248, 0.4);
+      box-shadow: 0 12px 30px rgba(15, 23, 42, 0.9);
+      max-height: 160px;
+      overflow-y: auto;
+      display: none;
+    }
+
+    .suggestion-item {
+      padding: 6px 10px;
+      font-size: 12px;
+      cursor: pointer;
+      color: #e5e7eb;
+    }
+
+    .suggestion-item strong {
+      color: #c4b5fd;
+    }
+
+    .suggestion-item:hover {
+      background: rgba(55, 48, 163, 0.55);
+    }
+
+    /* ===== PRESETS ===== */
+
+    .preset-row {
+      margin-top: 8px;
+      margin-bottom: 12px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .preset-btn {
+      padding: 6px 12px;
+      font-size: 11px;
+      border-radius: 999px;
+      border: 1px solid rgba(168, 85, 247, 0.45);
+      background: linear-gradient(135deg,
+          rgba(76, 29, 149, 0.6),
+          rgba(147, 51, 234, 0.4));
+      color: #e5e7eb;
+      cursor: pointer;
+      transition: .2s;
+      max-width: 100%;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+      overflow: hidden;
+    }
+
+    .preset-btn:hover {
+      border-color: rgba(236, 72, 153, 0.9);
+      box-shadow:
+        0 0 12px rgba(147, 51, 234, 0.6),
+        0 0 20px rgba(236, 72, 153, 0.6);
+      transform: translateY(-1px);
+    }
+
+    /* ===== AI THINKING ===== */
+
+    .ai-thinking {
+      margin: 6px 0 8px;
+      font-size: 12px;
+      color: #c084fc;
+      display: none;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .ai-thinking .dots::after {
+      content: "AI is thinking";
+      animation: textPulse 2.2s infinite ease-in-out;
+    }
+
+    @keyframes textPulse {
+      0% {
+        content: "AI is thinking";
+      }
+
+      25% {
+        content: "AI is thinking.";
+      }
+
+      50% {
+        content: "AI is thinking..";
+      }
+
+      75% {
+        content: "AI is thinking...";
+      }
+
+      100% {
+        content: "AI is thinking";
+      }
+    }
+
+    /* ===== MODE SWITCH (STRICT / DEEP) ===== */
+
+    .mode-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 10px;
+      margin-top: 4px;
+    }
+
+    .mode-label {
+      font-size: 11px;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: .06em;
+    }
+
+    .mode-switch {
+      display: inline-flex;
+      padding: 3px;
+      border-radius: 999px;
+      background: rgba(15, 23, 42, 0.9);
+      border: 1px solid rgba(129, 140, 248, 0.5);
+    }
+
+    .mode-btn {
+      border: none;
+      padding: 5px 10px;
+      border-radius: 999px;
+      font-size: 11px;
+      cursor: pointer;
+      color: #9ca3af;
+      background: transparent;
+      transition: .15s;
+    }
+
+    .mode-btn.active {
+      background: linear-gradient(135deg, #4f46e5, #a855f7);
+      color: #f9fafb;
+      box-shadow: 0 0 12px rgba(129, 140, 248, 0.7);
+    }
+
+    /* ===== BUTTON & CAPTION ===== */
+
+    #runBtn {
+      width: 100%;
+      border: none;
+      border-radius: 999px;
+      padding: 12px 16px;
+      font-size: 14px;
+      letter-spacing: .06em;
+      font-weight: 600;
+      cursor: pointer;
+      background-image: linear-gradient(135deg, var(--accent-strong), var(--accent-pink));
+      color: #fff;
+      box-shadow:
+        0 12px 28px rgba(76, 29, 149, 0.8),
+        0 0 0 1px rgba(236, 72, 153, 0.5);
+      transition: .2s;
+    }
+
+    #runBtn:hover:not(:disabled) {
+      transform: translateY(-1px);
+      box-shadow:
+        0 14px 34px rgba(76, 29, 149, 0.9),
+        0 0 16px rgba(236, 72, 153, 0.75);
+    }
+
+    #runBtn:disabled {
+      opacity: .65;
+      cursor: not-allowed;
+      box-shadow: none;
+    }
+
+    .btn-caption {
+      margin-top: 6px;
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+
+    /* ===== RESULT BOX ===== */
+
+    #result-box {
+      margin-top: 18px;
+      padding: 14px 12px;
+      border-radius: 14px;
+      background: radial-gradient(circle at top left,
+          rgba(30, 64, 175, 0.35),
+          rgba(15, 23, 42, 0.95));
+      border: 1px solid rgba(148, 163, 184, 0.5);
+      min-height: 52px;
+      display: none;
+      font-family: "JetBrains Mono", Consolas, monospace;
+      font-size: 12px;
+      line-height: 1.5;
+      position: relative;
+      overflow: hidden;
+      white-space: pre-wrap;
+      word-wrap: break-word;
+    }
+
+    #result-box.show-success::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(120deg,
+          rgba(236, 72, 153, 0.15),
+          transparent,
+          rgba(129, 140, 248, 0.14));
+      animation: glowWave 1.2s ease-out 1;
+      pointer-events: none;
+    }
+
+    @keyframes glowWave {
+      0% {
+        opacity: 0;
+      }
+
+      30% {
+        opacity: .7;
+      }
+
+      100% {
+        opacity: 0;
+      }
+    }
+
+    .text-success {
+      color: var(--success);
+    }
+
+    .text-error {
+      color: var(--error);
+    }
+
+    a.result-link {
+      display: inline-flex;
+      gap: 6px;
+      margin-top: 12px;
+      padding: 8px 14px;
+      border-radius: 999px;
+      background: linear-gradient(135deg, #4f46e5, #a855f7);
+      text-decoration: none;
+      color: #fff !important;
+      font-size: 12px;
+      font-weight: 500;
+      box-shadow:
+        0 8px 20px rgba(55, 48, 163, 0.8),
+        0 0 0 1px rgba(129, 140, 248, 0.7);
+      transition: .2s;
+      position: relative; 
+      z-index: 10;
+    }
+
+    a.result-link:hover {
+      transform: translateY(-1px);
+      box-shadow:
+        0 12px 28px rgba(55, 48, 163, 0.95),
+        0 0 18px rgba(129, 140, 248, 0.9);
+    }
+
+    /* ===== HISTORY BLOCK ===== */
+
+    .history-block {
+      margin-top: 18px;
+      padding-top: 10px;
+      border-top: 1px dashed rgba(148, 163, 184, 0.4);
+    }
+
+    .history-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 8px;
+    }
+
+    .history-title {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      color: var(--text-muted);
+    }
+
+    .history-clear {
+      border: none;
+      background: transparent;
+      color: #9ca3af;
+      font-size: 11px;
+      cursor: pointer;
+      text-decoration: underline;
+      text-underline-offset: 2px;
+    }
+
+    .history-clear:hover {
+      color: #e5e7eb;
+    }
+
+    .history-list {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .history-item {
+      font-size: 11px;
+      padding: 6px 8px;
+      border-radius: 8px;
+      background: rgba(15, 23, 42, 0.85);
+      border: 1px solid rgba(55, 65, 81, 0.8);
+      color: #e5e7eb;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      max-height: 40px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .history-item-prefix {
+      font-size: 10px;
+      color: #9ca3af;
+    }
+
+    .history-item:hover {
+      border-color: rgba(129, 140, 248, 0.9);
+      background: rgba(30, 64, 175, 0.75);
+    }
+
+    /* ===== RIGHT AI HELPER PANEL ===== */
+
+    .right-panel {
+      position: relative;
+      z-index: 1;
+      padding-left: 4px;
+    }
+
+    .ai-side-panel {
+      position: sticky;
+      top: 10px;
+      border-radius: 18px;
+      padding: 14px 12px;
+      background: radial-gradient(circle at top, rgba(30, 64, 175, 0.4), rgba(15, 23, 42, 0.98));
+      border: 1px solid rgba(129, 140, 248, 0.55);
+      box-shadow:
+        0 18px 36px rgba(15, 23, 42, 0.9),
+        0 0 0 1px rgba(15, 23, 42, 0.9);
+      font-size: 12px;
+    }
+
+    .ai-side-title {
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: .12em;
+      color: #a5b4fc;
+      margin-bottom: 6px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .ai-side-title-icon {
+      width: 18px;
+      height: 18px;
+      border-radius: 999px;
+      background: radial-gradient(circle, #f9a8ff, #a855f7);
+      box-shadow: 0 0 14px rgba(236, 72, 153, 0.9);
+    }
+
+    .ai-side-mode-label {
+      font-size: 11px;
+      color: #e5e7eb;
+      margin-bottom: 6px;
+    }
+
+    .ai-side-hints {
+      margin: 8px 0 10px;
+      padding-left: 16px;
+      color: var(--text-muted);
+      font-size: 11px;
+    }
+
+    .ai-side-hints li+li {
+      margin-top: 4px;
+    }
+
+    .ai-side-tip {
+      font-size: 11px;
+      color: #e5e7eb;
+      border-radius: 10px;
+      padding: 8px 8px;
+      background: rgba(15, 23, 42, 0.8);
+      border: 1px dashed rgba(148, 163, 184, 0.6);
+      margin-top: 4px;
+    }
+
+    .ai-side-footnote {
+      margin-top: 8px;
+      font-size: 10px;
+      color: #9ca3af;
+    }
+
+    /* ================= RESPONSIVE ================= */
+
+    @media (max-width: 840px) {
+      .container {
+        grid-template-columns: minmax(0, 1fr);
+      }
+
+      .right-panel {
+        order: -1;
+      }
+
+      .ai-side-panel {
+        margin-bottom: 8px;
+      }
+    }
+
+    @media (max-width: 640px) {
+      .top-bar {
+        flex-direction: column;
+        gap: 8px;
+      }
+
+      .back-link {
+        align-self: flex-end;
+      }
+
+      .container {
+        padding: 20px 16px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+  <header class="top-bar">
+    <div class="top-left">
+      <img src="logo.png" alt="Formag Logo">
+      <span>FORMAG FORWARDING</span>
+    </div>
+
+    <a class="back-link" href="index.html">
+      <span class="icon">←</span>
+      Back to Dashboard
+    </a>
+  </header>
+
+
+  <div class="page-body">
+    <div class="container">
+
+      <!-- LEFT: MAIN AI PANEL -->
+      <div class="left-panel">
+        <div class="panel-header">
+          <div class="panel-kicker">AI MODULE</div>
+
+          <div class="panel-title">
+            <span class="icon-orb">⚛</span>
+            Search with AI
+          </div>
+
+          <div class="panel-subtitle">
+            Ask in natural language – the system will transform your prompt into a structured Google Sheets query.
+          </div>
+
+          <div class="panel-badge">by Unsiyyat</div>
+        </div>
+
+        <!-- INPUT LABEL -->
+        <label class="field-label" for="userInput">Your prompt</label>
+
+        <!-- INPUT SHELL -->
+        <div class="input-shell">
+          <span class="input-prefix">>_</span>
+          <input type="text" id="userInput" placeholder="e.g.: Find all clients from Germany with revenue > 20 000 USD">
+        </div>
+
+        <!-- AUTOCOMPLETE SUGGESTIONS -->
+        <div id="suggestions" class="suggestions"></div>
+
+        <!-- PRESET BUTTONS (dynamic) -->
+        <div id="preset-row" class="preset-row"></div>
+
+        <!-- AI THINKING -->
+        <div id="ai-thinking" class="ai-thinking">
+          <span class="dots"></span>
+        </div>
+
+        <!-- MODE SWITCH -->
+        <div class="mode-row">
+          <span class="mode-label">Mode</span>
+          <div class="mode-switch">
+            <button type="button" id="mode-strict" class="mode-btn active" onclick="setMode('strict')">
+              Strict
+            </button>
+            <button type="button" id="mode-deep" class="mode-btn" onclick="setMode('deep')">
+              Deep
+            </button>
+          </div>
+        </div>
+
+        <!-- BUTTON -->
+        <button id="runBtn" onclick="runWorkflow()">START SEARCH</button>
+        <div class="btn-caption">
+          The request will be sent to your AI workflow and the result will be returned as a link to a Google Sheet.
+        </div>
+
+        <!-- RESULT BOX -->
+        <div id="result-box"></div>
+
+        <!-- HISTORY -->
+        <div class="history-block">
+          <div class="history-header">
+            <span class="history-title">Recent queries</span>
+            <button type="button" class="history-clear" onclick="clearHistory()">Clear</button>
+          </div>
+          <div id="history-list" class="history-list"></div>
+        </div>
+
+      </div>
+
+      <!-- RIGHT: FLOATING AI HELP PANEL -->
+      <div class="right-panel">
+        <aside class="ai-side-panel">
+          <div class="ai-side-title">
+            <span class="ai-side-title-icon"></span>
+            AI hints
+          </div>
+
+          <div id="ai-side-mode" class="ai-side-mode-label">
+            Mode: <b>Strict</b> – closer to exact filters.
+          </div>
+
+          <ul class="ai-side-hints">
+            <li>Be explicit: <i>“from Germany, revenue &gt; 20 000, last 6 months”</i></li>
+            <li>Use business language, not formulas.</li>
+            <li>You can reference columns by meaning, not exact names.</li>
+          </ul>
+
+          <div class="ai-side-tip" id="ai-side-tip">
+            Tip: Try something like<br>
+            <b>“Find all clients in Baku with more than 5 shipments this quarter”</b>
+          </div>
+
+          <div class="ai-side-footnote">
+            The system learns from your prompt style (short, detailed, geographic, financial) and can reuse it in
+            suggestions.
+          </div>
+        </aside>
+      </div>
+
+    </div>
+  </div>
+
+
+  <script>
+    // ФИКСИРОВАННАЯ ССЫЛКА НА GOOGLE SHEET
+    const FIXED_SHEET_URL =   "https://docs.google.com/spreadsheets/d/1N3GN4SJiRlcl1-E9b4fliU2YJ9-H4lLDJJziDl7k38c/edit?gid=0#gid=0";
+
+    const HISTORY_KEY = 'aiSearchHistoryV1';
+    const MAX_HISTORY = 20;
+    const MAX_PRESETS = 4;
+    const MAX_SUGGESTIONS = 5;
+
+    let currentMode = 'strict';
+
+    function loadHistory() {
+      try {
+        const raw = localStorage.getItem(HISTORY_KEY);
+        if (!raw) return [];
+        const parsed = JSON.parse(raw);
+        return Array.isArray(parsed) ? parsed : [];
+      } catch (e) {
+        return [];
+      }
+    }
+
+    function saveHistory(history) {
+      try {
+        localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
+      } catch (e) {
+        console.warn('Cannot save history', e);
+      }
+    }
+
+    function addToHistory(prompt) {
+      const text = (prompt || '').trim();
+      if (!text) return;
+      let history = loadHistory();
+
+      history = history.filter(h => h.query !== text);
+      history.unshift({ query: text, ts: Date.now() });
+      if (history.length > MAX_HISTORY) {
+        history = history.slice(0, MAX_HISTORY);
+      }
+      saveHistory(history);
+      renderHistory();
+      renderPresets();
+    }
+
+    function clearHistory() {
+      saveHistory([]);
+      renderHistory();
+      renderPresets();
+      renderSuggestions("");
+    }
+
+    function renderHistory() {
+      const listEl = document.getElementById('history-list');
+      if (!listEl) return;
+      const history = loadHistory();
+      listEl.innerHTML = "";
+
+      if (!history.length) {
+        const empty = document.createElement('div');
+        empty.style.fontSize = "11px";
+        empty.style.color = "#6b7280";
+        empty.textContent = "No queries yet.";
+        listEl.appendChild(empty);
+        return;
+      }
+
+      history.slice(0, 6).forEach((item, index) => {
+        const div = document.createElement('div');
+        div.className = "history-item";
+        const prefix = document.createElement('span');
+        prefix.className = "history-item-prefix";
+        prefix.textContent = "#" + (index + 1);
+        const text = document.createElement('span');
+        text.textContent = item.query;
+
+        div.appendChild(prefix);
+        div.appendChild(text);
+        div.addEventListener('click', () => {
+          const input = document.getElementById('userInput');
+          input.value = item.query;
+          renderSuggestions(input.value);
+        });
+
+        listEl.appendChild(div);
+      });
+    }
+
+    const defaultPresets = [
+      "Find all clients who shipped more than 10 containers last month",
+      "Show all clients from Germany with revenue above 20,000 USD",
+      "List clients with unpaid invoices",
+      "Show top 5 clients by revenue"
+    ];
+
+    function renderPresets() {
+      const row = document.getElementById('preset-row');
+      if (!row) return;
+      const history = loadHistory();
+      row.innerHTML = "";
+
+      let presets = [];
+
+      if (history.length) {
+        presets = history.slice(0, MAX_PRESETS).map(h => h.query);
+      } else {
+        presets = defaultPresets;
+      }
+
+      if (history.length >= 2) {
+        presets = [];
+        const histQueries = history.map(h => h.query);
+        const uniqHist = [...new Set(histQueries)].slice(0, 2);
+        const rest = defaultPresets.slice(0, MAX_PRESETS - uniqHist.length);
+        presets = uniqHist.concat(rest);
+      }
+
+      presets.forEach(promptText => {
+        const btn = document.createElement('button');
+        btn.type = "button";
+        btn.className = "preset-btn";
+        btn.textContent = promptText;
+        btn.addEventListener('click', () => {
+          const input = document.getElementById('userInput');
+          input.value = promptText;
+          renderSuggestions(promptText);
+        });
+        row.appendChild(btn);
+      });
+    }
+
+    function setMode(mode) {
+      currentMode = mode === 'deep' ? 'deep' : 'strict';
+      const strictBtn = document.getElementById('mode-strict');
+      const deepBtn = document.getElementById('mode-deep');
+      strictBtn.classList.toggle('active', currentMode === 'strict');
+      deepBtn.classList.toggle('active', currentMode === 'deep');
+
+      const sideMode = document.getElementById('ai-side-mode');
+      const sideTip = document.getElementById('ai-side-tip');
+
+      if (currentMode === 'strict') {
+        sideMode.innerHTML = 'Mode: <b>Strict</b> – closer to exact filters.';
+        sideTip.innerHTML = 'Tip: Try something like<br><b>“Find all clients in Baku with more than 5 shipments this quarter”</b>';
+      } else {
+        sideMode.innerHTML = 'Mode: <b>Deep</b> – allow AI to interpret, group and expand your query.';
+        sideTip.innerHTML = 'Tip: Try something like<br><b>“Cluster my clients by region and show the most promising ones for upsell”</b>';
+      }
+    }
+
+    function renderSuggestions(currentText) {
+      const suggestionsEl = document.getElementById('suggestions');
+      if (!suggestionsEl) return;
+      const q = (currentText || '').trim().toLowerCase();
+      if (!q || q.length < 3) {
+        suggestionsEl.style.display = "none";
+        suggestionsEl.innerHTML = "";
+        return;
+      }
+
+      const history = loadHistory().map(h => h.query);
+      const pool = [...new Set(history.concat(defaultPresets))];
+
+      const matched = pool
+        .filter(p => p.toLowerCase().includes(q))
+        .slice(0, MAX_SUGGESTIONS);
+
+      if (!matched.length) {
+        suggestionsEl.style.display = "none";
+        suggestionsEl.innerHTML = "";
+        return;
+      }
+
+      suggestionsEl.innerHTML = "";
+      matched.forEach(text => {
+        const div = document.createElement('div');
+        div.className = "suggestion-item";
+
+        const lower = text.toLowerCase();
+        const idx = lower.indexOf(q);
+        if (idx >= 0) {
+          const before = text.slice(0, idx);
+          const mid = text.slice(idx, idx + q.length);
+          const after = text.slice(idx + q.length);
+          div.innerHTML = `${before}<strong>${mid}</strong>${after}`;
+        } else {
+          div.textContent = text;
+        }
+
+        div.addEventListener('click', () => {
+          const input = document.getElementById('userInput');
+          input.value = text;
+          suggestionsEl.style.display = "none";
+        });
+
+        suggestionsEl.appendChild(div);
+      });
+
+      suggestionsEl.style.display = "block";
+    }
+        async function runWorkflow() {
+      const webhookUrl = 'https://n8n.2ai.az/webhook/run-process';
+      const secretKey = 'secret_saas_key_2024_secure';
+
+      const btn = document.getElementById('runBtn');
+      const output = document.getElementById('result-box');
+      const inputField = document.getElementById('userInput');
+      const thinking = document.getElementById('ai-thinking');
+      const suggestionsEl = document.getElementById('suggestions');
+
+      const promptText = inputField.value;
+
+      btn.disabled = true;
+      btn.innerText = "⏳ Working...";
+      output.style.display = 'none';
+      output.className = '';
+      output.innerHTML = '';
+      thinking.style.display = 'flex';
+      if (suggestionsEl) {
+        suggestionsEl.style.display = 'none';
+      }
+
+      try {
+        const response = await fetch(webhookUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-api-key': secretKey
+          },
+          body: JSON.stringify({
+            prompt: promptText,
+            source: "website",
+            mode: currentMode
+          })
+        });
+
+        if (!response.ok) throw new Error(`Network Error: ${response.status}`);
+
+        const data = await response.json();
+        const messageText = data.message || "Process completed.";
+
+        // Текст результата
+        output.innerHTML = "✅ <b>Success:</b><br>" + messageText + "<br><br>";
+        output.style.display = 'block';
+        output.classList.add("text-success", "show-success");
+
+        // Кнопка "Open Google Sheet" — ВСЕГДА ведёт на FIXED_SHEET_URL
+        const link = document.createElement('a');
+        link.href = FIXED_SHEET_URL;
+        link.target = "_blank";
+        link.rel = "noopener noreferrer";
+        link.className = "result-link";
+        link.textContent = "🔗 Open Google Sheet";
+        output.appendChild(link);
+
+        // добавить запрос в историю
+        addToHistory(promptText);
+
+      } catch (error) {
+        output.innerHTML = "❌ <b>Error:</b><br>" + error.message;
+        output.style.display = 'block';
+        output.classList.add('text-error');
+      } finally {
+        btn.disabled = false;
+        btn.innerText = "START SEARCH";
+        thinking.style.display = 'none';
+      }
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      renderHistory();
+      renderPresets();
+      setMode('strict');
+
+      const input = document.getElementById('userInput');
+      if (input) {
+        input.addEventListener('input', () => {
+          renderSuggestions(input.value);
+        });
+
+        input.addEventListener('blur', () => {
+          setTimeout(() => {
+            const suggestionsEl = document.getElementById('suggestions');
+            if (suggestionsEl) suggestionsEl.style.display = "none";
+          }, 200);
+        });
+
+        input.addEventListener('focus', () => {
+          renderSuggestions(input.value);
+        });
+      }
+    });
+  </script>
+
+
+</body>
+
+</html>

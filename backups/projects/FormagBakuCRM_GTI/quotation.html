@@ -1,0 +1,1658 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>FormagBaku - Quotation Management</title>
+  <meta name="description" content="Freight quotation management system for Formag Forwarding Azerbaijan." />
+  <link rel="icon" type="image/png" href="logo.png" />
+  <link rel="stylesheet" href="style.css">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; }
+    body { margin:0; background:#0a0c10; color:#fff; font-family:'Inter',sans-serif; min-height:100vh; }
+
+    .page-wrap { max-width:1440px; margin:0 auto; padding:32px 24px 80px; }
+
+    .back-btn { display:inline-flex; align-items:center; gap:8px; color:#00d4ff;
+      text-decoration:none; font-size:13px; margin-bottom:24px;
+      transition:all 0.2s; opacity:.75; }
+    .back-btn:hover { opacity:1; transform:translateX(-3px); }
+
+    /* PAGE HEADER */
+    .page-header { display:flex; align-items:flex-start; justify-content:space-between;
+      margin-bottom:28px; padding-bottom:20px; border-bottom:1px solid rgba(255,255,255,.07); }
+    .page-header h1 { margin:0; font-size:24px; font-weight:700;
+      background:linear-gradient(90deg,#fff 55%,#00d4ff);
+      -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent; }
+    .page-sub { color:#00d4ff; font-size:10px; letter-spacing:2px; text-transform:uppercase; margin-top:4px; opacity:.6; }
+
+    /* ROLE BANNER */
+    .role-banner { display:flex; align-items:center; gap:10px;
+      background:rgba(0,212,255,.06); border:1px solid rgba(0,212,255,.18);
+      border-radius:10px; padding:10px 16px; margin-bottom:24px; font-size:13px; }
+    .role-badge { background:rgba(0,212,255,.15); color:#00d4ff; border-radius:20px;
+      padding:3px 12px; font-size:11px; font-weight:700; letter-spacing:1px; }
+    .role-badge.admin { background:rgba(250,204,21,.12); color:#facc15; }
+    .dev-tag { font-size:10px; color:#555; margin-left:auto; }
+
+    /* KPI ROW (Admin only) */
+    .kpi-row { display:grid; grid-template-columns:repeat(5,1fr); gap:12px; margin-bottom:24px; }
+    .kpi-card { background:rgba(20,23,30,.9); border:1px solid rgba(255,255,255,.07);
+      border-radius:12px; padding:18px 20px; }
+    .kpi-label { font-size:10px; letter-spacing:1px; text-transform:uppercase; color:#666; }
+    .kpi-val { font-size:26px; font-weight:700; color:#fff; margin-top:4px; }
+    .kpi-val.green { color:#34d399; }
+    .kpi-val.blue  { color:#60a5fa; }
+    .kpi-val.yellow{ color:#fbbf24; }
+    .kpi-val.red   { color:#f87171; }
+
+    /* GLASS CARD */
+    .glass-card { background:rgba(18,21,28,.88); backdrop-filter:blur(14px);
+      border:1px solid rgba(255,255,255,.07); border-radius:14px;
+      padding:26px; margin-bottom:22px;
+      box-shadow:0 8px 30px rgba(0,0,0,.4); }
+    .card-head { display:flex; align-items:center; justify-content:space-between;
+      margin-bottom:18px; padding-bottom:14px; border-bottom:1px solid rgba(255,255,255,.06); }
+    .card-title { font-size:15px; font-weight:600; display:flex; align-items:center; gap:9px; }
+    .card-title i { color:#00d4ff; }
+    .badge { background:rgba(0,212,255,.12); color:#00d4ff;
+      border-radius:12px; padding:2px 9px; font-size:11px; font-weight:600; }
+
+    /* TABLE */
+    .tbl-wrap { overflow-x:auto; padding-bottom:4px; }
+    .tbl-wrap::-webkit-scrollbar { height:6px; }
+    .tbl-wrap::-webkit-scrollbar-track { background:rgba(255,255,255,.03); border-radius:10px; }
+    .tbl-wrap::-webkit-scrollbar-thumb { background:rgba(0,212,255,.2); border-radius:10px; }
+    .tbl-wrap::-webkit-scrollbar-thumb:hover { background:rgba(0,212,255,.35); }
+    table.q-tbl { width:100%; border-collapse:collapse; font-size:13px; min-width:1400px; }
+    table.q-tbl th { text-align:left; padding:9px 14px; font-size:10px; letter-spacing:1px;
+      text-transform:uppercase; color:#00d4ff; background:rgba(0,0,0,.25);
+      border-bottom:1px solid rgba(255,255,255,.06); white-space:nowrap;
+      position:sticky; top:0; z-index:2; }
+    table.q-tbl td { padding:10px 14px; border-bottom:1px solid rgba(255,255,255,.04);
+      vertical-align:middle; white-space:nowrap; }
+    table.q-tbl tr:hover td { background:rgba(255,255,255,.025); }
+    .fw { color:#fff; font-weight:500; }
+    .dim { color:#666; font-size:12px; }
+    .accent { color:#00d4ff; font-size:12px; }
+    /* Allow wrapping on client/route cells for long text */
+    table.q-tbl td:nth-child(4),
+    table.q-tbl td:nth-child(5) { white-space:normal; min-width:140px; }
+
+    /* STATUS */
+    .sbadge { display:inline-block; padding:3px 10px; border-radius:20px;
+      font-size:10px; font-weight:700; letter-spacing:.5px; }
+    .s-new      { background:rgba(99,102,241,.15); color:#818cf8; border:1px solid rgba(99,102,241,.3); }
+    .s-pending  { background:rgba(100,116,139,.15); color:#94a3b8; border:1px solid rgba(100,116,139,.3); }
+    .s-booked   { background:rgba(16,185,129,.15); color:#34d399; border:1px solid rgba(16,185,129,.3); }
+    .s-canceled { background:rgba(239,68,68,.15);  color:#f87171; border:1px solid rgba(239,68,68,.3); }
+    .s-quoted   { background:rgba(245,158,11,.15); color:#fbbf24; border:1px solid rgba(245,158,11,.3); }
+
+    /* MARGIN INDICATOR */
+    .margin-pos { color:#34d399; font-weight:700; }
+    .margin-neg { color:#f87171; font-weight:700; }
+    .margin-na  { color:#555; }
+
+    /* BUTTONS */
+    .btn { border:none; border-radius:7px; padding:7px 13px; font-size:12px;
+      font-weight:600; cursor:pointer; transition:opacity .2s; white-space:nowrap; font-family:inherit; }
+    .btn:hover { opacity:.8; }
+    .btn-primary { background:linear-gradient(90deg,#007bff,#00d4ff); color:#fff; }
+    .btn-sm { padding:5px 10px; font-size:11px; border-radius:6px; }
+    .btn-ghost { background:transparent; border:1px solid rgba(255,255,255,.12); color:#aaa; }
+    .btn-accept { background:rgba(16,185,129,.18); color:#34d399; border:1px solid rgba(16,185,129,.3); }
+    .btn-reject { background:rgba(239,68,68,.18);  color:#f87171; border:1px solid rgba(239,68,68,.3); }
+    .btn-sent   { background:rgba(59,130,246,.18); color:#60a5fa; border:1px solid rgba(59,130,246,.3); }
+    .btn-mail   { background:rgba(6,182,212,.16); color:#67e8f9; border:1px solid rgba(6,182,212,.28); }
+    .btn-agent  { background:rgba(168,85,247,.16); color:#d8b4fe; border:1px solid rgba(168,85,247,.28); }
+    .btn-quote  { background:linear-gradient(90deg,#007bff,#00d4ff); color:#fff; }
+
+    /* MODAL */
+    .overlay { position:fixed; inset:0; background:rgba(0,0,0,.82);
+      backdrop-filter:blur(8px); z-index:9999;
+      display:flex; align-items:center; justify-content:center;
+      opacity:0; visibility:hidden; transition:all .3s; }
+    .overlay.active { opacity:1; visibility:visible; }
+    .modal { background:rgba(14,17,24,.99); border:1px solid rgba(0,212,255,.22);
+      border-radius:16px; padding:34px; width:94%; max-width:680px;
+      max-height:92vh; overflow-y:auto; position:relative;
+      box-shadow:0 0 80px rgba(0,212,255,.08);
+      transform:translateY(14px); transition:transform .3s; }
+    .overlay.active .modal { transform:translateY(0); }
+    .modal::-webkit-scrollbar { width:3px; }
+    .modal::-webkit-scrollbar-thumb { background:rgba(0,212,255,.2); border-radius:10px; }
+
+    .modal-title { font-size:19px; font-weight:700; margin:0 0 3px; }
+    .modal-sub { font-size:10px; color:#00d4ff; letter-spacing:2px; text-transform:uppercase; opacity:.65; margin-bottom:26px; }
+    .m-close { position:absolute; top:18px; right:22px; background:none; border:none;
+      color:#555; font-size:18px; cursor:pointer; transition:color .2s, transform .2s; }
+    .m-close:hover { color:#00d4ff; transform:rotate(90deg); }
+
+    .f-row { display:grid; grid-template-columns:1fr 1fr; gap:13px; }
+    .f-row3 { display:grid; grid-template-columns:1fr 1fr 1fr; gap:13px; }
+    .f-g { margin-bottom:15px; }
+    .f-g label { display:block; color:#777; font-size:10px; text-transform:uppercase;
+      letter-spacing:1px; margin-bottom:6px; }
+    .f-g input, .f-g select, .f-g textarea {
+      width:100%; padding:10px 13px;
+      background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.09);
+      border-radius:8px; color:#fff; font-size:13px;
+      outline:none; transition:border .2s; font-family:inherit; }
+    .f-g input:focus, .f-g select:focus, .f-g textarea:focus {
+      border-color:#00d4ff; background:rgba(0,212,255,.03); }
+    .f-g select option { background:#12151e; }
+    .f-divider { border:none; border-top:1px solid rgba(255,255,255,.06); margin:18px 0; }
+    .f-section { font-size:10px; letter-spacing:2px; color:#00d4ff;
+      text-transform:uppercase; margin-bottom:13px; margin-top:-3px; }
+
+    /* MARGIN PREVIEW */
+    .margin-preview { background:rgba(0,0,0,.3); border:1px solid rgba(255,255,255,.08);
+      border-radius:8px; padding:12px 16px;
+      display:flex; gap:24px; align-items:center; margin-bottom:16px; }
+    .mp-item { text-align:center; }
+    .mp-label { font-size:10px; color:#666; text-transform:uppercase; letter-spacing:1px; }
+    .mp-val { font-size:20px; font-weight:700; margin-top:2px; }
+    .mp-val.buy { color:#f87171; }
+    .mp-val.sell { color:#60a5fa; }
+    .mp-val.margin { color:#34d399; }
+    .mp-sep { color:#333; font-size:20px; }
+
+    /* AUTOFILL BANNER */
+    .autofill { background:rgba(0,212,255,.06); border:1px solid rgba(0,212,255,.2);
+      border-radius:8px; padding:9px 13px; font-size:12px; color:#00d4ff;
+      margin-bottom:20px; display:none; align-items:center; gap:8px; }
+    .autofill.visible { display:flex; }
+
+    /* SUBMIT BTN */
+    .btn-submit { width:100%; padding:13px;
+      background:linear-gradient(90deg,#007bff,#00d4ff);
+      color:#fff; border:none; border-radius:8px;
+      font-size:14px; font-weight:700; cursor:pointer;
+      transition:opacity .2s; margin-top:4px; font-family:inherit; }
+    .btn-submit:hover { opacity:.88; }
+    .btn-submit:disabled { opacity:.45; cursor:not-allowed; }
+
+    /* EMPTY */
+    .empty { text-align:center; padding:36px 20px; color:#444; }
+    .empty i { font-size:28px; margin-bottom:10px; display:block; }
+
+    /* TOAST */
+    #toast { position:fixed; bottom:28px; left:50%; transform:translateX(-50%);
+      background:rgba(12,15,22,.97); backdrop-filter:blur(10px);
+      color:#fff; border:1px solid #10b981; border-radius:10px;
+      padding:12px 22px; font-size:13px; z-index:99999;
+      opacity:0; visibility:hidden; transition:all .35s; white-space:nowrap; }
+    #toast.show { opacity:1; visibility:visible; bottom:46px; }
+    #toast.err { border-color:#ef4444; color:#f87171; }
+
+    /* FILTERS */
+    .filter-row { display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-bottom:4px; }
+    .filter-chip { background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.1);
+      border-radius:20px; padding:5px 13px; font-size:11px; cursor:pointer;
+      transition:all .2s; color:#888; }
+    .filter-chip:hover, .filter-chip.active { background:rgba(0,212,255,.1);
+      border-color:rgba(0,212,255,.3); color:#00d4ff; }
+
+    .transport-grid { display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); gap:10px; }
+    .transport-chip {
+      display:flex; align-items:center; gap:8px; padding:10px 12px;
+      border-radius:10px; border:1px solid rgba(255,255,255,.08);
+      background:rgba(255,255,255,.03); color:#cbd5e1; font-size:12px;
+      transition:border-color .2s, background .2s, color .2s;
+    }
+    .transport-chip:has(input:checked) {
+      border-color:rgba(0,212,255,.35);
+      background:rgba(0,212,255,.08);
+      color:#fff;
+    }
+    .transport-chip input { accent-color:#00d4ff; }
+    .mini-note {
+      display:flex; align-items:center; gap:8px; margin-top:10px;
+      font-size:11px; color:#7dd3fc;
+    }
+    .mini-note.hidden { display:none; }
+    .agent-list {
+      display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:12px;
+      max-height:320px; overflow:auto; padding-right:4px;
+    }
+    .agent-list::-webkit-scrollbar { width:4px; }
+    .agent-list::-webkit-scrollbar-thumb { background:rgba(0,212,255,.18); border-radius:10px; }
+    .agent-card {
+      display:flex; gap:10px; align-items:flex-start; padding:12px 13px;
+      border-radius:12px; border:1px solid rgba(255,255,255,.08);
+      background:rgba(255,255,255,.03); transition:border-color .2s, background .2s;
+    }
+    .agent-card.selected {
+      border-color:rgba(168,85,247,.32);
+      background:rgba(168,85,247,.08);
+    }
+    .agent-card.disabled { opacity:.45; }
+    .agent-card input { margin-top:3px; accent-color:#a855f7; }
+    .agent-meta { min-width:0; }
+    .agent-title { font-size:13px; font-weight:600; color:#fff; }
+    .agent-sub { font-size:11px; color:#94a3b8; margin-top:2px; }
+    .agent-tags { display:flex; gap:6px; flex-wrap:wrap; margin-top:8px; }
+    .agent-tag {
+      display:inline-flex; align-items:center; border-radius:999px; padding:3px 8px;
+      font-size:10px; color:#7dd3fc; background:rgba(0,212,255,.08); border:1px solid rgba(0,212,255,.16);
+    }
+  </style>
+</head>
+<body>
+
+<div class="page-wrap">
+
+  <a href="/" class="back-btn"><i class="fas fa-arrow-left"></i> Back to Dashboard</a>
+
+  <!-- PAGE HEADER -->
+  <div class="page-header">
+    <div>
+      <h1><i class="fas fa-file-invoice-dollar" style="color:#00d4ff;margin-right:10px;font-size:21px;"></i>Quotation Management</h1>
+      <div class="page-sub">/// FORMAG_FORWARDING · FREIGHT_PRICING_SYSTEM</div>
+    </div>
+    <button class="btn btn-primary" onclick="openModal()" style="align-self:center;">
+      <i class="fas fa-plus" style="margin-right:6px;"></i> New Quotation
+    </button>
+  </div>
+
+  <!-- ROLE BANNER -->
+  <div class="role-banner" id="role-banner">
+    <i class="fas fa-user-shield" style="color:#00d4ff;"></i>
+    <span id="role-name">Loading...</span>
+    <span class="role-badge admin" id="role-badge">—</span>
+    <span class="dev-tag" id="dev-tag"></span>
+  </div>
+
+  <!-- KPI ROW (Admin) -->
+  <div class="kpi-row" id="kpi-section" style="display:none;">
+    <div class="kpi-card">
+      <div class="kpi-label">Total Quotes</div>
+      <div class="kpi-val blue" id="kpi-total">—</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">Booked</div>
+      <div class="kpi-val green" id="kpi-booked">—</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">Pending</div>
+      <div class="kpi-val yellow" id="kpi-pending">—</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">Canceled</div>
+      <div class="kpi-val red" id="kpi-canceled">—</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">Conversion %</div>
+      <div class="kpi-val green" id="kpi-conv">—</div>
+    </div>
+  </div>
+
+  <!-- OFFERS INBOX -->
+  <div class="glass-card">
+    <div class="card-head">
+      <div class="card-title">
+        <i class="fas fa-inbox"></i> Incoming Offer Requests
+        <span class="badge" id="inbox-cnt">0</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+        <div class="filter-row" id="offer-filter-row">
+          <span class="filter-chip active" data-of="MyQueue" onclick="setOfferFilter(this,'MyQueue')">My Queue</span>
+          <span class="filter-chip" data-of="Unassigned" onclick="setOfferFilter(this,'Unassigned')">Unassigned</span>
+          <span class="filter-chip" data-of="Quoted" onclick="setOfferFilter(this,'Quoted')">Quoted</span>
+          <span class="filter-chip" data-of="Booked" onclick="setOfferFilter(this,'Booked')">Booked</span>
+          <span class="filter-chip" data-of="Canceled" onclick="setOfferFilter(this,'Canceled')">Canceled</span>
+          <span class="filter-chip" data-of="All" onclick="setOfferFilter(this,'All')">All</span>
+        </div>
+        <button class="btn btn-ghost btn-sm" onclick="loadOffers()">
+          <i class="fas fa-sync-alt" style="margin-right:5px;"></i>Refresh
+        </button>
+      </div>
+    </div>
+    <div class="tbl-wrap">
+      <table class="q-tbl">
+        <thead><tr>
+          <th>Date</th><th>From</th><th>Company</th><th>Email</th>
+          <th>Route</th><th>Transport</th><th>Commodity</th><th>Notes</th><th>Status</th><th>Action</th>
+        </tr></thead>
+        <tbody id="offers-tbody">
+          <tr><td colspan="10" class="empty"><i class="fas fa-spinner fa-spin"></i>Loading...</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- QUOTATIONS TABLE -->
+  <div class="glass-card">
+    <div class="card-head">
+      <div class="card-title">
+        <i class="fas fa-list-alt"></i> Sales Quotations
+        <span class="badge" id="quot-cnt">0</span>
+      </div>
+      <div class="filter-row" id="filter-row" style="display:none;">
+        <span class="filter-chip active" data-f="All" onclick="setFilter(this,'All')">All</span>
+        <span class="filter-chip" data-f="Pending"  onclick="setFilter(this,'Pending')">Pending</span>
+        <span class="filter-chip" data-f="Booked"   onclick="setFilter(this,'Booked')">Booked</span>
+        <span class="filter-chip" data-f="Canceled" onclick="setFilter(this,'Canceled')">Canceled</span>
+      </div>
+    </div>
+    <div class="tbl-wrap">
+      <table class="q-tbl">
+        <thead><tr>
+          <th>#</th><th>Date</th><th>Direction</th><th>Client / Contact</th>
+          <th>Route</th><th>Type</th><th>Commodity</th>
+          <th>Buy Rate</th><th>Sell Rate</th><th>Margin</th>
+          <th>Validity</th><th>Manager</th><th>Status</th><th>Actions</th>
+        </tr></thead>
+        <tbody id="quotations-tbody">
+          <tr><td colspan="14" class="empty"><i class="fas fa-spinner fa-spin"></i>Loading...</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+
+<!-- =================== MODAL =================== -->
+<div class="overlay" id="modal-overlay">
+  <div class="modal">
+    <button class="m-close" onclick="closeModal()"><i class="fas fa-times"></i></button>
+    <div class="modal-title" id="quotation-modal-title"><i class="fas fa-file-invoice-dollar" style="color:#00d4ff;margin-right:9px;"></i>Create Quotation</div>
+    <div class="modal-sub" id="quotation-modal-sub">/// NEW_SALES_QUOTE · BUY vs SELL</div>
+
+    <div class="autofill" id="autofill-banner">
+      <i class="fas fa-magic"></i><span>Fields auto-filled from Offer Request</span>
+    </div>
+
+    <form id="quot-form">
+      <input type="hidden" id="q-offer-id">
+      <input type="hidden" id="q-quotation-id">
+      <input type="hidden" id="q-manager-id"><!-- auto-set from current user -->
+
+      <div class="f-section">Contact / Client</div>
+      <div class="f-row">
+        <div class="f-g">
+          <label>Contact Name *</label>
+          <input type="text" id="q-name" required placeholder="Full name">
+        </div>
+        <div class="f-g">
+          <label>Company</label>
+          <input type="text" id="q-company" placeholder="Company name">
+        </div>
+      </div>
+      <div class="f-row">
+        <div class="f-g">
+          <label>Email</label>
+          <input type="email" id="q-email" placeholder="contact@company.com">
+        </div>
+        <div class="f-g">
+          <label>Link to DB Client</label>
+          <select id="q-client-id"><option value="">— Not linked —</option></select>
+        </div>
+      </div>
+
+      <hr class="f-divider">
+      <div class="f-section">Shipment Details</div>
+
+      <div class="f-row3">
+        <div class="f-g">
+          <label>Incoterms</label>
+          <select id="q-incoterms">
+            <option value="">—</option>
+            <option>EXW</option><option>FOB</option><option>CIF</option>
+            <option>DAP</option><option>DDP</option><option>CFR</option>
+            <option>CPT</option><option>FCA</option>
+          </select>
+        </div>
+        <div class="f-g">
+          <label>Trade Direction</label>
+          <select id="q-direction">
+            <option value="">—</option>
+            <option>Import</option><option>Export</option><option>Transit</option>
+          </select>
+        </div>
+        <div class="f-g">
+          <label>Transport Type</label>
+          <select id="q-type">
+            <option value="">—</option>
+            <option>FCL</option><option>LCL</option><option>FTL</option>
+            <option>LTL</option><option>AIR</option><option>RailWay</option>
+            <option>Break Bulk</option><option>Project</option><option>DG-cargo</option>
+          </select>
+        </div>
+      </div>
+      <div class="f-row">
+        <div class="f-g">
+          <label>Origin (POL)</label>
+          <input type="text" id="q-origin" placeholder="Port / City of loading">
+        </div>
+        <div class="f-g">
+          <label>Destination (POD)</label>
+          <input type="text" id="q-dest" placeholder="Port / City of delivery">
+        </div>
+      </div>
+      <div class="f-row">
+        <div class="f-g">
+          <label>Commodity</label>
+          <input type="text" id="q-commodity" placeholder="Cargo description">
+        </div>
+        <div class="f-g">
+          <label>Departure Date</label>
+          <input type="date" id="q-dep-date">
+        </div>
+      </div>
+
+      <hr class="f-divider">
+      <div class="f-section">Buy Rate vs Sell Rate (Margin)</div>
+
+      <!-- Live margin preview -->
+      <div class="margin-preview" id="margin-preview">
+        <div class="mp-item">
+          <div class="mp-label">Buy Rate</div>
+          <div class="mp-val buy" id="prev-buy">0</div>
+        </div>
+        <div class="mp-sep">→</div>
+        <div class="mp-item">
+          <div class="mp-label">Sell Rate</div>
+          <div class="mp-val sell" id="prev-sell">0</div>
+        </div>
+        <div class="mp-sep">=</div>
+        <div class="mp-item">
+          <div class="mp-label">Margin</div>
+          <div class="mp-val margin" id="prev-margin">0</div>
+        </div>
+        <div class="mp-item" style="margin-left:auto;">
+          <div class="mp-label">%</div>
+          <div class="mp-val margin" id="prev-pct">—</div>
+        </div>
+      </div>
+
+      <div class="f-row3">
+        <div class="f-g">
+          <label>Buy Rate (Agent Cost)</label>
+          <input type="number" id="q-buy" placeholder="0.00" step="0.01" min="0" oninput="updateMargin()">
+        </div>
+        <div class="f-g">
+          <label>Sell Rate (Client Price)</label>
+          <input type="number" id="q-sell" placeholder="0.00" step="0.01" min="0" oninput="updateMargin()">
+        </div>
+        <div class="f-g">
+          <label>Currency</label>
+          <select id="q-currency">
+            <option>USD</option><option>EUR</option><option>AZN</option>
+            <option>TRY</option><option>GBP</option>
+          </select>
+        </div>
+      </div>
+      <div class="f-row">
+        <div class="f-g">
+          <label>Validity Date</label>
+          <input type="date" id="q-validity">
+        </div>
+        <div class="f-g">
+          <label>Sales Manager (auto)</label>
+          <input type="text" id="q-manager-display" readonly
+            style="cursor:default;opacity:.6;" placeholder="Loaded from session">
+        </div>
+      </div>
+
+      <div class="f-g">
+        <label>Notes / Conditions</label>
+        <textarea id="q-notes" rows="3" placeholder="Transit time, special conditions, exclusions..."></textarea>
+      </div>
+
+      <div class="f-row" style="margin-bottom:0;">
+        <div class="f-g" style="margin-bottom:0;">
+          <label>Save as</label>
+          <select id="q-status">
+            <option value="Pending">Pending — active quotation</option>
+            <option value="Booked">Booked — send to operations</option>
+            <option value="Canceled">Canceled — closed lost / canceled</option>
+          </select>
+        </div>
+      </div>
+
+      <button type="submit" class="btn-submit" id="q-submit" style="margin-top:18px;">
+        <i class="fas fa-paper-plane" style="margin-right:8px;"></i> Save Quotation
+      </button>
+    </form>
+  </div>
+</div>
+
+<div class="overlay" id="email-overlay">
+  <div class="modal" style="max-width:720px;">
+    <button class="m-close" onclick="closeEmailModal()"><i class="fas fa-times"></i></button>
+    <div class="modal-title"><i class="fas fa-envelope-open-text" style="color:#00d4ff;margin-right:9px;"></i>Send Quotation Email</div>
+    <div class="modal-sub">/// OUTBOUND_EMAIL · SALES_MANAGER_SENDER_PROFILE</div>
+
+    <div class="autofill visible" style="display:flex;margin-bottom:20px;">
+      <i class="fas fa-circle-info"></i>
+      <span id="email-context-text">This message will be sent from the assigned sales manager profile when it is active.</span>
+    </div>
+
+    <form id="email-form">
+      <input type="hidden" id="email-quotation-id">
+
+      <div class="f-section">Recipient</div>
+      <div class="f-row">
+        <div class="f-g">
+          <label>To *</label>
+          <input type="email" id="email-to" required placeholder="client@company.com">
+        </div>
+        <div class="f-g">
+          <label>CC</label>
+          <input type="text" id="email-cc" placeholder="ops@company.com, finance@company.com">
+        </div>
+      </div>
+      <div class="f-g">
+        <label>Subject *</label>
+        <input type="text" id="email-subject" required placeholder="Quotation subject">
+      </div>
+
+      <hr class="f-divider">
+      <div class="f-section">Context</div>
+      <div class="f-row3">
+        <div class="f-g">
+          <label>Reference</label>
+          <input type="text" id="email-reference" readonly>
+        </div>
+        <div class="f-g">
+          <label>Sender Manager</label>
+          <input type="text" id="email-manager" readonly>
+        </div>
+        <div class="f-g">
+          <label>Route</label>
+          <input type="text" id="email-route" readonly>
+        </div>
+      </div>
+
+      <hr class="f-divider">
+      <div class="f-section">Message Intro</div>
+      <div class="f-g">
+        <label>Message</label>
+        <textarea id="email-message" rows="6" placeholder="Hello ...&#10;&#10;Please find our freight quotation details below."></textarea>
+      </div>
+      <div class="mini-note" style="margin-top:0;">
+        <i class="fas fa-paper-plane"></i>
+        <span>The system will append quotation details, validity, pricing, and the manager signature automatically.</span>
+      </div>
+
+      <button type="submit" class="btn-submit" id="email-submit" style="margin-top:18px;">
+        <i class="fas fa-envelope" style="margin-right:8px;"></i> Send Quotation Email
+      </button>
+    </form>
+  </div>
+</div>
+
+<div class="overlay" id="agent-overlay">
+  <div class="modal" style="max-width:860px;">
+    <button class="m-close" onclick="closeAgentEmailModal()"><i class="fas fa-times"></i></button>
+    <div class="modal-title"><i class="fas fa-paper-plane" style="color:#00d4ff;margin-right:9px;"></i>Send Request To Agents</div>
+    <div class="modal-sub">/// AGENT_BROADCAST · SALES_MANAGER_SENDER_PROFILE</div>
+
+    <div class="autofill visible" style="display:flex;margin-bottom:20px;">
+      <i class="fas fa-circle-info"></i>
+      <span id="agent-context-text">Selected agents will receive this request from the assigned sales manager sender profile.</span>
+    </div>
+
+    <form id="agent-form">
+      <input type="hidden" id="agent-offer-id">
+
+      <div class="f-section">Request Context</div>
+      <div class="f-row3">
+        <div class="f-g">
+          <label>Reference</label>
+          <input type="text" id="agent-reference" readonly>
+        </div>
+        <div class="f-g">
+          <label>Manager</label>
+          <input type="text" id="agent-manager" readonly>
+        </div>
+        <div class="f-g">
+          <label>Route</label>
+          <input type="text" id="agent-route" readonly>
+        </div>
+      </div>
+
+      <div class="f-row">
+        <div class="f-g">
+          <label>Subject *</label>
+          <input type="text" id="agent-subject" required placeholder="Rate request subject">
+        </div>
+        <div class="f-g">
+          <label>Additional CC</label>
+          <input type="text" id="agent-cc" placeholder="ops@company.com, finance@company.com">
+        </div>
+      </div>
+
+      <div class="f-g">
+        <label>Message</label>
+        <textarea id="agent-message" rows="5" placeholder="Hello Team,&#10;&#10;Please share your best rate and transit details for the request below."></textarea>
+      </div>
+
+      <hr class="f-divider">
+      <div class="f-section">Select Agents</div>
+      <div class="mini-note" style="margin-top:0;margin-bottom:12px;">
+        <i class="fas fa-filter"></i>
+        <span id="agent-filter-note">Agents are suggested automatically based on transportation type.</span>
+      </div>
+      <div class="agent-list" id="agent-list">
+        <div class="empty" style="grid-column:1/-1;"><i class="fas fa-spinner fa-spin"></i><br>Loading agents...</div>
+      </div>
+
+      <button type="submit" class="btn-submit" id="agent-submit" style="margin-top:18px;">
+        <i class="fas fa-paper-plane" style="margin-right:8px;"></i> Send To Selected Agents
+      </button>
+    </form>
+  </div>
+</div>
+
+<div class="overlay" id="request-overlay">
+  <div class="modal">
+    <button class="m-close" onclick="closeRequestModal()"><i class="fas fa-times"></i></button>
+    <div class="modal-title"><i class="fas fa-inbox" style="color:#00d4ff;margin-right:9px;"></i>Update Request</div>
+    <div class="modal-sub">/// REQUEST_QUEUE · EDIT_AND_ASSIGN</div>
+
+    <form id="request-form">
+      <input type="hidden" id="req-id">
+
+      <div class="f-section">Request Snapshot</div>
+      <div class="f-row">
+        <div class="f-g">
+          <label>Request Number</label>
+          <input type="text" id="req-number" readonly>
+        </div>
+        <div class="f-g">
+          <label>Status</label>
+          <input type="text" id="req-status" readonly>
+        </div>
+      </div>
+
+      <hr class="f-divider">
+      <div class="f-section">Contact / Client</div>
+      <div class="f-row">
+        <div class="f-g">
+          <label>Full Name *</label>
+          <input type="text" id="req-name" required placeholder="Full name">
+        </div>
+        <div class="f-g">
+          <label>Company</label>
+          <input type="text" id="req-company" placeholder="Company name">
+        </div>
+      </div>
+      <div class="f-row">
+        <div class="f-g">
+          <label>Email *</label>
+          <input type="email" id="req-email" required placeholder="contact@company.com">
+        </div>
+        <div class="f-g">
+          <label>Phone / WhatsApp</label>
+          <input type="text" id="req-phone" placeholder="+994 XX XXX XX XX">
+        </div>
+      </div>
+      <div class="f-g">
+        <label>Link to DB Client</label>
+        <select id="req-client-id">
+          <option value="">— Not linked —</option>
+        </select>
+      </div>
+
+      <hr class="f-divider">
+      <div class="f-section">Cargo Details</div>
+      <div class="f-g">
+        <label>Transportation Type *</label>
+        <div class="transport-grid">
+          <label class="transport-chip"><input type="checkbox" class="req-transport" value="FCL"> FCL</label>
+          <label class="transport-chip"><input type="checkbox" class="req-transport" value="LCL"> LCL</label>
+          <label class="transport-chip"><input type="checkbox" class="req-transport" value="FTL"> FTL</label>
+          <label class="transport-chip"><input type="checkbox" class="req-transport" value="LTL"> LTL</label>
+          <label class="transport-chip"><input type="checkbox" class="req-transport" value="AIR"> Air</label>
+          <label class="transport-chip"><input type="checkbox" class="req-transport" value="RailWay"> Rail</label>
+          <label class="transport-chip"><input type="checkbox" class="req-transport" value="BreakBulk"> Break Bulk</label>
+          <label class="transport-chip"><input type="checkbox" class="req-transport" value="Project"> Project</label>
+          <label class="transport-chip"><input type="checkbox" class="req-transport" value="DG"> DG-cargo</label>
+        </div>
+      </div>
+      <div class="f-row">
+        <div class="f-g">
+          <label>Origin (POL)</label>
+          <input type="text" id="req-origin" placeholder="Port / City of loading">
+        </div>
+        <div class="f-g">
+          <label>Destination (POD)</label>
+          <input type="text" id="req-destination" placeholder="Port / City of delivery">
+        </div>
+      </div>
+      <div class="f-row">
+        <div class="f-g">
+          <label>Departure Date</label>
+          <input type="date" id="req-departure-date">
+        </div>
+        <div class="f-g">
+          <label>Commodity</label>
+          <input type="text" id="req-commodity" placeholder="Cargo description">
+        </div>
+      </div>
+      <div class="f-g">
+        <label>Request Notes</label>
+        <textarea id="req-notes" rows="3" placeholder="Special requirements, cargo details, constraints..."></textarea>
+      </div>
+
+      <hr class="f-divider">
+      <div class="f-section">Assignment</div>
+      <div class="f-g" id="req-manager-group" style="display:none;">
+        <label>Assigned Sales Manager</label>
+        <select id="req-manager-id">
+          <option value="">— Shared Queue —</option>
+        </select>
+      </div>
+      <div class="mini-note hidden" id="req-manager-note">
+        <i class="fas fa-user-check"></i>
+        <span>Saving changes will keep this request under your queue ownership.</span>
+      </div>
+
+      <button type="submit" class="btn-submit" id="req-submit" style="margin-top:18px;">
+        <i class="fas fa-save" style="margin-right:8px;"></i> Save Request Changes
+      </button>
+    </form>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script type="module">
+  import { authFetch, requireAuth, getCapabilities, hasCapability, hasAnyCapability, isAdminLike } from "./auth.js";
+
+  // Expose state globally so non-module functions can use it
+  window._currentUser = null;
+  window.authFetch = authFetch;
+  window.getCapabilities = getCapabilities;
+  window.hasCapability = hasCapability;
+  window.hasAnyCapability = hasAnyCapability;
+  window.isAdminLike = isAdminLike;
+
+  (async () => {
+    try {
+      const user = await requireAuth();
+      if (!user) return;
+      window._currentUser = user;
+      initPage(user);
+    } catch(e) {
+      console.error("Auth bootstrap failed:", e);
+      window.location.replace("login.html");
+    }
+  })();
+
+  window.initPage = function(user) {
+    // Role banner
+    document.getElementById('role-name').textContent = user.full_name || 'Unknown';
+    const rb = document.getElementById('role-badge');
+    rb.textContent = getCapabilities(user).join(' / ') || user.role || 'Staff';
+    rb.className = 'role-badge ' + (isAdminLike(user) ? 'admin' : '');
+
+    const requestManagerGroup = document.getElementById('req-manager-group');
+    const requestManagerNote = document.getElementById('req-manager-note');
+    if (isAdminLike(user)) {
+      requestManagerGroup.style.display = 'block';
+      requestManagerNote.classList.add('hidden');
+    } else {
+      requestManagerGroup.style.display = 'none';
+      requestManagerNote.classList.remove('hidden');
+    }
+
+    // Pre-fill manager display in modal
+    document.getElementById('q-manager-display').value = user.full_name || '';
+    document.getElementById('q-manager-id').value = user.staff_id || '';
+
+    // Show KPI section for Admin/Boss
+    if (isAdminLike(user)) {
+      document.getElementById('kpi-section').style.display = 'grid';
+      document.getElementById('filter-row').style.display = 'flex';
+      setOfferFilter(document.querySelector('[data-of="All"]'), 'All');
+    } else if (hasCapability(user, 'Sales')) {
+      setOfferFilter(document.querySelector('[data-of="MyQueue"]'), 'MyQueue');
+    } else {
+      setOfferFilter(document.querySelector('[data-of="All"]'), 'All');
+    }
+
+    if (!hasAnyCapability(user, ['Sales', 'Admin', 'HR'])) {
+      document.getElementById('offers-tbody').innerHTML = '<tr><td colspan="10" class="empty">Quotation access is not enabled for your account.</td></tr>';
+      document.getElementById('quotations-tbody').innerHTML = '<tr><td colspan="14" class="empty">Quotation access is not enabled for your account.</td></tr>';
+      return;
+    }
+
+    // Load data
+    loadOffers();
+    loadQuotations();
+    loadClientDropdown();
+    loadSalesManagerDropdown();
+    loadAgentsDirectory();
+  };
+</script>
+
+<script>
+  // ===== UTILS =====
+  function toast(msg, err=false) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.toggle('err', err);
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 3500);
+  }
+
+  function fmtDate(d) {
+    if (!d) return '—';
+    return new Date(d).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'});
+  }
+
+  function sbadge(s) {
+    const m = {
+      New:'s-new',
+      Quoted:'s-quoted',
+      Pending:'s-pending',
+      Booked:'s-booked',
+      Canceled:'s-canceled'
+    };
+    return `<span class="sbadge ${m[s]||'s-pending'}">${s||'Pending'}</span>`;
+  }
+
+  function fmtRate(v, cur) {
+    if (v == null || v === '') return '—';
+    return parseFloat(v).toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:2}) + ' ' + (cur||'USD');
+  }
+
+  let _clientOptions = [];
+  let _salesManagers = [];
+  let _allAgents = [];
+
+  // ===== MARGIN PREVIEW =====
+  function updateMargin() {
+    const buy  = parseFloat(document.getElementById('q-buy').value)  || 0;
+    const sell = parseFloat(document.getElementById('q-sell').value) || 0;
+    const margin = sell - buy;
+    const pct = buy > 0 ? ((margin/buy)*100).toFixed(1) + '%' : '—';
+    document.getElementById('prev-buy').textContent    = buy.toLocaleString();
+    document.getElementById('prev-sell').textContent   = sell.toLocaleString();
+    document.getElementById('prev-margin').textContent = margin.toLocaleString();
+    document.getElementById('prev-margin').className   = 'mp-val ' + (margin >= 0 ? 'margin' : 'margin-neg');
+    document.getElementById('prev-pct').textContent    = pct;
+  }
+
+  function populateSelect(selectId, options, placeholder) {
+    const select = document.getElementById(selectId);
+    if (!select) return;
+    const currentValue = select.dataset.selectedValue ?? select.value ?? '';
+    select.innerHTML = `<option value="">${placeholder}</option>`;
+    options.forEach(item => {
+      const option = document.createElement('option');
+      option.value = item.id;
+      option.textContent = item.full_name;
+      select.appendChild(option);
+    });
+    select.value = currentValue;
+    delete select.dataset.selectedValue;
+  }
+
+  function getRequestTransports() {
+    return Array.from(document.querySelectorAll('.req-transport:checked')).map(cb => cb.value);
+  }
+
+  function resetRequestTransports() {
+    document.querySelectorAll('.req-transport').forEach(cb => { cb.checked = false; });
+  }
+
+  function setRequestTransports(values=[]) {
+    const normalized = new Set(Array.isArray(values) ? values : []);
+    document.querySelectorAll('.req-transport').forEach(cb => {
+      cb.checked = normalized.has(cb.value);
+    });
+  }
+
+  // ===== LOAD OFFERS (INBOX) =====
+  let _allOffers = [];
+  let _activeOfferFilter = 'MyQueue';
+  async function loadOffers() {
+    const tbody = document.getElementById('offers-tbody');
+    tbody.innerHTML = '<tr><td colspan="10" class="empty"><i class="fas fa-spinner fa-spin"></i></td></tr>';
+    try {
+      const res = await window.authFetch('/api/offers');
+      _allOffers = await res.json();
+      applyOfferFilter();
+    } catch(e) {
+      tbody.innerHTML = '<tr><td colspan="10" class="empty" style="color:#f87171;">Failed to load</td></tr>';
+    }
+  }
+
+  function applyOfferFilter() {
+    const filtered = getFilteredOffers();
+    const activeCount = _allOffers.filter(o => !['Booked', 'Canceled'].includes(o.status)).length;
+    document.getElementById('inbox-cnt').textContent = activeCount;
+    renderOffers(filtered);
+  }
+
+  function getFilteredOffers() {
+    const user = window._currentUser || {};
+    if (_activeOfferFilter === 'All') return _allOffers;
+    if (_activeOfferFilter === 'Quoted') return _allOffers.filter(o => o.status === 'Quoted');
+    if (_activeOfferFilter === 'Booked') return _allOffers.filter(o => o.status === 'Booked');
+    if (_activeOfferFilter === 'Canceled') return _allOffers.filter(o => o.status === 'Canceled');
+    if (_activeOfferFilter === 'Unassigned') return _allOffers.filter(o => !o.sales_manager_id && !['Booked', 'Canceled'].includes(o.status));
+    if (_activeOfferFilter === 'MyQueue') {
+      if (hasCapability(user, 'Sales')) {
+        return _allOffers.filter(o => o.sales_manager_id === user.staff_id || (!o.sales_manager_id && o.status === 'New'));
+      }
+      return _allOffers.filter(o => !['Booked', 'Canceled'].includes(o.status));
+    }
+    return _allOffers;
+  }
+
+  function setOfferFilter(el, filterName) {
+    document.querySelectorAll('#offer-filter-row .filter-chip').forEach(c => c.classList.remove('active'));
+    if (el) el.classList.add('active');
+    _activeOfferFilter = filterName;
+    applyOfferFilter();
+  }
+
+  function renderOffers(data) {
+    const tbody = document.getElementById('offers-tbody');
+    if (!data.length) {
+      tbody.innerHTML = '<tr><td colspan="10" class="empty"><i class="fas fa-inbox"></i><br>No incoming requests</td></tr>';
+      return;
+    }
+    tbody.innerHTML = '';
+    data.forEach(o => {
+      const user = window._currentUser || {};
+      const adminUser = isAdminLike(user);
+      const salesUser = hasCapability(user, 'Sales');
+      const types = Array.isArray(o.transportation_type) ? o.transportation_type.join(', ') : (o.transportation_type||'—');
+      const route = [o.origin, o.destination].filter(Boolean).join(' → ') || '—';
+      const reqLine = o.req_number ? `<div class="dim">${o.req_number}</div>` : '';
+      const ownerLine = `<div class="dim">Owner: ${o.staff?.full_name || 'Unassigned'}</div>`;
+      const clientLine = o.clients?.full_name ? `<div class="dim">Client: ${o.clients.full_name}</div>` : '';
+      const isFinal = ['Booked', 'Canceled'].includes(o.status);
+      const canClaim = salesUser && !o.sales_manager_id && !isFinal;
+      const canEdit = !isFinal && (
+        adminUser ||
+        (salesUser && (!o.sales_manager_id || o.sales_manager_id === user.staff_id))
+      );
+      const canRelease = (
+        o.status === 'New' && (
+          (salesUser && o.sales_manager_id === user.staff_id) ||
+          (adminUser && o.sales_manager_id)
+        )
+      );
+      const canQuote = !isFinal && o.status === 'New' && (
+        adminUser ||
+        (salesUser && (!o.sales_manager_id || o.sales_manager_id === user.staff_id))
+      );
+      const canSendAgents = !isFinal && (
+        (adminUser && !!o.sales_manager_id) ||
+        (salesUser && (!o.sales_manager_id || o.sales_manager_id === user.staff_id))
+      );
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td class="dim">${fmtDate(o.created_at)}</td>
+        <td><div class="fw">${o.full_name||'—'}</div>${reqLine}</td>
+        <td><div>${o.company||'—'}</div>${ownerLine}${clientLine}</td>
+        <td class="dim">${o.email||'—'}</td>
+        <td>${route}</td>
+        <td class="accent">${types}</td>
+        <td>${o.commodity||'—'}</td>
+        <td class="dim" style="max-width:140px;overflow:hidden;text-overflow:ellipsis;">${o.notes||'—'}</td>
+        <td>${sbadge(o.status)}</td>
+        <td>
+          <div style="display:flex;gap:4px;flex-wrap:wrap;">
+            ${canClaim ? `<button class="btn btn-sm btn-sent" onclick="claimOffer('${o.id}')">Take</button>` : ''}
+            ${canEdit ? `<button class="btn btn-sm btn-ghost" onclick="openRequestModal(${JSON.stringify(o).replace(/"/g,'&quot;')})">Edit</button>` : ''}
+            ${canRelease ? `<button class="btn btn-sm btn-ghost" onclick="releaseOffer('${o.id}')">Release</button>` : ''}
+            ${canSendAgents ? `<button class="btn btn-sm btn-agent" onclick="openAgentEmailModal(${JSON.stringify(o).replace(/"/g,'&quot;')})">Agents</button>` : ''}
+            ${canQuote ? `<button class="btn btn-sm btn-quote" onclick="openModal(${JSON.stringify(o).replace(/"/g,'&quot;')})"><i class="fas fa-plus"></i> Quote</button>` : ''}
+            ${!canClaim && !canEdit && !canRelease && !canSendAgents && !canQuote ? `<span class="dim">${o.status}</span>` : ''}
+          </div>
+        </td>`;
+      tbody.appendChild(tr);
+    });
+  }
+
+  async function claimOffer(id) {
+    try {
+      const res = await window.authFetch(`/api/offers/${id}/claim`, {
+        method: 'PATCH',
+        headers: {'Content-Type':'application/json'}
+      });
+      const data = await res.json();
+      if (res.ok) {
+        toast('✅ Request assigned to you.');
+        loadOffers();
+      } else {
+        toast('Error: ' + (data.detail || '?'), true);
+      }
+    } catch(e) {
+      toast('Network error', true);
+    }
+  }
+
+  async function releaseOffer(id) {
+    try {
+      const res = await window.authFetch(`/api/offers/${id}/release`, {
+        method: 'PATCH',
+        headers: {'Content-Type':'application/json'}
+      });
+      const data = await res.json();
+      if (res.ok) {
+        toast('✅ Request returned to shared queue.');
+        loadOffers();
+      } else {
+        toast('Error: ' + (data.detail || '?'), true);
+      }
+    } catch(e) {
+      toast('Network error', true);
+    }
+  }
+
+  function openRequestModal(offerData) {
+    document.getElementById('request-form').reset();
+    resetRequestTransports();
+
+    const user = window._currentUser || {};
+    document.getElementById('req-id').value = offerData.id || '';
+    document.getElementById('req-number').value = offerData.req_number || 'Pending assignment';
+    document.getElementById('req-status').value = offerData.status || 'New';
+    document.getElementById('req-name').value = offerData.full_name || '';
+    document.getElementById('req-company').value = offerData.company || '';
+    document.getElementById('req-email').value = offerData.email || '';
+    document.getElementById('req-phone').value = offerData.phone || '';
+    document.getElementById('req-origin').value = offerData.origin || '';
+    document.getElementById('req-destination').value = offerData.destination || '';
+    document.getElementById('req-departure-date').value = offerData.departure_date || '';
+    document.getElementById('req-commodity').value = offerData.commodity || '';
+    document.getElementById('req-notes').value = offerData.notes || '';
+
+    const reqClientSelect = document.getElementById('req-client-id');
+    reqClientSelect.dataset.selectedValue = offerData.client_id || '';
+    reqClientSelect.value = offerData.client_id || '';
+
+    const reqManagerSelect = document.getElementById('req-manager-id');
+    if (isAdminLike(user)) {
+      reqManagerSelect.dataset.selectedValue = offerData.sales_manager_id || '';
+      reqManagerSelect.value = offerData.sales_manager_id || '';
+    } else {
+      reqManagerSelect.dataset.selectedValue = user.staff_id || '';
+      reqManagerSelect.value = user.staff_id || '';
+    }
+
+    setRequestTransports(offerData.transportation_type || []);
+    populateSelect('req-client-id', _clientOptions, '— Not linked —');
+    populateSelect('req-manager-id', _salesManagers, '— Shared Queue —');
+
+    document.getElementById('request-overlay').classList.add('active');
+  }
+
+  function closeRequestModal() {
+    document.getElementById('request-overlay').classList.remove('active');
+  }
+
+  // ===== LOAD QUOTATIONS =====
+  let _allQuots = [];
+  let _activeFilter = 'All';
+
+  async function loadQuotations() {
+    const tbody = document.getElementById('quotations-tbody');
+    tbody.innerHTML = '<tr><td colspan="14" class="empty"><i class="fas fa-spinner fa-spin"></i></td></tr>';
+    try {
+      const res = await window.authFetch('/api/quotations');
+      _allQuots = await res.json();
+      document.getElementById('quot-cnt').textContent = _allQuots.length;
+      updateKPI(_allQuots);
+      renderQuotations(_allQuots);
+    } catch(e) {
+      tbody.innerHTML = '<tr><td colspan="14" class="empty" style="color:#f87171;">Failed to load</td></tr>';
+    }
+  }
+
+  function updateKPI(data) {
+    const booked = data.filter(q=>q.status==='Booked').length;
+    const canceled = data.filter(q=>q.status==='Canceled').length;
+    const pending  = data.filter(q=>q.status==='Pending').length;
+    const pct = data.length > 0 ? Math.round((booked/data.length)*100) : 0;
+    document.getElementById('kpi-total').textContent    = data.length;
+    document.getElementById('kpi-booked').textContent = booked;
+    document.getElementById('kpi-canceled').textContent = canceled;
+    document.getElementById('kpi-pending').textContent  = pending;
+    document.getElementById('kpi-conv').textContent     = pct + '%';
+  }
+
+  function setFilter(el, f) {
+    document.querySelectorAll('#filter-row .filter-chip').forEach(c=>c.classList.remove('active'));
+    el.classList.add('active');
+    _activeFilter = f;
+    const filtered = f === 'All' ? _allQuots : _allQuots.filter(q=>q.status===f);
+    renderQuotations(filtered);
+  }
+
+  function renderQuotations(data) {
+    const tbody = document.getElementById('quotations-tbody');
+    if (!data.length) {
+      tbody.innerHTML = '<tr><td colspan="14" class="empty"><i class="fas fa-file-invoice-dollar"></i><br>No quotations yet</td></tr>';
+      return;
+    }
+    tbody.innerHTML = '';
+    data.forEach((q, i) => {
+      const user = window._currentUser || {};
+      const adminUser = isAdminLike(user);
+      const salesUser = hasCapability(user, 'Sales');
+      const canManage = adminUser || (salesUser && q.sales_manager_id === user.staff_id);
+      const canChangeStatus = canManage && !['Booked', 'Canceled'].includes(q.status);
+      const canSetPending = canManage && q.status !== 'Pending';
+      const client = q.clients?.full_name || q.contact_name || '—';
+      const mgr    = q.staff?.full_name || '—';
+      const route  = [q.origin, q.destination].filter(Boolean).join(' → ') || '—';
+      const cur    = q.currency || 'USD';
+      const buy    = q.buy_rate != null ? fmtRate(q.buy_rate, cur) : '—';
+      const sell   = q.sell_rate != null ? fmtRate(q.sell_rate, cur) : (q.rate != null ? fmtRate(q.rate, cur) : '—');
+      let marginEl = '<span class="margin-na">—</span>';
+      if (q.buy_rate != null && q.sell_rate != null) {
+        const m = (q.sell_rate - q.buy_rate);
+        const pct = q.buy_rate > 0 ? ` (${((m/q.buy_rate)*100).toFixed(1)}%)` : '';
+        marginEl = `<span class="${m>=0?'margin-pos':'margin-neg'}">${m.toFixed(0)} ${cur}${pct}</span>`;
+      }
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td class="dim">${String(i+1).padStart(2,'0')}</td>
+        <td class="dim">${fmtDate(q.created_at)}</td>
+        <td class="accent">${q.trade_direction||'—'}</td>
+        <td>
+          <div class="fw">${client}</div>
+          <div class="dim">${q.contact_company||q.contact_email||''}</div>
+        </td>
+        <td>${route}</td>
+        <td class="accent">${q.transportation_type||'—'}</td>
+        <td>${q.commodity||'—'}</td>
+        <td style="color:#f87171;">${buy}</td>
+        <td style="color:#60a5fa;">${sell}</td>
+        <td>${marginEl}</td>
+        <td class="dim">${fmtDate(q.validity_date)}</td>
+        <td class="dim">${mgr}</td>
+        <td>${sbadge(q.status)}</td>
+        <td>
+          <div style="display:flex;gap:4px;flex-wrap:wrap;">
+            ${canManage ? `<button class="btn btn-sm btn-mail" onclick="openEmailModal(${JSON.stringify(q).replace(/"/g,'&quot;')})">Email</button>` : ''}
+            ${canChangeStatus ? `<button class="btn btn-sm btn-ghost" onclick="openQuotationEditor(${JSON.stringify(q).replace(/"/g,'&quot;')})">Edit</button>` : ''}
+            ${canSetPending ? `<button class="btn btn-sm btn-sent" onclick="patchStatus('${q.id}','Pending')">Pending</button>` : ''}
+            ${canChangeStatus ? `<button class="btn btn-sm btn-accept" onclick="patchStatus('${q.id}','Booked')">Booked</button>` : ''}
+            ${canChangeStatus ? `<button class="btn btn-sm btn-reject" onclick="patchStatus('${q.id}','Canceled')">Canceled</button>` : ''}
+            ${!canManage ? `<span class="dim">Read only</span>` : ''}
+          </div>
+        </td>`;
+      tbody.appendChild(tr);
+    });
+  }
+
+  // ===== PATCH STATUS =====
+  async function patchStatus(id, status) {
+    try {
+      const res = await window.authFetch(`/api/quotations/${id}/status`, {
+        method:'PATCH', headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({status})
+      });
+      const data = await res.json();
+      if (res.ok) {
+        const shipmentMsg = data.shipment ? ' Shipment file synced to Operations.' : '';
+        toast(`✅ Status → "${status}".${shipmentMsg}`);
+        loadQuotations();
+      }
+      else { toast('Error: '+(data.detail||'?'), true); }
+    } catch(e) { toast('Network error', true); }
+  }
+
+  // ===== CLIENT DROPDOWN =====
+  async function loadClientDropdown() {
+    try {
+      const res = await window.authFetch('/api/clients/dropdown');
+      _clientOptions = await res.json();
+      populateSelect('q-client-id', _clientOptions, '— Not linked —');
+      populateSelect('req-client-id', _clientOptions, '— Not linked —');
+    } catch(e) {}
+  }
+
+  async function loadSalesManagerDropdown() {
+    try {
+      const res = await window.authFetch('/api/staff/sales_managers');
+      _salesManagers = await res.json();
+      populateSelect('req-manager-id', _salesManagers, '— Shared Queue —');
+    } catch(e) {}
+  }
+
+  async function loadAgentsDirectory() {
+    try {
+      const res = await window.authFetch('/api/agents');
+      _allAgents = await res.json();
+    } catch(e) {
+      _allAgents = [];
+    }
+  }
+
+  function normalizeTransportArray(value) {
+    if (Array.isArray(value)) return value.map(v => String(v).trim()).filter(Boolean);
+    if (typeof value === 'string' && value.trim()) return [value.trim()];
+    return [];
+  }
+
+  function getSuggestedAgentsForOffer(offerData) {
+    const transportTypes = normalizeTransportArray(offerData.transportation_type);
+    const matched = _allAgents.filter(agent => {
+      const agentTypes = normalizeTransportArray(agent.transportation_type);
+      if (!transportTypes.length || !agentTypes.length) return false;
+      return transportTypes.some(type => agentTypes.includes(type));
+    });
+    return matched.length ? matched : _allAgents;
+  }
+
+  function buildOfferAgentSubject(offerData) {
+    const reqNumber = offerData.req_number || 'Formag Request';
+    const types = normalizeTransportArray(offerData.transportation_type).join(', ') || 'Freight';
+    const route = [offerData.origin, offerData.destination].filter(Boolean).join(' -> ');
+    return [reqNumber, 'Rate Request', types, route].filter(Boolean).join(' | ');
+  }
+
+  function buildOfferAgentMessage(offerData) {
+    const company = offerData.company || offerData.full_name || 'Customer';
+    return `Hello Team,\n\nPlease share your best rate and transit details for the request below.\n\nCustomer: ${company}`;
+  }
+
+  function renderAgentSelection(offerData) {
+    const container = document.getElementById('agent-list');
+    const suggestedAgents = getSuggestedAgentsForOffer(offerData);
+    const matchedByTransport = _allAgents.length && suggestedAgents.length !== _allAgents.length;
+    const transportTypes = normalizeTransportArray(offerData.transportation_type);
+    document.getElementById('agent-filter-note').textContent = matchedByTransport
+      ? `Showing suggested agents for ${transportTypes.join(', ')}.`
+      : 'Showing all agents. Transportation-based matches were not found for this request.';
+
+    if (!suggestedAgents.length) {
+      container.innerHTML = '<div class="empty" style="grid-column:1/-1;"><i class="fas fa-users-slash"></i><br>No agents available</div>';
+      return;
+    }
+
+    container.innerHTML = '';
+    suggestedAgents.forEach(agent => {
+      const hasEmail = !!agent.main_email;
+      const agentTypes = normalizeTransportArray(agent.transportation_type);
+      const card = document.createElement('label');
+      card.className = `agent-card ${hasEmail ? '' : 'disabled'}`;
+      card.innerHTML = `
+        <input type="checkbox" class="agent-checkbox" value="${agent.id}" ${hasEmail ? 'checked' : 'disabled'}>
+        <div class="agent-meta">
+          <div class="agent-title">${agent.company_name || 'Unnamed Agent'}</div>
+          <div class="agent-sub">${agent.country || 'Country not set'} · ${agent.main_email || 'Main email missing'}</div>
+          <div class="agent-tags">
+            ${agentTypes.length ? agentTypes.map(type => `<span class="agent-tag">${type}</span>`).join('') : '<span class="agent-tag">No type</span>'}
+          </div>
+        </div>
+      `;
+      const checkbox = card.querySelector('input');
+      if (checkbox && checkbox.checked) card.classList.add('selected');
+      if (checkbox) {
+        checkbox.addEventListener('change', () => {
+          card.classList.toggle('selected', checkbox.checked);
+        });
+      }
+      container.appendChild(card);
+    });
+  }
+
+  function buildQuotationEmailSubject(quotation) {
+    const reqNumber = quotation.req_number || 'Formag Quote';
+    const transport = quotation.transportation_type || 'Freight';
+    const route = [quotation.origin, quotation.destination].filter(Boolean).join(' -> ');
+    return [reqNumber, transport, route].filter(Boolean).join(' | ');
+  }
+
+  function buildQuotationEmailMessage(quotation) {
+    const contactName = quotation.contact_name || 'Customer';
+    return `Hello ${contactName},\n\nPlease find our freight quotation details below.`;
+  }
+
+  function openEmailModal(quotationData) {
+    const managerName = quotationData.staff?.full_name || window._currentUser?.full_name || 'Assigned Sales Manager';
+    document.getElementById('email-form').reset();
+    document.getElementById('email-quotation-id').value = quotationData.id || '';
+    document.getElementById('email-to').value = quotationData.contact_email || '';
+    document.getElementById('email-subject').value = buildQuotationEmailSubject(quotationData);
+    document.getElementById('email-message').value = buildQuotationEmailMessage(quotationData);
+    document.getElementById('email-reference').value = quotationData.req_number || quotationData.id || '—';
+    document.getElementById('email-manager').value = managerName;
+    document.getElementById('email-route').value = [quotationData.origin, quotationData.destination].filter(Boolean).join(' → ') || 'Route on request';
+    document.getElementById('email-context-text').textContent =
+      `This message will be sent from ${managerName}'s sender profile when it is active. If the profile is not active yet, the server fallback mailbox will be used.`;
+    document.getElementById('email-overlay').classList.add('active');
+  }
+
+  function closeEmailModal() {
+    document.getElementById('email-overlay').classList.remove('active');
+  }
+
+  function openAgentEmailModal(offerData) {
+    const managerName = offerData.staff?.full_name || window._currentUser?.full_name || 'Assigned Sales Manager';
+    document.getElementById('agent-form').reset();
+    document.getElementById('agent-offer-id').value = offerData.id || '';
+    document.getElementById('agent-reference').value = offerData.req_number || offerData.id || '—';
+    document.getElementById('agent-manager').value = managerName;
+    document.getElementById('agent-route').value = [offerData.origin, offerData.destination].filter(Boolean).join(' → ') || 'Route on request';
+    document.getElementById('agent-subject').value = buildOfferAgentSubject(offerData);
+    document.getElementById('agent-message').value = buildOfferAgentMessage(offerData);
+    document.getElementById('agent-context-text').textContent =
+      `Selected agents will receive this request from ${managerName}'s sender profile when it is active.`;
+    renderAgentSelection(offerData);
+    document.getElementById('agent-overlay').classList.add('active');
+  }
+
+  function closeAgentEmailModal() {
+    document.getElementById('agent-overlay').classList.remove('active');
+  }
+
+  // ===== MODAL =====
+  function openQuotationEditor(quotationData) {
+    openModal(null, quotationData);
+  }
+
+  function openModal(offerData=null, quotationData=null) {
+    document.getElementById('quot-form').reset();
+    document.getElementById('q-offer-id').value = '';
+    document.getElementById('q-quotation-id').value = '';
+    document.getElementById('autofill-banner').classList.remove('visible');
+    document.getElementById('q-client-id').dataset.selectedValue = '';
+    populateSelect('q-client-id', _clientOptions, '— Not linked —');
+    document.getElementById('q-status').disabled = false;
+    document.getElementById('quotation-modal-title').innerHTML = '<i class="fas fa-file-invoice-dollar" style="color:#00d4ff;margin-right:9px;"></i>Create Quotation';
+    document.getElementById('quotation-modal-sub').textContent = '/// NEW_SALES_QUOTE · BUY vs SELL';
+    document.getElementById('q-submit').innerHTML = '<i class="fas fa-paper-plane" style="margin-right:8px;"></i> Save Quotation';
+    updateMargin();
+
+    // Pre-fill manager from current user session
+    const user = window._currentUser;
+    if (user) {
+      document.getElementById('q-manager-display').value = user.full_name || '';
+      document.getElementById('q-manager-id').value = user.staff_id || '';
+    }
+
+    if (offerData) {
+      document.getElementById('q-offer-id').value   = offerData.id || '';
+      document.getElementById('q-name').value        = offerData.full_name || '';
+      document.getElementById('q-company').value     = offerData.company || '';
+      document.getElementById('q-email').value       = offerData.email || '';
+      document.getElementById('q-origin').value      = offerData.origin || '';
+      document.getElementById('q-dest').value        = offerData.destination || '';
+      document.getElementById('q-commodity').value   = offerData.commodity || '';
+      if (offerData.departure_date) document.getElementById('q-dep-date').value = offerData.departure_date;
+      const types = Array.isArray(offerData.transportation_type) ? offerData.transportation_type : [];
+      if (types.length) document.getElementById('q-type').value = types[0];
+      if (offerData.client_id) {
+        document.getElementById('q-client-id').dataset.selectedValue = offerData.client_id;
+        populateSelect('q-client-id', _clientOptions, '— Not linked —');
+      }
+      if (offerData.sales_manager_id) {
+        document.getElementById('q-manager-id').value = offerData.sales_manager_id;
+        document.getElementById('q-manager-display').value = offerData.staff?.full_name || document.getElementById('q-manager-display').value;
+      }
+      document.getElementById('autofill-banner').classList.add('visible');
+    }
+
+    if (quotationData) {
+      document.getElementById('q-quotation-id').value = quotationData.id || '';
+      document.getElementById('q-offer-id').value = quotationData.offer_id || '';
+      document.getElementById('q-name').value = quotationData.contact_name || '';
+      document.getElementById('q-company').value = quotationData.contact_company || '';
+      document.getElementById('q-email').value = quotationData.contact_email || '';
+      document.getElementById('q-origin').value = quotationData.origin || '';
+      document.getElementById('q-dest').value = quotationData.destination || '';
+      document.getElementById('q-commodity').value = quotationData.commodity || '';
+      document.getElementById('q-dep-date').value = quotationData.departure_date || '';
+      document.getElementById('q-buy').value = quotationData.buy_rate ?? '';
+      document.getElementById('q-sell').value = quotationData.sell_rate ?? quotationData.rate ?? '';
+      document.getElementById('q-currency').value = quotationData.currency || 'USD';
+      document.getElementById('q-validity').value = quotationData.validity_date || '';
+      document.getElementById('q-incoterms').value = quotationData.incoterms || '';
+      document.getElementById('q-direction').value = quotationData.trade_direction || '';
+      document.getElementById('q-type').value = quotationData.transportation_type || '';
+      document.getElementById('q-notes').value = quotationData.notes || '';
+      document.getElementById('q-status').value = quotationData.status || 'Pending';
+      document.getElementById('q-status').disabled = true;
+      document.getElementById('q-client-id').dataset.selectedValue = quotationData.client_id || '';
+      populateSelect('q-client-id', _clientOptions, '— Not linked —');
+      document.getElementById('q-manager-id').value = quotationData.sales_manager_id || (user?.staff_id || '');
+      document.getElementById('q-manager-display').value = quotationData.staff?.full_name || user?.full_name || '';
+      document.getElementById('quotation-modal-title').innerHTML = '<i class="fas fa-pen-to-square" style="color:#00d4ff;margin-right:9px;"></i>Edit Quotation';
+      document.getElementById('quotation-modal-sub').textContent = '/// UPDATE_PENDING_QUOTE · KEEP_STATUS_FLOW';
+      document.getElementById('q-submit').innerHTML = '<i class="fas fa-save" style="margin-right:8px;"></i> Save Quotation Changes';
+    }
+
+    updateMargin();
+
+    document.getElementById('modal-overlay').classList.add('active');
+  }
+
+  function closeModal() { document.getElementById('modal-overlay').classList.remove('active'); }
+  document.getElementById('modal-overlay').addEventListener('click', e => { if(e.target===e.currentTarget) closeModal(); });
+  document.getElementById('email-overlay').addEventListener('click', e => { if(e.target===e.currentTarget) closeEmailModal(); });
+  document.getElementById('agent-overlay').addEventListener('click', e => { if(e.target===e.currentTarget) closeAgentEmailModal(); });
+  document.getElementById('request-overlay').addEventListener('click', e => { if(e.target===e.currentTarget) closeRequestModal(); });
+  document.addEventListener('keydown', e => {
+    if(e.key==='Escape') {
+      closeModal();
+      closeEmailModal();
+      closeAgentEmailModal();
+      closeRequestModal();
+    }
+  });
+
+  // ===== SUBMIT =====
+  document.getElementById('request-form').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    const btn = document.getElementById('req-submit');
+    const transportTypes = getRequestTransports();
+    if (!transportTypes.length) {
+      toast('Select at least one transportation type.', true);
+      return;
+    }
+
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin" style="margin-right:8px;"></i>Saving...';
+
+    const user = window._currentUser || {};
+    const payload = {
+      full_name: document.getElementById('req-name').value,
+      company: document.getElementById('req-company').value,
+      email: document.getElementById('req-email').value,
+      phone: document.getElementById('req-phone').value,
+      transportation_type: transportTypes,
+      origin: document.getElementById('req-origin').value,
+      destination: document.getElementById('req-destination').value,
+      departure_date: document.getElementById('req-departure-date').value || null,
+      commodity: document.getElementById('req-commodity').value,
+      notes: document.getElementById('req-notes').value,
+      client_id: document.getElementById('req-client-id').value || null,
+    };
+    if (isAdminLike(user)) {
+      payload.sales_manager_id = document.getElementById('req-manager-id').value || null;
+    }
+
+    try {
+      const requestId = document.getElementById('req-id').value;
+      const res = await window.authFetch(`/api/offers/${requestId}`, {
+        method:'PATCH',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify(payload)
+      });
+      const data = await res.json();
+      if (res.ok) {
+        const syncMsg = data.synced_quotations ? ` ${data.synced_quotations} pending quotation(s) synced.` : '';
+        toast(`✅ Request updated.${syncMsg}`);
+        closeRequestModal();
+        loadOffers();
+        loadQuotations();
+      } else {
+        toast('Error: ' + (data.detail || JSON.stringify(data)), true);
+      }
+    } catch(e) {
+      toast('Network error.', true);
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = '<i class="fas fa-save" style="margin-right:8px;"></i> Save Request Changes';
+    }
+  });
+
+  document.getElementById('quot-form').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    const btn = document.getElementById('q-submit');
+    const quotationId = document.getElementById('q-quotation-id').value || null;
+    btn.disabled=true; btn.innerHTML='<i class="fas fa-spinner fa-spin" style="margin-right:8px;"></i>Saving...';
+
+    const payload = {
+      offer_id:         document.getElementById('q-offer-id').value || null,
+      client_id:        document.getElementById('q-client-id').value || null,
+      contact_name:     document.getElementById('q-name').value,
+      contact_email:    document.getElementById('q-email').value,
+      contact_company:  document.getElementById('q-company').value,
+      incoterms:        document.getElementById('q-incoterms').value,
+      trade_direction:  document.getElementById('q-direction').value,
+      transportation_type: document.getElementById('q-type').value,
+      origin:           document.getElementById('q-origin').value,
+      destination:      document.getElementById('q-dest').value,
+      commodity:        document.getElementById('q-commodity').value,
+      departure_date:   document.getElementById('q-dep-date').value || null,
+      buy_rate:         parseFloat(document.getElementById('q-buy').value) || null,
+      sell_rate:        parseFloat(document.getElementById('q-sell').value) || null,
+      currency:         document.getElementById('q-currency').value,
+      validity_date:    document.getElementById('q-validity').value || null,
+      sales_manager_id: document.getElementById('q-manager-id').value || null,
+      notes:            document.getElementById('q-notes').value,
+      status:           document.getElementById('q-status').value,
+    };
+
+    try {
+      const endpoint = quotationId ? `/api/quotations/${quotationId}` : '/api/quotations/create';
+      const method = quotationId ? 'PATCH' : 'POST';
+      const requestPayload = quotationId ? {
+        client_id: payload.client_id,
+        contact_name: payload.contact_name,
+        contact_email: payload.contact_email,
+        contact_company: payload.contact_company,
+        incoterms: payload.incoterms,
+        trade_direction: payload.trade_direction,
+        transportation_type: payload.transportation_type,
+        origin: payload.origin,
+        destination: payload.destination,
+        commodity: payload.commodity,
+        departure_date: payload.departure_date,
+        buy_rate: payload.buy_rate,
+        sell_rate: payload.sell_rate,
+        currency: payload.currency,
+        validity_date: payload.validity_date,
+        sales_manager_id: payload.sales_manager_id,
+        notes: payload.notes,
+      } : payload;
+      const res = await window.authFetch(endpoint, {
+        method, headers:{'Content-Type':'application/json'},
+        body:JSON.stringify(requestPayload)
+      });
+      const data = await res.json();
+      if (res.ok) {
+        toast(quotationId ? '✅ Quotation updated!' : '✅ Quotation saved!');
+        closeModal();
+        loadQuotations();
+        loadOffers();
+      } else { toast('Error: '+(data.detail||JSON.stringify(data)), true); }
+    } catch(err) { toast('Network error.', true); }
+    finally {
+      btn.disabled=false;
+      btn.innerHTML = quotationId
+        ? '<i class="fas fa-save" style="margin-right:8px;"></i> Save Quotation Changes'
+        : '<i class="fas fa-paper-plane" style="margin-right:8px;"></i> Save Quotation';
+    }
+  });
+
+  document.getElementById('email-form').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    const quotationId = document.getElementById('email-quotation-id').value;
+    const btn = document.getElementById('email-submit');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin" style="margin-right:8px;"></i>Sending...';
+
+    const payload = {
+      to_email: document.getElementById('email-to').value.trim(),
+      cc_emails: document.getElementById('email-cc').value.trim(),
+      subject: document.getElementById('email-subject').value.trim(),
+      message: document.getElementById('email-message').value,
+    };
+
+    try {
+      const res = await window.authFetch(`/api/quotations/${quotationId}/send-email`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+      if (res.ok) {
+        const senderLine = data.data?.sender_email ? ` from ${data.data.sender_email}` : '';
+        toast(`✅ Quotation email sent${senderLine}`);
+        closeEmailModal();
+      } else {
+        toast('Error: ' + (data.detail || JSON.stringify(data)), true);
+      }
+    } catch(e) {
+      toast('Network error.', true);
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = '<i class="fas fa-envelope" style="margin-right:8px;"></i> Send Quotation Email';
+    }
+  });
+
+  document.getElementById('agent-form').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    const offerId = document.getElementById('agent-offer-id').value;
+    const btn = document.getElementById('agent-submit');
+    const agentIds = Array.from(document.querySelectorAll('.agent-checkbox:checked')).map(input => input.value);
+    if (!agentIds.length) {
+      toast('Select at least one agent.', true);
+      return;
+    }
+
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin" style="margin-right:8px;"></i>Sending...';
+
+    const payload = {
+      agent_ids: agentIds,
+      subject: document.getElementById('agent-subject').value.trim(),
+      message: document.getElementById('agent-message').value,
+      cc_emails: document.getElementById('agent-cc').value.trim(),
+    };
+
+    try {
+      const res = await window.authFetch(`/api/offers/${offerId}/send-agents`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+      if (res.ok) {
+        const sentCount = data.data?.sent_agents?.length || 0;
+        const failedCount = data.data?.failed_agents?.length || 0;
+        const senderLine = data.data?.sender_email ? ` from ${data.data.sender_email}` : '';
+        const failureLine = failedCount ? ` ${failedCount} failed.` : '';
+        toast(`✅ Sent to ${sentCount} agent(s)${senderLine}.${failureLine}`);
+        closeAgentEmailModal();
+        loadOffers();
+      } else {
+        toast('Error: ' + (data.detail || JSON.stringify(data)), true);
+      }
+    } catch(e) {
+      toast('Network error.', true);
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = '<i class="fas fa-paper-plane" style="margin-right:8px;"></i> Send To Selected Agents';
+    }
+  });
+</script>
+</body>
+</html>

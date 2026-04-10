@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>FormagBaku - Agent Management</title>
+  <link rel="icon" type="image/png" href="logo.png" />
+  <link rel="stylesheet" href="style.css">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@300;400;500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+  <style>
+    body {
+        margin: 0;
+        background: #000;
+        color: #fff;
+        font-family: Arial, sans-serif;
+    }
+    .container {
+        max-width: 800px;
+        margin: 0 auto;
+        padding: 40px;
+    }
+    .back-btn {
+      color: #00d4ff; text-decoration: none; margin-bottom: 20px; display: inline-block;
+      font-size: 16px; transition: 0.3s;
+    }
+    .back-btn:hover { color: #fff; transform: translateX(-5px); }
+
+    .glass-form {
+      background: rgba(26, 29, 33, 0.8);
+      backdrop-filter: blur(10px);
+      border: 1px solid #444;
+      border-radius: 12px;
+      padding: 30px;
+      margin-bottom: 20px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+    }
+    .glass-form h2 {
+        color: white; margin-top: 0; border-bottom: 1px solid #444; padding-bottom: 15px;
+    }
+    .form-group {
+      margin-bottom: 20px;
+    }
+    .form-group label {
+      display: block;
+      color: #888;
+      font-size: 13px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 8px;
+    }
+    .form-group input, .form-group textarea {
+      width: 100%;
+      padding: 12px 15px;
+      background: rgba(0,0,0,0.5);
+      border: 1px solid #333;
+      border-radius: 6px;
+      color: #fff;
+      font-size: 15px;
+      outline: none;
+      transition: border 0.3s;
+      box-sizing: border-box;
+      font-family: inherit;
+    }
+    .form-group input:focus, .form-group textarea:focus {
+      border: 1px solid #00d4ff;
+    }
+    .form-group input[type="checkbox"] {
+      width: auto;
+      margin: 0;
+      cursor: pointer;
+    }
+    .btn-submit {
+      width: 100%;
+      padding: 15px;
+      background: linear-gradient(90deg, #10b981, #059669);
+      color: white;
+      border: none;
+      border-radius: 6px;
+      font-size: 16px;
+      font-weight: bold;
+      cursor: pointer;
+      transition: opacity 0.3s;
+    }
+    .btn-submit:hover { opacity: 0.9; }
+    
+    .bulk-import-zone {
+      border: 2px dashed #444;
+      padding: 40px;
+      text-align: center;
+      border-radius: 12px;
+      cursor: pointer;
+      background: rgba(0,0,0,0.2);
+      transition: all 0.3s;
+    }
+    .bulk-import-zone:hover {
+      border-color: #10b981;
+      background: rgba(16, 185, 129, 0.05);
+    }
+    .upload-icon {
+      font-size: 40px;
+      color: #10b981;
+      margin-bottom: 15px;
+    }
+    .hidden-input { display: none; }
+    
+    .table-container {
+      overflow-x: auto;
+      margin-top: 15px;
+    }
+    table.glass-table {
+      width: 100%;
+      border-collapse: collapse;
+      color: #fff;
+      font-size: 14px;
+    }
+    table.glass-table th, table.glass-table td {
+      padding: 12px;
+      text-align: left;
+      border-bottom: 1px solid rgba(255,255,255,0.1);
+    }
+    table.glass-table th {
+      background: rgba(0,0,0,0.3);
+      color: #10b981;
+      font-size: 12px;
+      text-transform: uppercase;
+    }
+    table.glass-table tr:hover {
+      background: rgba(255,255,255,0.05);
+    }
+
+    #toast {
+      visibility: hidden;
+      min-width: 250px;
+      background-color: rgba(26, 29, 33, 0.95);
+      backdrop-filter: blur(10px);
+      color: #fff;
+      text-align: center;
+      border-radius: 8px;
+      padding: 16px;
+      position: fixed;
+      z-index: 1000;
+      left: 50%;
+      bottom: 30px;
+      transform: translateX(-50%);
+      border: 1px solid #10b981;
+      box-shadow: 0 5px 15px rgba(0,0,0,0.5);
+      font-size: 14px;
+      transition: opacity 0.5s, bottom 0.5s;
+      opacity: 0;
+    }
+    #toast.show {
+      visibility: visible;
+      opacity: 1;
+      bottom: 50px;
+    }
+    #toast.error {
+      border-color: #ef4444;
+      color: #ef4444;
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <a href="/" class="back-btn">
+    <i class="fas fa-arrow-left"></i> Back to Dashboard
+  </a>
+
+  <!-- Одиночная регистрация -->
+  <div class="glass-form" id="registration-block">
+    <h2><i class="fas fa-handshake" style="color: #10b981; margin-right: 8px;"></i> Single Agent Registration</h2>
+    <form id="agent-form">
+      <div class="form-group">
+        <label>Agent Company Name *</label>
+        <input type="text" id="company_name" required placeholder="Enter agent's specific company name...">
+      </div>
+      <div class="form-group">
+        <label>Country *</label>
+        <input type="text" id="country" required placeholder="Country of operations">
+      </div>
+      
+      <div class="form-group">
+        <label>Transportation Type *</label>
+        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; background: rgba(0,0,0,0.5); padding: 15px; border-radius: 6px; border: 1px solid #333;">
+          <label style="display: flex; align-items: center; gap: 8px; color: #fff; text-transform: none; font-size: 14px; margin: 0;"><input type="checkbox" class="transport-cb" value="FCL"> FCL</label>
+          <label style="display: flex; align-items: center; gap: 8px; color: #fff; text-transform: none; font-size: 14px; margin: 0;"><input type="checkbox" class="transport-cb" value="LCL"> LCL</label>
+          <label style="display: flex; align-items: center; gap: 8px; color: #fff; text-transform: none; font-size: 14px; margin: 0;"><input type="checkbox" class="transport-cb" value="FTL"> FTL</label>
+          <label style="display: flex; align-items: center; gap: 8px; color: #fff; text-transform: none; font-size: 14px; margin: 0;"><input type="checkbox" class="transport-cb" value="LTL"> LTL</label>
+          <label style="display: flex; align-items: center; gap: 8px; color: #fff; text-transform: none; font-size: 14px; margin: 0;"><input type="checkbox" class="transport-cb" value="Air"> Air</label>
+          <label style="display: flex; align-items: center; gap: 8px; color: #fff; text-transform: none; font-size: 14px; margin: 0;"><input type="checkbox" class="transport-cb" value="Rail"> Rail</label>
+          <label style="display: flex; align-items: center; gap: 8px; color: #fff; text-transform: none; font-size: 14px; margin: 0;"><input type="checkbox" class="transport-cb" value="Break Bulk"> Break Bulk</label>
+          <label style="display: flex; align-items: center; gap: 8px; color: #fff; text-transform: none; font-size: 14px; margin: 0;"><input type="checkbox" class="transport-cb" value="Project"> Project</label>
+          <label style="display: flex; align-items: center; gap: 8px; color: #fff; text-transform: none; font-size: 14px; margin: 0;"><input type="checkbox" class="transport-cb" value="DG-cargo"> DG-cargo</label>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>Main E-Mail address *</label>
+        <input type="email" id="main_email" required placeholder="main@agent.com">
+      </div>
+      <div class="form-group">
+        <label>Cc E-Mail address (with a comma ,)</label>
+        <input type="text" id="cc_emails" placeholder="cc1@agent.com, cc2@agent.com">
+      </div>
+      <button type="submit" class="btn-submit" id="submit-btn" style="background: linear-gradient(90deg, #007bff, #00d4ff);">
+        <i class="fas fa-plus-circle"></i> Register Agent
+      </button>
+    </form>
+  </div>
+
+  <!-- Массовый Импорт -->
+  <div class="glass-form" id="bulk-block">
+    <h2><i class="fas fa-file-excel" style="color: #10b981; margin-right: 8px;"></i> Bulk Import Agents (Excel / CSV)</h2>
+    <div class="bulk-import-zone" id="drop-zone" onclick="document.getElementById('file-input').click()">
+      <div class="upload-icon"><i class="fas fa-cloud-upload-alt"></i></div>
+      <h3 style="color: white; margin-bottom: 10px;">Drag & Drop file here</h3>
+      <p style="color: #888; margin: 0;">or click to browse your computer (must have column "company_name" or "agent_name")</p>
+      <input type="file" class="hidden-input" id="file-input" accept=".csv, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel">
+    </div>
+    <div id="upload-status" style="margin-top: 15px; color: #10b981; text-align: center; display: none;">Uploading...</div>
+  </div>
+
+  <!-- Список агентов -->
+  <div class="glass-form">
+    <h2><i class="fas fa-list" style="color: #10b981; margin-right: 8px;"></i> Recently Registered Agents</h2>
+    <div class="table-container">
+      <table class="glass-table">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Company Name</th>
+            <th>Country</th>
+            <th>Main E-Mail</th>
+            <th>Transports</th>
+          </tr>
+        </thead>
+        <tbody id="agents-tbody">
+          <tr><td colspan="5" style="text-align: center;">Loading...</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+  function showToast(message, isError = false) {
+    const toast = document.getElementById("toast");
+    toast.innerText = message;
+    if (isError) {
+      toast.classList.add("error");
+    } else {
+      toast.classList.remove("error");
+    }
+    toast.classList.add("show");
+    setTimeout(() => { toast.classList.remove("show"); }, 3000);
+  }
+
+  async function loadAgents() {
+    try {
+      const response = await fetch('/api/agents');
+      const data = await response.json();
+      const tbody = document.getElementById('agents-tbody');
+      tbody.innerHTML = '';
+      if (!data || data.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: #888;">No agents found</td></tr>';
+        return;
+      }
+      data.forEach(agent => {
+        const transArr = agent.transportation_type || [];
+        const transStr = transArr.length > 0 ? transArr.join(', ') : '-';
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${agent.id ? agent.id.substring(0, 8) + '...' : '-'}</td>
+          <td style="font-weight: bold; color: #fff;">${agent.company_name || '-'}</td>
+          <td style="color: #ccc;">${agent.country || '-'}</td>
+          <td style="color: #ccc;">${agent.main_email || '-'}</td>
+          <td style="color: #ccc;">${transStr}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+    } catch (err) {
+      document.getElementById('agents-tbody').innerHTML = '<tr><td colspan="3" style="text-align: center; color: #ef4444;">Failed to load agents</td></tr>';
+    }
+  }
+
+  // Load agents on startup
+  window.addEventListener("DOMContentLoaded", loadAgents);
+
+  // 1. Одиночная отправка
+  document.getElementById('agent-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const btn = document.getElementById('submit-btn');
+    const ogText = btn.innerHTML;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving to Database...';
+    btn.disabled = true;
+
+    // Collect array of checked transportation types
+    const cb_elements = document.querySelectorAll('.transport-cb:checked');
+    const transportation_types = Array.from(cb_elements).map(cb => cb.value);
+
+    // Validate if at least one transport type is selected
+    if (transportation_types.length === 0) {
+        showToast("Error: Please select at least one Transportation Type *", true);
+        btn.innerHTML = ogText;
+        btn.disabled = false;
+        return;
+    }
+
+    const payload = {
+      company_name: document.getElementById('company_name').value,
+      country: document.getElementById('country').value,
+      main_email: document.getElementById('main_email').value,
+      cc_emails: document.getElementById('cc_emails').value,
+      transportation_type: transportation_types
+    };
+
+    try {
+      const response = await fetch('/api/agents/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const data = await response.json();
+      
+      if(response.ok) {
+        showToast("Agent registered successfully!");
+        e.target.reset();
+        loadAgents(); // refresh table
+      } else {
+        showToast("Error: " + (data.detail || JSON.stringify(data)), true);
+      }
+    } catch (err) {
+      showToast("Network error. Backend seems offline.", true);
+    } finally {
+      btn.innerHTML = ogText;
+      btn.disabled = false;
+    }
+  });
+
+  // 2. Массовый импорт
+  const fileInput = document.getElementById('file-input');
+  fileInput.addEventListener('change', async (e) => {
+    const file = e.target.files[0];
+    if(!file) return;
+
+    const status = document.getElementById('upload-status');
+    status.style.display = 'block';
+    status.style.color = '#10b981';
+    status.innerText = `Uploading and parsing ${file.name}...`;
+
+    const formData = new FormData();
+    formData.append('file', file);
+
+    try {
+      const response = await fetch('/api/agents/import', {
+        method: 'POST',
+        body: formData
+      });
+      const data = await response.json();
+      
+      if(response.ok) {
+        status.style.color = '#10b981';
+        status.innerText = `Success! Imported ${data.inserted} agents.`;
+        showToast(`Imported ${data.inserted} agents!`);
+        loadAgents(); // refresh table
+      } else {
+        status.style.color = '#ef4444';
+        status.innerText = `Error: ${data.detail || data.message}`;
+        showToast(`Error: ${data.detail || data.message}`, true);
+      }
+    } catch(err) {
+      status.style.color = '#ef4444';
+      status.innerText = "Network error during upload.";
+      showToast("Network error during upload.", true);
+    }
+  });
+</script>
+</body>
+</html>

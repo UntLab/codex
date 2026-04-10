@@ -1,0 +1,1009 @@
+/* ===================================== */
+/*              GLOBAL                   */
+/* ===================================== */
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: #f3efe8;
+  color: #444;
+  font-family: 'Roboto', sans-serif;
+}
+
+a {
+  text-decoration: none;
+  color: inherit;
+}
+
+/* ===================================== */
+/*             MAIN SHELL                */
+/* ===================================== */
+.shell {
+  max-width: 1420px;
+  margin: 24px auto;
+  background: #f8f5f1;
+  border-radius: 24px;
+  padding: 24px;
+  box-shadow:
+    8px 12px 28px rgba(0, 0, 0, 0.08),
+    -5px -5px 12px rgba(255, 255, 255, 0.95);
+  display: flex;
+  gap: 28px;
+  min-height: calc(100vh - 48px);
+}
+
+/* ===================================== */
+/*               SIDEBAR                 */
+/* ===================================== */
+.sidebar {
+  width: 260px;
+  position: sticky;
+  top: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  flex-shrink: 0;
+}
+
+.logo-block {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.logo-block img {
+  height: 42px;
+  width: auto;
+}
+
+/* MENU */
+.menu {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.menu-item {
+  display: flex;
+  align-items: center;
+  padding: 10px 12px;
+  background: #f3eee6;
+  border-radius: 14px;
+  box-shadow:
+    2px 3px 6px rgba(0, 0, 0, 0.08),
+    -2px -2px 6px rgba(255, 255, 255, 0.9);
+  transition: 0.2s;
+  font-size: 14px;
+}
+
+.menu-item:hover {
+  background: #faf7f2;
+  box-shadow:
+    4px 5px 10px rgba(0, 0, 0, 0.12),
+    -3px -3px 8px rgba(255, 255, 255, 0.95);
+  transform: translateY(-1px);
+}
+
+/* SMALL ICON BLOCKS IN SIDEBAR */
+.icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  margin-right: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+/* Colored backgrounds for icons (kept) */
+.offer-icon {
+  background: linear-gradient(135deg, #8B5A3C, #A67C5A);
+}
+
+.pricing-icon {
+  background: linear-gradient(135deg, #d48f3e, #ebb66e);
+}
+
+.sales-icon {
+  background: linear-gradient(135deg, #2c5f7c, #3a7fa3);
+}
+
+.oper-icon {
+  background: linear-gradient(135deg, #4b5563, #6b7280);
+}
+
+.fin-icon {
+  background: linear-gradient(135deg, #14532d, #16a34a);
+}
+
+.client-icon {
+  background: linear-gradient(135deg, #0f766e, #14b8a6);
+}
+
+.crm-icon {
+  background: linear-gradient(135deg, #7c2d12, #ea580c);
+}
+
+.agent-icon {
+  background: linear-gradient(135deg, #1d4ed8, #3b82f6);
+}
+
+/* ===================================== */
+/*                 MAIN                  */
+/* ===================================== */
+.main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* GRID: MAP LEFT + CBA RIGHT */
+.top-row {
+  display: grid;
+  grid-template-columns: minmax(0, 2.1fr) minmax(340px, 0.9fr);
+  gap: 20px;
+  align-items: stretch;
+}
+
+.left-col {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.right-col {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+/* CARD */
+.card {
+  background: #fff;
+  border-radius: 22px;
+  padding: 18px;
+  box-shadow:
+    4px 6px 14px rgba(0, 0, 0, 0.08),
+    -3px -3px 10px rgba(255, 255, 255, 0.95);
+}
+
+.card-title {
+  font-size: 17px;
+  font-weight: 600;
+  margin-bottom: 2px;
+}
+
+.card-subtitle {
+  font-size: 11px;
+  color: #777;
+  margin-bottom: 10px;
+}
+
+/* MAP */
+.map-card {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+}
+
+.map-wrapper {
+  border-radius: 16px;
+  overflow: hidden;
+  border: 1px solid #e6e6e6;
+  background: #fafafa;
+  flex: 1 1 auto;
+  min-height: 474px;
+}
+
+.map {
+  width: 100%;
+  height: 100%;
+  border: none;
+  display: block;
+}
+
+/* CBA CARD */
+.cba-card {
+  flex: 0 0 auto;
+  min-height: 445px;
+}
+
+/* TABLE INSIDE CBA */
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+th,
+td {
+  padding: 4px 6px;
+  font-size: 12px;
+}
+
+th {
+  border-bottom: 1px solid #e6e6e6;
+  font-weight: 600;
+  color: #555;
+}
+
+/* More specific style for CBA table */
+.cba-card table th,
+.cba-card table td {
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.cba-card table th {
+  font-weight: 600;
+  color: #333;
+}
+
+tbody tr:nth-child(even) {
+  background: #fafafa;
+}
+
+tbody tr:hover {
+  background: #f2f2f2;
+}
+
+#last-update {
+  font-size: 11px;
+  color: #555;
+  margin-top: 6px;
+}
+
+/* ===================================== */
+/*          ACTIONS (RIGHT PILLS)        */
+/* ===================================== */
+.actions-card {
+  margin-top: auto;
+}
+
+.right-pills {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 2px;
+}
+
+.pill {
+  display: flex;
+  align-items: center;
+  padding: 10px 14px;
+  border-radius: 999px;
+  border: 2px solid transparent;
+  background: #fff;
+  box-shadow:
+    3px 3px 8px rgba(0, 0, 0, 0.12),
+    -3px -3px 8px rgba(255, 255, 255, 0.95);
+  font-size: 13px;
+  font-weight: 500;
+  transition: 0.2s;
+}
+
+.pill:hover {
+  transform: translateY(-1px);
+}
+
+.pill-icon {
+  width: 26px;
+  height: 26px;
+  border-radius: 999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 10px;
+  flex-shrink: 0;
+}
+
+/* Pill colors */
+.pill-green {
+  border-color: #1c8a5f;
+  color: #1c8a5f;
+}
+
+.pill-green .pill-icon {
+  background: #1c8a5f;
+  color: #fff;
+}
+
+.pill-green:hover {
+  background: #f2fff8;
+}
+
+.pill-blue {
+  border-color: #1d5fbf;
+  color: #1d5fbf;
+}
+
+.pill-blue .pill-icon {
+  background: #1d5fbf;
+  color: #fff;
+}
+
+.pill-blue:hover {
+  background: #f2f6ff;
+}
+
+.pill-ai {
+  border-color: #8b00ff;
+  color: #8b00ff;
+}
+
+.pill-ai .pill-icon {
+  background: #8b00ff;
+  color: #fff;
+}
+
+.pill-ai:hover {
+  background: #f8f5ff;
+}
+
+.pill-hr {
+  border-color: #c76719;
+  color: #c76719;
+}
+
+.pill-hr .pill-icon {
+  background: #c76719;
+  color: #fff;
+}
+
+.pill-hr:hover {
+  background: #fff4e8;
+}
+
+/* ===================================== */
+/*         REGISTRATION CARDS            */
+/* ===================================== */
+.bottom-left {
+  margin-top: 18px;
+  display: flex;
+  justify-content: center;
+  width: 100%;
+}
+
+.bottom-inner {
+  width: 100%;
+  max-width: 880px;
+  display: flex;
+  justify-content: center;
+  gap: 30px;
+}
+
+.reg-card {
+  width: 360px;
+  border-radius: 20px;
+  padding: 1px;
+  background: linear-gradient(135deg, rgba(0, 0, 0, 0.05), rgba(255, 255, 255, 0.7));
+  box-shadow:
+    6px 8px 18px rgba(0, 0, 0, 0.1),
+    -4px -4px 12px rgba(255, 255, 255, 0.95);
+  transition: 0.2s;
+}
+
+.reg-card:hover {
+  transform: translateY(-2px);
+  box-shadow:
+    10px 14px 26px rgba(0, 0, 0, 0.15),
+    -5px -5px 12px rgba(255, 255, 255, 0.97);
+}
+
+.reg-inner {
+  background: #fff;
+  border-radius: 18px;
+  padding: 20px;
+  min-height: 150px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
+.reg-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  margin-bottom: 10px;
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.18);
+}
+
+.icon-agent {
+  background: linear-gradient(135deg, #8B5A3C, #A67C5A);
+}
+
+.icon-client {
+  background: linear-gradient(135deg, #2C5F7C, #3A7FA3);
+}
+
+.reg-title {
+  font-size: 18px;
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+
+.reg-title-agent {
+  color: #8B5A3C;
+}
+
+.reg-title-client {
+  color: #2C5F7C;
+}
+
+.reg-sub {
+  font-size: 13px;
+  color: #666;
+}
+
+/* ===================================== */
+/* SIDEBAR ACTIONS (ROW)          */
+/* ===================================== */
+
+/* Контейнер для кнопок в ряд */
+.sidebar-actions-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  /* Расстояние между кнопками */
+  margin-top: 20px;
+  width: 100%;
+}
+
+/* ОБЩИЕ СТИЛИ ДЛЯ ОБЕИХ КНОПОК (Форма, тени, шрифт) */
+.action-btn {
+  flex: 1;
+  /* Заставляет кнопки делить ширину поровну */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 6px;
+  /* Чуть меньше боковые отступы, чтобы влезло */
+  border-radius: 999px;
+  border: none;
+  font-size: 11.5px;
+  /* Чуть компактнее шрифт */
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow:
+    2px 3px 6px rgba(0, 0, 0, 0.08),
+    -2px -2px 6px rgba(255, 255, 255, 0.9);
+  transition: all 0.2s ease;
+  white-space: nowrap;
+  /* Чтобы текст не переносился */
+}
+
+.action-btn:hover {
+  transform: translateY(-1px);
+  box-shadow:
+    3px 4px 8px rgba(0, 0, 0, 0.1),
+    -3px -3px 7px rgba(255, 255, 255, 0.95);
+}
+
+.action-btn .theme-toggle-icon {
+  font-size: 14px;
+}
+
+/* ЦВЕТА: Кнопка Темы (Слева) */
+.theme-toggle-btn {
+  background: #e7dfd2;
+  color: #5b4b3a;
+}
+
+.theme-toggle-btn:hover {
+  background: #f2ece2;
+}
+
+/* ЦВЕТА: Кнопка Выхода (Справа) - сделаем её красноватой */
+.logout-btn {
+  background: #f0e0df;
+  /* Светло-красный оттенок */
+  color: #c0392b;
+  /* Темно-красный текст */
+}
+
+.logout-btn:hover {
+  background: #faebea;
+}
+
+.theme-toggle-icon {
+  font-size: 14px;
+}
+
+/* ===================================== */
+/*           DARK MODE (ULTIMATE)        */
+/* ===================================== */
+
+/* Плавный переход всей темы */
+body,
+.shell,
+.card,
+.menu-item,
+.reg-card,
+.reg-inner,
+.map-wrapper,
+table,
+th,
+td,
+.pill,
+.theme-toggle {
+  transition: background-color .35s ease, color .35s ease,
+    border-color .35s ease, box-shadow .35s ease;
+}
+
+/* ГЛАВНЫЙ ФОН */
+body.dark-mode {
+  background: #0c0f17;
+  color: #e8ecf3;
+}
+
+/* КОНТЕЙНЕР */
+body.dark-mode .shell {
+  background: #0c0f17;
+  box-shadow: none;
+}
+
+/* САЙДБАР */
+body.dark-mode .sidebar {}
+
+/* МЕНЮ */
+body.dark-mode .menu-item {
+  background: #161b26;
+  color: #e8ecf3;
+  box-shadow:
+    0 0 0 rgba(0, 0, 0, 0),
+    0 0 0 rgba(255, 255, 255, 0);
+}
+
+body.dark-mode .menu-item:hover {
+  background: #1d2330;
+}
+
+/* КАРТОЧКИ */
+body.dark-mode .card {
+  background: #161b26;
+  border: 1px solid #242b38;
+  box-shadow: none;
+}
+
+body.dark-mode .card-title {
+  color: #ffffff;
+}
+
+body.dark-mode .card-subtitle {
+  color: #a7b0c0;
+}
+
+/* ТАБЛИЦА */
+body.dark-mode table {
+  color: #e8ecf3;
+}
+
+body.dark-mode th {
+  border-bottom-color: #2c3444;
+  color: #e8ecf3;
+}
+
+body.dark-mode tbody tr:nth-child(even) {
+  background: #181f2b;
+}
+
+body.dark-mode tbody tr:hover {
+  background: #222a39;
+}
+
+/* MAP */
+body.dark-mode .map-wrapper {
+  background: #161b26;
+  border-color: #242b38;
+}
+
+/* FOOTER DATE */
+body.dark-mode #last-update {
+  color: #a7b0c0;
+}
+
+/* КНОПКИ (pill) */
+body.dark-mode .pill {
+  background: #161b26;
+  color: #e8ecf3;
+  box-shadow: none;
+}
+
+body.dark-mode .pill:hover {
+  background: #212837;
+}
+
+/* РЕГИСТРАЦИОННЫЕ БЛОКИ */
+body.dark-mode .reg-card {
+  background: linear-gradient(135deg, #1b2230, #121821);
+  box-shadow: none;
+}
+
+body.dark-mode .reg-inner {
+  background: #161b26;
+}
+
+body.dark-mode .reg-sub {
+  color: #a7b0c0;
+}
+
+/* КНОПКА ПЕРЕКЛЮЧЕНИЯ ТЕМЫ */
+/* NEW CODE FOR DARK MODE ACTIONS */
+
+/* Убираем тени у обеих кнопок в темной теме */
+body.dark-mode .action-btn {
+  box-shadow: none;
+}
+
+/* Цвета кнопки темы в Dark Mode */
+body.dark-mode .theme-toggle-btn {
+  background: #1d2533;
+  color: #e8ecf3;
+}
+
+body.dark-mode .theme-toggle-btn:hover {
+  background: #2a3241;
+}
+
+/* Цвета кнопки выхода в Dark Mode */
+body.dark-mode .logout-btn {
+  background: #3d1a1a;
+  /* Темно-красный фон */
+  color: #ff8a80;
+  /* Светло-красный текст */
+}
+
+body.dark-mode .logout-btn:hover {
+  background: #4d2424;
+}
+
+/* ===================================== */
+/*       AI BUTTON — DARK MODE BOOST     */
+/* ===================================== */
+
+/* AI-кнопка в тёмной теме — более мягкое свечение */
+body.dark-mode .ai-button {
+  /* чуть-чуть ярче, но не кислотно */
+  filter: brightness(1.05) saturate(1.15);
+
+  /* мягкий, короткий glow вместо мощного прожектора */
+  box-shadow:
+    0 0 10px rgba(0, 255, 255, 0.18),
+    0 0 20px rgba(0, 255, 255, 0.22);
+}
+
+/* фон градиента не так разгоняем */
+body.dark-mode .ai-bg {
+  filter: brightness(1.05);
+}
+
+/* внутренний квадратик-иконка – тоже мягче */
+body.dark-mode .ai-icon {
+  background: rgba(255, 255, 255, 0.10);
+}
+
+/* "шар" внутри делаем менее заметным */
+body.dark-mode .ai-orb {
+  opacity: 0.6;
+}
+
+/* текст можно оставить белым, он читается хорошо */
+body.dark-mode .ai-label {
+  color: #ffffff;
+}
+
+/* ===================================== */
+/*             RESPONSIVE (MOBILE)       */
+/* ===================================== */
+@media (max-width: 960px) {
+  .shell {
+    flex-direction: column;
+    gap: 20px;
+    padding: 16px;
+    margin: 0;
+    border-radius: 0;
+    min-height: 100vh;
+  }
+
+  .sidebar {
+    width: 100%;
+    position: static;
+  }
+
+  .top-row {
+    grid-template-columns: 1fr;
+  }
+
+  .bottom-inner {
+    max-width: 100%;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .reg-card {
+    width: 100%;
+  }
+
+  .map-wrapper {
+    min-height: 320px;
+  }
+}
+
+/* ===================================== */
+/*      ULTIMATE AI BUTTON CORE          */
+/* ===================================== */
+
+.ai-button {
+  width: 100%;
+  height: 75px;
+  border-radius: 20px;
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 16px;
+  cursor: pointer;
+  text-transform: uppercase;
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: .6px;
+  color: white;
+  border: none;
+  transition: .25s ease;
+  perspective: 800px;
+  transform-style: preserve-3d;
+}
+
+/* Glow border on hover */
+.ai-button:hover {
+  box-shadow:
+    0 0 18px rgba(0, 255, 255, 0.35),
+    0 0 32px rgba(0, 255, 255, 0.45),
+    0 0 48px rgba(0, 255, 255, 0.55);
+  transform: translateY(-4px);
+}
+
+.ai-bg {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, #00ffd5, #008cff);
+  animation: aiGradientShift 7s infinite alternate ease-in-out;
+  filter: saturate(120%);
+}
+
+/* Noise-like subtle shader */
+.ai-bg::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: url("data:image/svg+xml;utf8,\
+  <svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 200'>\
+  <filter id='n'><feTurbulence type='fractalNoise' baseFrequency='2.5' numOctaves='2'/></filter>\
+  <rect width='200' height='200' filter='url(#n)' opacity='0.07'/></svg>");
+  animation: noiseMove 6s linear infinite;
+  opacity: 0.14;
+}
+
+@keyframes noiseMove {
+  from {
+    transform: translate(0, 0);
+  }
+
+  to {
+    transform: translate(-40px, -60px);
+  }
+}
+
+@keyframes aiGradientShift {
+  0% {
+    background: linear-gradient(135deg, #00ffd5, #008cff);
+  }
+
+  50% {
+    background: linear-gradient(135deg, #00ffe5, #0094ff);
+  }
+
+  100% {
+    background: linear-gradient(135deg, #00fff0, #00b7ff);
+  }
+}
+
+.ai-glow {
+  position: absolute;
+  width: 180%;
+  height: 180%;
+  top: -40%;
+  left: -40%;
+  background: radial-gradient(circle, rgba(0, 255, 255, 0.45), transparent 70%);
+  filter: blur(40px);
+  opacity: 0.45;
+  animation: aiGlowPulse 6s infinite ease-in-out;
+}
+
+@keyframes aiGlowPulse {
+
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: .35;
+  }
+
+  50% {
+    transform: scale(1.3);
+    opacity: .55;
+  }
+}
+
+.ai-scan {
+  position: absolute;
+  top: -100%;
+  left: 0;
+  width: 100%;
+  height: 40%;
+  background: linear-gradient(to bottom,
+      rgba(255, 255, 255, 0.0),
+      rgba(255, 255, 255, 0.25),
+      rgba(255, 255, 255, 0.0));
+  filter: blur(12px);
+  animation: aiScanMove 4s infinite ease-in-out;
+}
+
+@keyframes aiScanMove {
+  0% {
+    top: -80%;
+  }
+
+  50% {
+    top: 140%;
+  }
+
+  100% {
+    top: -80%;
+  }
+}
+
+.ai-content {
+  position: relative;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.ai-icon {
+  width: 52px;
+  height: 52px;
+  border-radius: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(6px);
+  background: rgba(255, 255, 255, 0.15);
+  position: relative;
+  overflow: hidden;
+  box-shadow:
+    inset 0 0 12px rgba(255, 255, 255, 0.15),
+    0 2px 8px rgba(0, 0, 0, 0.25);
+}
+
+/* floating particle orb */
+.ai-orb {
+  position: absolute;
+  width: 150%;
+  height: 150%;
+  border-radius: 50%;
+  background: radial-gradient(circle, #ffffff66, #00ffe588, #00baffaa);
+  animation: aiOrbFloat 5s infinite ease-in-out;
+}
+
+@keyframes aiOrbFloat {
+
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: .9;
+  }
+
+  50% {
+    transform: scale(1.3);
+    opacity: .75;
+  }
+}
+
+/* rotating central AI atom */
+.ai-icon svg {
+  z-index: 2;
+  animation: aiRotate 6s infinite linear;
+}
+
+@keyframes aiRotate {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.ai-label {
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: .5px;
+}
+
+/* ===================================== */
+/*        CBA TABLE – BANK STYLE         */
+/* ===================================== */
+
+.cba-card table {
+  border-spacing: 0;
+}
+
+/* Чуть более плотные строки, аккуратный шрифт */
+.cba-card table th,
+.cba-card table td {
+  padding: 3px 8px;
+  /* было 4px 6px — сделали компактнее */
+  font-size: 11.5px;
+  line-height: 1.35;
+}
+
+/* Левый столбец – название валюты, числовые – по правому краю */
+.cba-card table th:nth-child(1),
+.cba-card table td:nth-child(1) {
+  text-align: left;
+}
+
+.cba-card table th:nth-child(2),
+.cba-card table th:nth-child(3),
+.cba-card table td:nth-child(2),
+.cba-card table td:nth-child(3) {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  /* ровные цифры как в таблице */
+  font-feature-settings: "tnum" 1, "lnum" 1;
+}
+
+/* Чуть более спокойный hover, чтобы не "мелькало" */
+.cba-card tbody tr:hover {
+  background: #f5f5f5;
+}
+
+/* Дата внизу – более строгий вид */
+.cba-card #last-update {
+  margin-top: 6px;
+  font-size: 11px;
+  color: #666;
+  text-align: right;
+}
+
+/* ===================================== */
+/*      LOGO IN DARK MODE – BRIGHT + GLOW*/
+/* ===================================== */
+
+body.dark-mode .logo-block img {
+  /* делаем логотип чуть ярче и контрастнее */
+  filter: brightness(1.35) contrast(1.15) saturate(1.20);
+
+  /* мягкое неоновое свечение вокруг логотипа */
+  box-shadow: 0 0 12px rgba(0, 200, 255, 0.30);
+
+  /* лёгкое скругление, чтобы glow выглядел органично */
+  border-radius: 6px;
+
+  /* плавный переход между темами */
+  transition: filter .35s ease, box-shadow .35s ease;
+}

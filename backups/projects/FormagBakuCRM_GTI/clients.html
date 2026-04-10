@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>FormagBaku - Clients & CRM</title>
+  <meta name="description" content="Client list and CRM for Formag Forwarding Azerbaijan." />
+  <link rel="icon" type="image/png" href="logo.png" />
+  <link rel="stylesheet" href="style.css">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; }
+    body { margin:0; background:#0a0c10; color:#fff; font-family:'Inter',sans-serif; min-height:100vh; }
+
+    .page-wrap { max-width:1440px; margin:0 auto; padding:32px 24px 80px; }
+
+    .back-btn { display:inline-flex; align-items:center; gap:8px; color:#00d4ff;
+      text-decoration:none; font-size:13px; margin-bottom:24px;
+      transition:all 0.2s; opacity:.75; }
+    .back-btn:hover { opacity:1; transform:translateX(-3px); }
+
+    /* PAGE HEADER */
+    .page-header { display:flex; align-items:flex-start; justify-content:space-between;
+      margin-bottom:28px; padding-bottom:20px; border-bottom:1px solid rgba(255,255,255,.07); }
+    .page-header h1 { margin:0; font-size:24px; font-weight:700;
+      background:linear-gradient(90deg,#fff 55%,#00d4ff);
+      -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent; }
+    .page-sub { color:#00d4ff; font-size:10px; letter-spacing:2px; text-transform:uppercase; margin-top:4px; opacity:.6; }
+
+    /* ROLE BANNER */
+    .role-banner { display:flex; align-items:center; gap:10px;
+      background:rgba(0,212,255,.06); border:1px solid rgba(0,212,255,.18);
+      border-radius:10px; padding:10px 16px; margin-bottom:24px; font-size:13px; }
+    .role-badge { background:rgba(0,212,255,.15); color:#00d4ff; border-radius:20px;
+      padding:3px 12px; font-size:11px; font-weight:700; letter-spacing:1px; }
+
+    /* GLASS CARD */
+    .glass-card { background:rgba(18,21,28,.88); backdrop-filter:blur(14px);
+      border:1px solid rgba(255,255,255,.07); border-radius:14px;
+      padding:26px; margin-bottom:22px;
+      box-shadow:0 8px 30px rgba(0,0,0,.4); }
+    .card-head { display:flex; align-items:center; justify-content:space-between;
+      margin-bottom:18px; padding-bottom:14px; border-bottom:1px solid rgba(255,255,255,.06); }
+    .card-title { font-size:15px; font-weight:600; display:flex; align-items:center; gap:9px; }
+    .card-title i { color:#00d4ff; }
+    .badge { background:rgba(0,212,255,.12); color:#00d4ff;
+      border-radius:12px; padding:2px 9px; font-size:11px; font-weight:600; }
+
+    /* TABLE */
+    .tbl-wrap { overflow-x:auto; padding-bottom:4px; }
+    .tbl-wrap::-webkit-scrollbar { height:6px; }
+    .tbl-wrap::-webkit-scrollbar-track { background:rgba(255,255,255,.03); border-radius:10px; }
+    .tbl-wrap::-webkit-scrollbar-thumb { background:rgba(0,212,255,.2); border-radius:10px; }
+    .tbl-wrap::-webkit-scrollbar-thumb:hover { background:rgba(0,212,255,.35); }
+    table.q-tbl { width:100%; border-collapse:collapse; font-size:13px; min-width:1000px; }
+    table.q-tbl th { text-align:left; padding:9px 14px; font-size:10px; letter-spacing:1px;
+      text-transform:uppercase; color:#00d4ff; background:rgba(0,0,0,.25);
+      border-bottom:1px solid rgba(255,255,255,.06); white-space:nowrap;
+      position:sticky; top:0; z-index:2; }
+    table.q-tbl td { padding:10px 14px; border-bottom:1px solid rgba(255,255,255,.04);
+      vertical-align:middle; white-space:nowrap; }
+    table.q-tbl tr:hover td { background:rgba(255,255,255,.025); }
+    
+    .fw { color:#fff; font-weight:500; }
+    .dim { color:#666; font-size:12px; }
+    .accent { color:#00d4ff; font-size:12px; }
+
+    /* STATUS */
+    .sbadge { display:inline-block; padding:3px 10px; border-radius:20px;
+      font-size:10px; font-weight:700; letter-spacing:.5px; }
+    .s-active   { background:rgba(16,185,129,.15); color:#34d399; border:1px solid rgba(16,185,129,.3); }
+    .s-lost     { background:rgba(239,68,68,.15);  color:#f87171; border:1px solid rgba(239,68,68,.3); }
+
+    /* BUTTONS */
+    .btn { border:none; border-radius:7px; padding:7px 13px; font-size:12px;
+      font-weight:600; cursor:pointer; transition:opacity .2s; white-space:nowrap; font-family:inherit; }
+    .btn:hover { opacity:.8; }
+    .btn-primary { background:linear-gradient(90deg,#007bff,#00d4ff); color:#fff; }
+    .btn-ghost { background:transparent; border:1px solid rgba(255,255,255,.12); color:#aaa; }
+
+    /* MODAL */
+    .overlay { position:fixed; inset:0; background:rgba(0,0,0,.82);
+      backdrop-filter:blur(8px); z-index:9999;
+      display:flex; align-items:center; justify-content:center;
+      opacity:0; visibility:hidden; transition:all .3s; }
+    .overlay.active { opacity:1; visibility:visible; }
+    .modal { background:rgba(14,17,24,.99); border:1px solid rgba(0,212,255,.22);
+      border-radius:16px; padding:34px; width:94%; max-width:680px;
+      max-height:92vh; overflow-y:auto; position:relative;
+      box-shadow:0 0 80px rgba(0,212,255,.08);
+      transform:translateY(14px); transition:transform .3s; }
+    .overlay.active .modal { transform:translateY(0); }
+    .modal::-webkit-scrollbar { width:3px; }
+    .modal::-webkit-scrollbar-thumb { background:rgba(0,212,255,.2); border-radius:10px; }
+
+    .modal-title { font-size:19px; font-weight:700; margin:0 0 3px; }
+    .modal-sub { font-size:10px; color:#00d4ff; letter-spacing:2px; text-transform:uppercase; opacity:.65; margin-bottom:26px; }
+    .m-close { position:absolute; top:18px; right:22px; background:none; border:none;
+      color:#555; font-size:18px; cursor:pointer; transition:color .2s, transform .2s; }
+    .m-close:hover { color:#00d4ff; transform:rotate(90deg); }
+
+    .f-row { display:grid; grid-template-columns:1fr 1fr; gap:13px; }
+    .f-g { margin-bottom:15px; }
+    .f-g label { display:block; color:#777; font-size:10px; text-transform:uppercase;
+      letter-spacing:1px; margin-bottom:6px; }
+    .f-g input, .f-g select, .f-g textarea {
+      width:100%; padding:10px 13px;
+      background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.09);
+      border-radius:8px; color:#fff; font-size:13px;
+      outline:none; transition:border .2s; font-family:inherit; }
+    .f-g input:focus, .f-g select:focus, .f-g textarea:focus {
+      border-color:#00d4ff; background:rgba(0,212,255,.03); }
+    .f-divider { border:none; border-top:1px solid rgba(255,255,255,.06); margin:18px 0; }
+
+    .empty { text-align:center; padding:36px 20px; color:#444; }
+
+    #toast { position:fixed; bottom:28px; left:50%; transform:translateX(-50%);
+      background:rgba(12,15,22,.97); backdrop-filter:blur(10px);
+      color:#fff; border:1px solid #10b981; border-radius:10px;
+      padding:12px 22px; font-size:13px; z-index:99999;
+      opacity:0; visibility:hidden; transition:all .35s; white-space:nowrap; }
+    #toast.show { opacity:1; visibility:visible; bottom:46px; }
+    #toast.err { border-color:#ef4444; color:#f87171; }
+  </style>
+</head>
+<body>
+
+<div class="page-wrap">
+  <a href="/" class="back-btn"><i class="fas fa-arrow-left"></i> Back to Dashboard</a>
+
+  <div class="page-header">
+    <div>
+      <h1><i class="fas fa-address-book" style="color:#00d4ff;margin-right:10px;font-size:21px;"></i>Client List & CRM</h1>
+      <div class="page-sub">/// FORMAG_FORWARDING · CLIENT_DATABASE</div>
+    </div>
+    <div style="display:flex;gap:10px;align-items:center;">
+      <a href="client_registration.html" target="_blank" class="btn btn-ghost"><i class="fas fa-external-link-alt"></i> External Form</a>
+      <button class="btn btn-primary" onclick="openModal()">
+        <i class="fas fa-plus" style="margin-right:6px;"></i> Add Client
+      </button>
+    </div>
+  </div>
+
+  <div class="role-banner" id="role-banner">
+    <i class="fas fa-user-shield" style="color:#00d4ff;"></i>
+    <span id="role-name">Loading...</span>
+    <span class="role-badge" id="role-badge">—</span>
+  </div>
+
+  <div class="glass-card">
+    <div class="card-head">
+      <div class="card-title">
+        <i class="fas fa-users"></i> Registered Clients
+        <span class="badge" id="client-cnt">0</span>
+      </div>
+      <button class="btn btn-ghost btn-sm" onclick="loadClients()">
+        <i class="fas fa-sync-alt" style="margin-right:5px;"></i>Refresh
+      </button>
+    </div>
+    <div class="tbl-wrap">
+      <table class="q-tbl">
+        <thead><tr>
+          <th>Company / Name</th>
+          <th>Contact Info</th>
+          <th>Tax ID</th>
+          <th>Location / Website</th>
+          <th>Sales Manager</th>
+          <th>Last Activity</th>
+          <th>Status</th>
+          <th>Action</th>
+        </tr></thead>
+        <tbody id="clients-tbody">
+          <tr><td colspan="8" class="empty"><i class="fas fa-spinner fa-spin"></i>Loading...</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- =================== MODAL =================== -->
+<div class="overlay" id="modal-overlay">
+  <div class="modal">
+    <button class="m-close" onclick="closeModal()"><i class="fas fa-times"></i></button>
+    <div class="modal-title"><i class="fas fa-user-plus" style="color:#00d4ff;margin-right:9px;"></i>Add New Client</div>
+    <div class="modal-sub">/// NEW_CUSTOMER_RECORD</div>
+
+    <form id="client-form">
+      <input type="hidden" id="c-manager-id">
+
+      <div class="f-row">
+        <div class="f-g">
+          <label>Company / Full Name *</label>
+          <input type="text" id="c-name" required placeholder="Company LLC">
+        </div>
+        <div class="f-g">
+          <label>Tax ID (VOEN)</label>
+          <input type="text" id="c-tax" placeholder="Tax ID">
+        </div>
+      </div>
+      
+      <div class="f-row">
+        <div class="f-g">
+          <label>Main Email *</label>
+          <input type="email" id="c-email" required placeholder="contact@domain.com">
+        </div>
+        <div class="f-g">
+          <label>Mobile Phone *</label>
+          <input type="text" id="c-mobile" required placeholder="+994XX...">
+        </div>
+      </div>
+
+      <div class="f-row">
+        <div class="f-g">
+          <label>Address</label>
+          <input type="text" id="c-address" placeholder="Baku, Azerbaijan...">
+        </div>
+        <div class="f-g">
+          <label>Website</label>
+          <input type="text" id="c-website" placeholder="www.domain.com">
+        </div>
+      </div>
+
+      <button type="submit" class="btn btn-primary" id="c-submit" style="width:100%;margin-top:10px;padding:12px;">
+        <i class="fas fa-save" style="margin-right:8px;"></i> Save Client
+      </button>
+    </form>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script type="module">
+  import { authFetch, requireAuth, getCapabilities, hasAnyCapability, isAdminLike } from "./auth.js";
+
+  window._currentUser = null;
+  window.authFetch = authFetch;
+
+  (async () => {
+    try {
+      const user = await requireAuth();
+      if (!user) return;
+      window._currentUser = user;
+      initPage(user);
+    } catch(e) {
+      console.error("Auth bootstrap failed:", e);
+      window.location.replace("login.html");
+    }
+  })();
+
+  window.initPage = function(user) {
+    document.getElementById('role-name').textContent = user.full_name || 'Unknown';
+    document.getElementById('role-badge').textContent = getCapabilities(user).join(' / ') || user.role || 'Staff';
+    document.getElementById('c-manager-id').value = user.staff_id || '';
+
+    if (!hasAnyCapability(user, ['Sales', 'Admin', 'HR'])) {
+      document.getElementById('clients-tbody').innerHTML = '<tr><td colspan="8" class="empty">CRM access is not enabled for your account.</td></tr>';
+      return;
+    }
+
+    loadClients();
+  };
+</script>
+
+<script>
+  function toast(msg, err=false) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.toggle('err', err);
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 3500);
+  }
+
+  function fmtDate(d) {
+    if (!d) return '—';
+    return new Date(d).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'});
+  }
+
+  function sbadge(s) {
+    if (!s) return '';
+    return `<span class="sbadge ${s.toLowerCase() === 'active' ? 's-active' : 's-lost'}">${s}</span>`;
+  }
+
+  async function loadClients() {
+    const tbody = document.getElementById('clients-tbody');
+    tbody.innerHTML = '<tr><td colspan="8" class="empty"><i class="fas fa-spinner fa-spin"></i></td></tr>';
+    try {
+      const res = await window.authFetch('/api/clients');
+      const data = await res.json();
+      document.getElementById('client-cnt').textContent = data.length;
+      renderClients(data);
+    } catch(e) {
+      tbody.innerHTML = '<tr><td colspan="8" class="empty" style="color:#f87171;">Failed to load</td></tr>';
+    }
+  }
+
+  function renderClients(data) {
+    const tbody = document.getElementById('clients-tbody');
+    if (!data.length) {
+      tbody.innerHTML = '<tr><td colspan="8" class="empty"><i class="fas fa-users"></i><br>No clients found</td></tr>';
+      return;
+    }
+    tbody.innerHTML = '';
+    data.forEach(c => {
+      const mgr = c.staff && c.staff.full_name ? c.staff.full_name : '—';
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td><div class="fw">${c.full_name||'—'}</div></td>
+        <td>
+          <div class="dim"><i class="fas fa-envelope" style="width:14px"></i> ${c.contact_email||'—'}</div>
+          <div class="dim"><i class="fas fa-phone" style="width:14px"></i> ${c.contact_mobile||'—'}</div>
+        </td>
+        <td class="accent">${c.tax_id||'—'}</td>
+        <td>
+          <div class="dim">${c.address||'—'}</div>
+          ${c.website ? `<a href="http://${c.website}" target="_blank" class="accent" style="font-size:11px;">${c.website}</a>` : ''}
+        </td>
+        <td class="dim">${mgr}</td>
+        <td class="dim">${fmtDate(c.last_activity_date)}</td>
+        <td>${sbadge(c.status)}</td>
+        <td>
+          <button class="btn btn-sm btn-ghost" title="View CRM Details"><i class="fas fa-eye"></i></button>
+        </td>
+      `;
+      tbody.appendChild(tr);
+    });
+  }
+
+  function openModal() {
+    const user = window._currentUser;
+    if (!hasAnyCapability(user, ['Sales', 'Admin', 'HR'])) {
+      toast('CRM access is not enabled for your account.', true);
+      return;
+    }
+    document.getElementById('client-form').reset();
+    if(user) {
+        document.getElementById('c-manager-id').value = user.staff_id || '';
+    }
+    document.getElementById('modal-overlay').classList.add('active');
+  }
+
+  function closeModal() { document.getElementById('modal-overlay').classList.remove('active'); }
+  document.getElementById('modal-overlay').addEventListener('click', e => { if(e.target===e.currentTarget) closeModal(); });
+  document.addEventListener('keydown', e => { if(e.key==='Escape') closeModal(); });
+
+  document.getElementById('client-form').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    const btn = document.getElementById('c-submit');
+    btn.disabled=true; btn.innerHTML='<i class="fas fa-spinner fa-spin" style="margin-right:8px;"></i>Saving...';
+
+    const payload = {
+      full_name: document.getElementById('c-name').value,
+      tax_id: document.getElementById('c-tax').value,
+      contact_email: document.getElementById('c-email').value,
+      contact_mobile: document.getElementById('c-mobile').value,
+      address: document.getElementById('c-address').value,
+      website: document.getElementById('c-website').value,
+      is_new_client: true,
+      sales_manager_id: document.getElementById('c-manager-id').value || "00000000-0000-0000-0000-000000000000" // Backend currently expects string
+    };
+
+    try {
+      const res = await window.authFetch('/api/clients/register', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body:JSON.stringify(payload)
+      });
+      if(res.ok) {
+        toast('✅ Client registered successfully!');
+        closeModal();
+        loadClients();
+      } else {
+        const d=await res.json(); toast('Error: '+(d.detail||'?'), true);
+      }
+    } catch(err) {
+      toast('Network error', true);
+    } finally {
+      btn.disabled=false;
+      btn.innerHTML='<i class="fas fa-save" style="margin-right:8px;"></i> Save Client';
+    }
+  });
+
+</script>
+
+</body>
+</html>

@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>FormagBaku - UAT Center</title>
+  <meta name="description" content="Internal user acceptance testing center for FormagBaku CRM." />
+  <link rel="icon" type="image/png" href="logo.png" />
+  <link rel="stylesheet" href="style.css">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; }
+    body { margin:0; background:#0a0c10; color:#fff; font-family:'Inter',sans-serif; min-height:100vh; }
+    .page-wrap { max-width:1500px; margin:0 auto; padding:32px 24px 80px; }
+    .back-btn { display:inline-flex; align-items:center; gap:8px; color:#00d4ff; text-decoration:none; font-size:13px; margin-bottom:24px; opacity:.75; transition:all .2s; }
+    .back-btn:hover { opacity:1; transform:translateX(-3px); }
+    .page-header { display:flex; align-items:flex-start; justify-content:space-between; gap:20px; margin-bottom:28px; padding-bottom:20px; border-bottom:1px solid rgba(255,255,255,.07); }
+    .page-header h1 { margin:0; font-size:24px; font-weight:700; background:linear-gradient(90deg,#fff 55%,#00d4ff); -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent; }
+    .page-sub { color:#00d4ff; font-size:10px; letter-spacing:2px; text-transform:uppercase; margin-top:4px; opacity:.6; }
+
+    .role-banner, .notice-banner {
+      display:flex; align-items:flex-start; gap:10px; border-radius:12px; padding:12px 16px; margin-bottom:18px; font-size:13px;
+      border:1px solid rgba(0,212,255,.18); background:rgba(0,212,255,.06);
+    }
+    .notice-banner.warn { border-color:rgba(251,191,36,.22); background:rgba(251,191,36,.07); color:#fde68a; }
+    .notice-banner.ok { border-color:rgba(16,185,129,.22); background:rgba(16,185,129,.07); color:#bbf7d0; }
+    .role-badge { margin-left:auto; background:rgba(0,212,255,.14); color:#00d4ff; border-radius:999px; padding:4px 12px; font-size:11px; font-weight:700; letter-spacing:1px; }
+
+    .hero-grid { display:grid; grid-template-columns:1.1fr .9fr; gap:18px; margin-bottom:18px; }
+    .panel-grid { display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:18px; }
+    .glass-card { background:rgba(18,21,28,.9); border:1px solid rgba(255,255,255,.07); border-radius:16px; padding:24px; box-shadow:0 8px 30px rgba(0,0,0,.35); }
+    .card-head { display:flex; justify-content:space-between; align-items:center; gap:14px; margin-bottom:18px; padding-bottom:14px; border-bottom:1px solid rgba(255,255,255,.06); }
+    .card-title { font-size:15px; font-weight:600; display:flex; align-items:center; gap:9px; }
+    .card-title i { color:#00d4ff; }
+    .mini { font-size:12px; color:#64748b; }
+
+    .metric-grid { display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); gap:12px; }
+    .metric { border:1px solid rgba(255,255,255,.06); border-radius:14px; padding:14px; background:rgba(255,255,255,.03); }
+    .metric-label { font-size:10px; letter-spacing:1px; text-transform:uppercase; color:#64748b; }
+    .metric-value { margin-top:8px; font-size:20px; font-weight:700; color:#fff; }
+    .metric-note { margin-top:6px; font-size:12px; color:#7dd3fc; }
+
+    .pill-row { display:flex; flex-wrap:wrap; gap:8px; }
+    .pill { border-radius:999px; padding:6px 10px; font-size:11px; font-weight:700; letter-spacing:.4px; }
+    .pill.ok { background:rgba(16,185,129,.16); color:#6ee7b7; }
+    .pill.warn { background:rgba(251,191,36,.16); color:#fde68a; }
+    .pill.neutral { background:rgba(100,116,139,.16); color:#cbd5e1; }
+
+    .section-title { font-size:11px; letter-spacing:2px; text-transform:uppercase; color:#00d4ff; margin:0 0 14px; }
+    .checklist, .scenario-list, .limit-list { display:grid; gap:10px; }
+    .check-item, .scenario, .limit-item {
+      border:1px solid rgba(255,255,255,.06);
+      background:rgba(255,255,255,.03);
+      border-radius:14px;
+      padding:14px 16px;
+    }
+    .check-item strong, .scenario strong, .limit-item strong { display:block; font-size:13px; margin-bottom:6px; color:#fff; }
+    .check-item span, .scenario span, .limit-item span { font-size:12px; color:#cbd5e1; line-height:1.6; }
+    .check-item code, .scenario code, .limit-item code { color:#7dd3fc; }
+
+    .matrix { width:100%; border-collapse:collapse; font-size:13px; }
+    .matrix th { text-align:left; padding:10px 12px; font-size:10px; letter-spacing:1px; text-transform:uppercase; color:#00d4ff; border-bottom:1px solid rgba(255,255,255,.08); }
+    .matrix td { padding:12px; border-bottom:1px solid rgba(255,255,255,.05); vertical-align:top; }
+    .matrix tr:hover td { background:rgba(255,255,255,.02); }
+    .state-ok { color:#6ee7b7; }
+    .state-warn { color:#fde68a; }
+    .state-neutral { color:#cbd5e1; }
+
+    .links { display:flex; flex-wrap:wrap; gap:10px; margin-top:12px; }
+    .link-btn {
+      display:inline-flex; align-items:center; gap:8px;
+      text-decoration:none; border-radius:10px; padding:10px 14px;
+      background:rgba(255,255,255,.04); color:#fff; border:1px solid rgba(255,255,255,.08);
+      font-size:12px; font-weight:600;
+    }
+    .link-btn:hover { border-color:rgba(0,212,255,.25); color:#00d4ff; }
+
+    @media (max-width: 1100px) {
+      .hero-grid, .panel-grid, .metric-grid { grid-template-columns:1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="page-wrap">
+    <a href="/" class="back-btn"><i class="fas fa-arrow-left"></i> Back to Dashboard</a>
+
+    <div class="page-header">
+      <div>
+        <h1><i class="fas fa-clipboard-check" style="color:#00d4ff;margin-right:10px;font-size:21px;"></i>Internal UAT Center</h1>
+        <div class="page-sub">/// LAUNCH_READINESS · ROLE_MATRIX · SCENARIO_RUNBOOK</div>
+      </div>
+      <a class="link-btn" href="settings.html"><i class="fas fa-user-gear"></i> Open Settings</a>
+    </div>
+
+    <div class="role-banner">
+      <i class="fas fa-shield-halved" style="color:#00d4ff;"></i>
+      <div>
+        <div id="role-name">Loading...</div>
+        <div class="mini" id="role-note">This page summarizes what the team can test right now and what still needs configuration.</div>
+      </div>
+      <span class="role-badge" id="role-badge">—</span>
+    </div>
+
+    <div class="notice-banner ok" id="status-banner">
+      <i class="fas fa-circle-notch fa-spin"></i>
+      <div id="status-note">Checking backend status...</div>
+    </div>
+
+    <div class="hero-grid">
+      <section class="glass-card">
+        <div class="card-head">
+          <div class="card-title"><i class="fas fa-rocket"></i> Launch Readiness</div>
+          <div class="mini" id="backend-state">Checking...</div>
+        </div>
+        <div class="metric-grid">
+          <div class="metric">
+            <div class="metric-label">Auth Model</div>
+            <div class="metric-value" id="metric-auth">—</div>
+            <div class="metric-note">Supabase login + shared capability model</div>
+          </div>
+          <div class="metric">
+            <div class="metric-label">Backend</div>
+            <div class="metric-value" id="metric-backend">—</div>
+            <div class="metric-note">Local UAT backend health</div>
+          </div>
+          <div class="metric">
+            <div class="metric-label">Schema</div>
+            <div class="metric-value" id="metric-schema">—</div>
+            <div class="metric-note">Core tables deployed in Supabase</div>
+          </div>
+        </div>
+        <div class="links">
+          <a class="link-btn" href="quotation.html"><i class="fas fa-file-invoice-dollar"></i> Quotation</a>
+          <a class="link-btn" href="operations.html"><i class="fas fa-gears"></i> Operations</a>
+          <a class="link-btn" href="clients.html"><i class="fas fa-users"></i> Clients</a>
+          <a class="link-btn" href="settings.html"><i class="fas fa-envelope"></i> Sender Profiles</a>
+        </div>
+      </section>
+
+      <section class="glass-card">
+        <div class="card-head">
+          <div class="card-title"><i class="fas fa-diagram-project"></i> Current Scope</div>
+          <div class="mini">Production migration in progress</div>
+        </div>
+        <div class="pill-row">
+          <span class="pill ok">Supabase Auth</span>
+          <span class="pill ok">Shared Sales / Operations</span>
+          <span class="pill ok">Request → Quotation → Booked → Shipment</span>
+          <span class="pill ok">Operations Take / Release</span>
+          <span class="pill ok">Personal Sender Profiles</span>
+          <span class="pill warn">Real Outbound Email Needs SMTP Activation</span>
+          <span class="pill warn">CRM / Finance / Docs Still Partial</span>
+          <span class="pill neutral">Google parity still in progress</span>
+        </div>
+      </section>
+    </div>
+
+    <div class="panel-grid">
+      <section class="glass-card">
+        <div class="card-head">
+          <div class="card-title"><i class="fas fa-list-check"></i> Pre-Flight Checklist</div>
+        </div>
+        <div class="checklist">
+          <div class="check-item">
+            <strong>1. Confirm login works for the assigned employee</strong>
+            <span>Use the staff email already created in Supabase Auth. If the employee can open <code>index.html</code> after login, the account is live.</span>
+          </div>
+          <div class="check-item">
+            <strong>2. Confirm the role badge shows the expected domains</strong>
+            <span>Shared users should see badges like <code>Operations / Sales</code>. Pure operations users should see only <code>Operations</code>.</span>
+          </div>
+          <div class="check-item">
+            <strong>3. Activate sender profiles only when ready</strong>
+            <span>Emails to clients and agents will use the assigned sales manager profile. Until SMTP credentials are saved in <code>Settings</code>, external delivery stays in fallback / safe mode.</span>
+          </div>
+          <div class="check-item">
+            <strong>4. Use the same browser session per tester</strong>
+            <span>Do not mix multiple employees in the same session during UAT. Log out between users to avoid confusing ownership and cached tokens.</span>
+          </div>
+        </div>
+      </section>
+
+      <section class="glass-card">
+        <div class="card-head">
+          <div class="card-title"><i class="fas fa-user-group"></i> Role Matrix</div>
+        </div>
+        <table class="matrix">
+          <thead>
+            <tr>
+              <th>Persona</th>
+              <th>Expected Access</th>
+              <th>Primary Test Pages</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>Shared Sales / Operations</strong></td>
+              <td class="state-ok">Quotation + Operations + Settings self-service</td>
+              <td><code>quotation.html</code>, <code>operations.html</code>, <code>settings.html</code></td>
+            </tr>
+            <tr>
+              <td><strong>Operations Only</strong></td>
+              <td class="state-ok">Operations + Settings self-service, blocked from Sales screens</td>
+              <td><code>operations.html</code>, <code>settings.html</code></td>
+            </tr>
+            <tr>
+              <td><strong>Admin / HR</strong></td>
+              <td class="state-ok">Directory control, reassignment, shared queue visibility</td>
+              <td><code>settings.html</code>, <code>quotation.html</code></td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section class="glass-card">
+        <div class="card-head">
+          <div class="card-title"><i class="fas fa-route"></i> Core UAT Scenarios</div>
+        </div>
+        <div class="scenario-list">
+          <div class="scenario">
+            <strong>Scenario A: Shared Sales / Operations login</strong>
+            <span>Login with a shared user. Open <code>quotation.html</code> and <code>operations.html</code>. Expected result: both pages load, the role badge shows two domains, and there is no access error banner.</span>
+          </div>
+          <div class="scenario">
+            <strong>Scenario B: Operations-only protection</strong>
+            <span>Login with an operations-only user. Open <code>quotation.html</code>. Expected result: the page stays blocked with a clear message, while <code>operations.html</code> and <code>settings.html</code> remain available.</span>
+          </div>
+          <div class="scenario">
+            <strong>Scenario C: Request to quotation flow</strong>
+            <span>From <code>quotation.html</code>, claim a request, edit it, create a quotation, then move it to <code>Booked</code>. Expected result: a shipment file is created automatically and appears in Operations.</span>
+          </div>
+          <div class="scenario">
+            <strong>Scenario D: Operations handoff</strong>
+            <span>Open <code>operations.html</code>, take an unassigned shipment, edit core fields, save, then release it. Expected result: <code>operation_manager_id</code> changes correctly and the record stays visible in the proper queue.</span>
+          </div>
+          <div class="scenario">
+            <strong>Scenario E: Sender profile self-service</strong>
+            <span>Open <code>settings.html</code> under the logged-in employee. Expected result: the employee can view and edit only their own sender profile unless the user is Admin / HR.</span>
+          </div>
+        </div>
+      </section>
+
+      <section class="glass-card">
+        <div class="card-head">
+          <div class="card-title"><i class="fas fa-triangle-exclamation"></i> Known Limitations</div>
+        </div>
+        <div class="limit-list">
+          <div class="limit-item">
+            <strong>Real outbound delivery is not fully activated yet</strong>
+            <span>Quotation and agent-email flows are implemented, but real mailbox delivery still depends on configured SMTP credentials in <code>Settings</code> or a global fallback mailbox.</span>
+          </div>
+          <div class="limit-item">
+            <strong>Google parity is still incomplete</strong>
+            <span>Core flow is live enough for internal testing, but CRM parity, document generation, finance parity, and some Google-era automations are still pending.</span>
+          </div>
+          <div class="limit-item">
+            <strong>Use UAT with controlled records</strong>
+            <span>During the first internal rounds, use test clients / requests rather than business-critical live records until the team confirms the expected behaviour.</span>
+          </div>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <script type="module">
+    import { requireAuth, getCapabilities } from "./auth.js";
+
+    function setBanner(kind, text) {
+      const banner = document.getElementById('status-banner');
+      banner.className = `notice-banner ${kind}`;
+      document.getElementById('status-note').textContent = text;
+    }
+
+    function setMetrics(statusPayload) {
+      document.getElementById('metric-auth').textContent = statusPayload.auth || 'Unknown';
+      document.getElementById('metric-backend').textContent = statusPayload.server === 'online' ? 'Online' : 'Offline';
+      document.getElementById('metric-schema').textContent = Array.isArray(statusPayload.rest_schema_tables)
+        ? String(statusPayload.rest_schema_tables.length)
+        : '—';
+      document.getElementById('backend-state').textContent = statusPayload.database || 'Unknown';
+    }
+
+    async function loadStatus() {
+      try {
+        const res = await fetch('/api/status', { cache: 'no-store' });
+        const data = await res.json();
+        setMetrics(data);
+        if (res.ok) {
+          setBanner('ok', `Backend is healthy. Database: ${data.database}. Auth: ${data.auth}.`);
+        } else {
+          setBanner('warn', data.detail || 'Unable to verify backend health.');
+        }
+      } catch (error) {
+        setBanner('warn', 'Backend status could not be loaded from /api/status.');
+      }
+    }
+
+    (async () => {
+      try {
+        const user = await requireAuth();
+        if (!user) return;
+        document.getElementById('role-name').textContent = user.full_name || 'Unknown';
+        document.getElementById('role-badge').textContent = getCapabilities(user).join(' / ') || user.role || 'Staff';
+        await loadStatus();
+      } catch (error) {
+        window.location.replace('login.html');
+      }
+    })();
+  </script>
+</body>
+</html>
