@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>BitVantage Yard Console</title>
     <link rel="icon" type="image/svg+xml" href="assets/bitvantage-logo.svg">
-    <link rel="stylesheet" href="styles.css?v=20260413-01">
+    <link rel="stylesheet" href="styles.css?v=20260415-01">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
@@ -413,6 +413,13 @@
                             </div>
                         </div>
                         <div id="stackin-advisory" class="form-feedback neutral">Placement rules and stacking hints will appear here.</div>
+                        <div id="stackin-suggestions-panel" class="detail-section suggestion-panel hidden">
+                            <div class="suggestion-panel-header">
+                                <span class="detail-label">Suggested Position</span>
+                                <small id="stackin-suggestions-summary" class="suggestion-summary">Safe slot suggestions will appear here.</small>
+                            </div>
+                            <div id="stackin-suggestions-list" class="suggestion-list"></div>
+                        </div>
                         <div id="stackin-override-panel" class="detail-section override-panel hidden">
                             <span class="detail-label">Emergency Override</span>
                             <label class="toggle-card">
@@ -709,6 +716,6 @@
     </div>
 
     <div id="toast" class="toast hidden"></div>
-    <script src="app.js?v=20260413-01"></script>
+    <script src="app.js?v=20260415-01"></script>
 </body>
 </html>

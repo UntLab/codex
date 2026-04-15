@@ -78,6 +78,7 @@ const state = {
         bay: "",
         row: "",
     },
+    stackInPositionDirty: false,
     formDirty: {
         stackin: false,
         stackout: false,
@@ -218,6 +219,14 @@ function setupForms() {
     bindFormDirtyTracking("stackout-form", "stackout");
     bindFormDirtyTracking("restow-form", "restow");
     renderStackInBlockOptions();
+    ["in-block", "in-bay", "in-row", "in-tier"].forEach((id) => {
+        on(id, "input", () => {
+            state.stackInPositionDirty = true;
+        });
+        on(id, "change", () => {
+            state.stackInPositionDirty = true;
+        });
+    });
 
     document.getElementById("stackin-form").addEventListener("input", () => {
         renderStackInAdvisory();
@@ -878,6 +887,7 @@ function resetSessionState() {
     state.busyButtonId = null;
     state.quickMoveContainerId = null;
     resetMoveTargetDraft();
+    state.stackInPositionDirty = false;
     state.containerHistory.clear();
     state.routingPreviewCache.clear();
     state.formDirty.stackin = false;
@@ -1604,6 +1614,7 @@ async function submitForm(form, url, payload) {
             return;
         }
         if (form.id === "stackin-form") state.formDirty.stackin = false;
+        if (form.id === "stackin-form") state.stackInPositionDirty = false;
         if (form.id === "stackout-form") state.formDirty.stackout = false;
         if (form.id === "restow-form") state.formDirty.restow = false;
         if (typeof form.reset === "function") form.reset();
@@ -2378,7 +2389,7 @@ function renderInventoryTable() {
         state.selectedContainerId = container.container_id;
         ensureSlotVisible(container.block, container.bay, container.row_num);
         ensureContainerHistory(container.container_id);
-        syncFormsFromSelection({ forceStackIn: true });
+        syncFormsFromSelection({ forceStackIn: true, markStackInPositionDirty: true });
         openTab("dashboard-tab");
         renderDashboard({
             stats: previousBlock !== state.selectedBlock,
@@ -2694,7 +2705,7 @@ function handleSlotClick(slotKey, containerId) {
     const visibleContainer = slotContainers.find((container) => container.container_id === containerId) || getVisibleContainerForSlot(slotContainers) || getTopContainer(slotContainers);
     state.selectedContainerId = visibleContainer ? visibleContainer.container_id : null;
     if (state.selectedContainerId) ensureContainerHistory(state.selectedContainerId);
-    syncFormsFromSelection({ forceStackIn: true });
+    syncFormsFromSelection({ forceStackIn: true, markStackInPositionDirty: true });
     renderSelectionState(previousBlock !== state.selectedBlock);
 }
 
@@ -2897,6 +2908,7 @@ function handleSlotDrop(event) {
 function syncFormsFromSelection(options = {}) {
     const forceStackIn = Boolean(options.forceStackIn);
     const forceOtherForms = Boolean(options.forceOtherForms ?? options.force);
+    const markStackInPositionDirty = Boolean(options.markStackInPositionDirty);
     if (state.selectedSlotKey) {
         const parsed = parseSlotKey(state.selectedSlotKey);
         const slotRecord = getSlotRecord(parsed.block, parsed.bay, parsed.row);
@@ -2911,6 +2923,7 @@ function syncFormsFromSelection(options = {}) {
             setValue("in-bay", suggestedBay);
             setValue("in-row", String(parsed.row));
             setValue("in-tier", String(nextTier));
+            state.stackInPositionDirty = markStackInPositionDirty;
         }
     }
     if (state.selectedContainerId) {
@@ -2940,6 +2953,237 @@ function renderStackInBlockOptions() {
     const selectedBlock = state.selectedSlotKey ? parseSlotKey(state.selectedSlotKey).block : state.selectedBlock;
     const fallbackValue = blocks.includes(selectedBlock) ? selectedBlock : blocks[0];
     blockSelect.value = blocks.includes(currentValue) ? currentValue : fallbackValue;
+}
+
+function getStackInRecommendationDraft() {
+    const containerType = selectValue("in-type");
+    const direction = selectValue("in-direction");
+    if (!containerType || !direction) return null;
+    return {
+        containerType,
+        direction,
+        bonded: selectValue("in-bonded") === "true",
+        stackOutDate: optionalValue("in-stack-out-date"),
+        line: optionalValue("in-line"),
+        commodity: optionalValue("in-commodity"),
+        weight: optionalNumberValue("in-weight"),
+    };
+}
+
+function listCandidateBaysForContainerType(block, containerType) {
+    if (containerType === "20ft") {
+        const bays = [];
+        for (let bay = 1; bay <= getMaxSurfaceBay(block); bay += 2) {
+            bays.push(formatBayNumber(bay));
+        }
+        return bays;
+    }
+    if (containerType === "40ft") return listAllowedWideBays(block);
+    if (containerType === "45ft") return [...new Set([formatBayNumber(2), formatBayNumber(getMaxWideBay(block))])];
+    return [];
+}
+
+function getStackInCurrentPosition() {
+    const block = value("in-block");
+    const bay = value("in-bay");
+    const row = numberValue("in-row");
+    const tier = numberValue("in-tier");
+    if (!block || !bay || !row || !tier) return null;
+    return {
+        block,
+        bay: formatBayNumber(bay),
+        row,
+        tier,
+    };
+}
+
+function isSameStackInPosition(left, right) {
+    return Boolean(
+        left
+        && right
+        && left.block === right.block
+        && formatBayNumber(left.bay) === formatBayNumber(right.bay)
+        && Number(left.row) === Number(right.row)
+        && Number(left.tier) === Number(right.tier)
+    );
+}
+
+function applyStackInSuggestedPosition(position, options = {}) {
+    if (!position) return;
+    setValue("in-block", position.block);
+    setValue("in-bay", position.bay);
+    setValue("in-row", String(position.row));
+    setValue("in-tier", String(position.tier));
+    state.stackInPositionDirty = Boolean(options.lockSelection);
+}
+
+function getBlockLoadRatio(block) {
+    const enabledSlots = getBlockSlotRecords(block).filter((slot) => slot.enabled).length || 1;
+    return getSurfaceOccupancy(block).size / enabledSlots;
+}
+
+function buildStackInSuggestionReasons({ tier, slotContainers, lineMatches, commodityMatches, blockLoadRatio, line, commodity }) {
+    const reasons = [];
+    if (tier === 1) {
+        reasons.push("Lowest available tier");
+    } else {
+        reasons.push(`Supported placement at tier ${tier}`);
+    }
+    if (!slotContainers.length) {
+        reasons.push("Free ground slot reduces reshuffles");
+    }
+    if (line && lineMatches > 0) {
+        reasons.push(`Keeps ${line} grouped in block`);
+    }
+    if (commodity && commodityMatches > 0) {
+        reasons.push(`Close to same commodity flow`);
+    }
+    if (blockLoadRatio < 0.35) {
+        reasons.push("Block has healthy spare capacity");
+    }
+    return reasons.slice(0, 3);
+}
+
+function scoreStackInSuggestion({ block, row, bay, tier, slotContainers, draft }) {
+    const normalizedLine = String(draft.line || "").trim().toLowerCase();
+    const normalizedCommodity = String(draft.commodity || "").trim().toLowerCase();
+    const lineMatches = normalizedLine
+        ? state.inventory.filter((item) => item.block === block && String(item.line || "").trim().toLowerCase() === normalizedLine).length
+        : 0;
+    const commodityMatches = normalizedCommodity
+        ? state.inventory.filter((item) => item.block === block && String(item.commodity || "").trim().toLowerCase() === normalizedCommodity).length
+        : 0;
+    const blockLoadRatio = getBlockLoadRatio(block);
+
+    let score = 1000;
+    score += tier === 1 ? 240 : Math.max(0, 220 - (tier - 1) * 70);
+    score += !slotContainers.length ? 140 : Math.max(20, 80 - slotContainers.length * 18);
+    score += Math.max(0, Math.round((1 - blockLoadRatio) * 60));
+    score += Math.min(90, lineMatches * 18);
+    score += Math.min(50, commodityMatches * 12);
+    score -= parseBayNumber(bay);
+    score -= Number(row) * 2;
+
+    return {
+        score,
+        reasons: buildStackInSuggestionReasons({
+            tier,
+            slotContainers,
+            lineMatches,
+            commodityMatches,
+            blockLoadRatio,
+            line: draft.line,
+            commodity: draft.commodity,
+        }),
+    };
+}
+
+function getStackInSuggestions(draft) {
+    if (!draft) return [];
+
+    const suggestions = [];
+    getTerminalLayout().forEach((layout) => {
+        const candidateBays = listCandidateBaysForContainerType(layout.block, draft.containerType);
+        layout.rows.forEach((row) => {
+            candidateBays.forEach((bay) => {
+                for (let tier = 1; tier <= layout.tierCount; tier += 1) {
+                    const placement = getStackInPlacementState({
+                        block: layout.block,
+                        bay,
+                        row,
+                        tier,
+                        direction: draft.direction,
+                        containerType: draft.containerType,
+                        stackOutDate: draft.stackOutDate,
+                    });
+                    if (placement.tone !== "success") continue;
+                    const surfaceBay = ["40ft", "45ft"].includes(draft.containerType)
+                        ? getSurfaceStartBayFromWideAnchor(bay)
+                        : bay;
+                    const slotContainers = getSlotContainers(layout.block, surfaceBay, row);
+                    const { score, reasons } = scoreStackInSuggestion({
+                        block: layout.block,
+                        row,
+                        bay,
+                        tier,
+                        slotContainers,
+                        draft,
+                    });
+                    suggestions.push({
+                        block: layout.block,
+                        bay,
+                        row,
+                        tier,
+                        score,
+                        reasons,
+                    });
+                    break;
+                }
+            });
+        });
+    });
+
+    return suggestions
+        .sort((left, right) => (
+            right.score - left.score
+            || left.block.localeCompare(right.block)
+            || parseBayNumber(left.bay) - parseBayNumber(right.bay)
+            || left.row - right.row
+            || left.tier - right.tier
+        ))
+        .slice(0, 3);
+}
+
+function renderStackInSuggestions(suggestions, autoApplied = false) {
+    const panel = document.getElementById("stackin-suggestions-panel");
+    const summary = document.getElementById("stackin-suggestions-summary");
+    const list = document.getElementById("stackin-suggestions-list");
+    if (!panel || !summary || !list) return;
+
+    const draft = getStackInRecommendationDraft();
+    if (!draft) {
+        panel.classList.add("hidden");
+        return;
+    }
+
+    panel.classList.remove("hidden");
+    const currentPosition = getStackInCurrentPosition();
+    if (!suggestions.length) {
+        summary.textContent = "No safe slot suggestion is available for the current yard state.";
+        list.innerHTML = `<div class="suggestion-empty">Try a different type, direction, or release a safer slot first.</div>`;
+        return;
+    }
+
+    summary.textContent = autoApplied
+        ? `Best safe slot auto-filled. ${suggestions.length} recommendation${suggestions.length === 1 ? "" : "s"} available.`
+        : `${suggestions.length} safe recommendation${suggestions.length === 1 ? "" : "s"} available.`;
+
+    list.innerHTML = suggestions.map((suggestion, index) => {
+        const isSelected = isSameStackInPosition(currentPosition, suggestion);
+        const badge = index === 0 ? "Best" : `Alt ${index}`;
+        const reasonText = suggestion.reasons.length ? suggestion.reasons.join(" · ") : "Safe current-yard placement";
+        return `
+            <div class="suggestion-card ${index === 0 ? "is-best" : ""} ${isSelected ? "is-selected" : ""}">
+                <div class="suggestion-card-main">
+                    <div class="suggestion-card-top">
+                        <span class="slot-badge neutral ${index === 0 ? "suggestion-rank-best" : ""}">${badge}</span>
+                        <strong>${suggestion.block}-${suggestion.bay}-${suggestion.row}-${suggestion.tier}</strong>
+                    </div>
+                    <small>${reasonText}</small>
+                </div>
+                <button type="button" class="btn-secondary suggestion-apply-btn" data-stackin-suggestion-index="${index}">
+                    ${isSelected ? "Selected" : "Use"}
+                </button>
+            </div>
+        `;
+    }).join("");
+
+    list.querySelectorAll("[data-stackin-suggestion-index]").forEach((button) => button.addEventListener("click", () => {
+        const suggestion = suggestions[Number(button.dataset.stackinSuggestionIndex)];
+        if (!suggestion) return;
+        applyStackInSuggestedPosition(suggestion, { lockSelection: true });
+        renderStackInAdvisory();
+    }));
 }
 
 function renderViewportControls(layout, visibleRows, visibleBays) {
@@ -3010,7 +3254,7 @@ function jumpToSlot() {
     state.selectedContainerId = getVisibleContainerForSlot(getSlotContainers(layout.block, surfaceBay, row))?.container_id || null;
     ensureSlotVisible(layout.block, bay, row);
     if (state.selectedContainerId) ensureContainerHistory(state.selectedContainerId);
-    syncFormsFromSelection({ forceStackIn: true });
+    syncFormsFromSelection({ forceStackIn: true, markStackInPositionDirty: true });
     renderSelectionState(previousBlock !== state.selectedBlock);
     showToast(`Jumped to ${layout.block}-${bay}-${row}.`, "success");
 }
@@ -3369,6 +3613,13 @@ function renderStackInAdvisory() {
     const advisory = document.getElementById("stackin-advisory");
     const positionGroup = document.getElementById("stackin-position-group");
     if (!advisory) return;
+    let suggestions = getStackInSuggestions(getStackInRecommendationDraft());
+    let autoApplied = false;
+    if (!state.stackInPositionDirty && suggestions.length && !isSameStackInPosition(getStackInCurrentPosition(), suggestions[0])) {
+        applyStackInSuggestedPosition(suggestions[0]);
+        autoApplied = true;
+        suggestions = getStackInSuggestions(getStackInRecommendationDraft());
+    }
     const next = getStackInAdvisory();
     advisory.textContent = next.message;
     advisory.classList.remove("neutral", "warning", "error", "success");
@@ -3384,6 +3635,7 @@ function renderStackInAdvisory() {
         conflictMessage: next.departureRuleConflict ? `${next.departureRuleConflict.message} Enable emergency override to continue.` : "",
         readyMessage: next.departureRuleConflict ? `Emergency override will be logged against lower container ${next.departureRuleConflict.item.container_id}.` : "",
     });
+    renderStackInSuggestions(suggestions, autoApplied);
 }
 
 function resolveRestowFormMove() {
