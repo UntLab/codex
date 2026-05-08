@@ -4,3 +4,4 @@ pydantic
 requests
 psycopg[binary]
 psycopg-pool
+reportlab

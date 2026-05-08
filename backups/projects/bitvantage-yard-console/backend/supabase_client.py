@@ -6,7 +6,7 @@ import os
 import secrets
 import sqlite3
 import uuid
-from datetime import datetime, timezone
+from datetime import date, datetime, time, timedelta, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Sequence, Union
 
@@ -51,6 +51,7 @@ DEMO_MODE = os.getenv("BITVANTAGE_DEMO_MODE", "false" if USE_POSTGRES else "true
 PASSWORD_ITERATIONS = 120_000
 ROLE_PERMISSIONS = {
     "ADMIN": {
+        "emergency_departure_override",
         "view_inventory",
         "view_history",
         "view_audit",
@@ -63,6 +64,7 @@ ROLE_PERMISSIONS = {
         "receive_all_movement_alerts",
     },
     "MANAGER": {
+        "emergency_departure_override",
         "view_inventory",
         "view_history",
         "view_audit",
@@ -100,19 +102,19 @@ DEFAULT_USERS = [
 
 DEFAULT_BLOCKS = [
     ("01", "West Rail Block", 10, 2, 4, "Left of the railway"),
-    ("02", "East Rail Block", 14, 3, 4, "Right of the railway"),
+    ("02", "East Rail Block", 14, 6, 4, "Right of the railway"),
 ]
 
 DEFAULT_INVENTORY = [
-    ("CONT001", "40ft", "01", "02", 2, 1, "01-02-2-1", "Loaded", "Import", "Maersk", "John Doe", "None", "OK123", "2026-03-10T08:15:00+00:00", "2026-03-10T08:15:00+00:00", "2026-03-10T08:15:00+00:00"),
-    ("CONT002", "20ft", "02", "09", 3, 1, "02-09-3-1", "Empty", "Export", "MSC", "Jane Smith", "None", "SEAL456", "2026-03-11T09:30:00+00:00", "2026-03-11T09:30:00+00:00", "2026-03-11T09:30:00+00:00"),
-    ("CONT003", "45ft", "02", "26", 2, 2, "02-26-2-2", "Loaded", "Import", "ZIM", "Alex Rail", "None", "RAIL789", "2026-03-12T07:20:00+00:00", "2026-03-12T07:20:00+00:00", "2026-03-12T07:20:00+00:00"),
+    ("CONT001", "40ft", "01", "02", 2, 1, "01-02-2-1", "Loaded", "Import", 0, "2026-03-18", 28250.0, "Machinery", "Maersk", "John Doe", "None", "OK123", "2026-03-10T08:15:00+00:00", "2026-03-10T08:15:00+00:00", "2026-03-10T08:15:00+00:00"),
+    ("CONT002", "20ft", "02", "09", 3, 1, "02-09-3-1", "Empty", "Export", 1, "2026-03-15", 8120.0, "Spare Parts", "MSC", "Jane Smith", "None", "SEAL456", "2026-03-11T09:30:00+00:00", "2026-03-11T09:30:00+00:00", "2026-03-11T09:30:00+00:00"),
+    ("CONT003", "45ft", "02", "26", 2, 2, "02-26-2-2", "Loaded", "Import", 0, None, 30180.0, "Steel Coils", "ZIM", "Alex Rail", "None", "RAIL789", "2026-03-12T07:20:00+00:00", "2026-03-12T07:20:00+00:00", "2026-03-12T07:20:00+00:00"),
 ]
 
 DEFAULT_LOGS = [
-    ("CONT001", "STACK_IN", None, "01-02-2-1", "2026-03-10T08:15:00+00:00", "2026-03-10T08:15:00+00:00", "manager", "Marina Orlova", "MANAGER", json.dumps({"container_id": "CONT001", "container_type": "40ft", "block": "01", "bay": "02", "row_num": 2, "tier_num": 1, "position_code": "01-02-2-1", "status": "Loaded", "direction": "Import", "line": "Maersk", "expeditor": "John Doe", "damages": "None", "seals": "OK123", "arrived_at": "2026-03-10T08:15:00+00:00", "positioned_at": "2026-03-10T08:15:00+00:00", "updated_at": "2026-03-10T08:15:00+00:00"})),
-    ("CONT002", "STACK_IN", None, "02-09-3-1", "2026-03-11T09:30:00+00:00", "2026-03-11T09:30:00+00:00", "planner", "Daniel Ash", "PLANNER", json.dumps({"container_id": "CONT002", "container_type": "20ft", "block": "02", "bay": "09", "row_num": 3, "tier_num": 1, "position_code": "02-09-3-1", "status": "Empty", "direction": "Export", "line": "MSC", "expeditor": "Jane Smith", "damages": "None", "seals": "SEAL456", "arrived_at": "2026-03-11T09:30:00+00:00", "positioned_at": "2026-03-11T09:30:00+00:00", "updated_at": "2026-03-11T09:30:00+00:00"})),
-    ("CONT003", "STACK_IN", None, "02-26-2-2", "2026-03-12T07:20:00+00:00", "2026-03-12T07:20:00+00:00", "admin", "BitVantage Admin", "ADMIN", json.dumps({"container_id": "CONT003", "container_type": "45ft", "block": "02", "bay": "26", "row_num": 2, "tier_num": 2, "position_code": "02-26-2-2", "status": "Loaded", "direction": "Import", "line": "ZIM", "expeditor": "Alex Rail", "damages": "None", "seals": "RAIL789", "arrived_at": "2026-03-12T07:20:00+00:00", "positioned_at": "2026-03-12T07:20:00+00:00", "updated_at": "2026-03-12T07:20:00+00:00"})),
+    ("CONT001", "STACK_IN", None, "01-02-2-1", "2026-03-10T08:15:00+00:00", "2026-03-10T08:15:00+00:00", "manager", "Marina Orlova", "MANAGER", json.dumps({"container_id": "CONT001", "container_type": "40ft", "block": "01", "bay": "02", "row_num": 2, "tier_num": 1, "position_code": "01-02-2-1", "status": "Loaded", "direction": "Import", "bonded": False, "stack_out_date": "2026-03-18", "weight": 28250.0, "commodity": "Machinery", "line": "Maersk", "expeditor": "John Doe", "damages": "None", "seals": "OK123", "arrived_at": "2026-03-10T08:15:00+00:00", "positioned_at": "2026-03-10T08:15:00+00:00", "updated_at": "2026-03-10T08:15:00+00:00"})),
+    ("CONT002", "STACK_IN", None, "02-09-3-1", "2026-03-11T09:30:00+00:00", "2026-03-11T09:30:00+00:00", "planner", "Daniel Ash", "PLANNER", json.dumps({"container_id": "CONT002", "container_type": "20ft", "block": "02", "bay": "09", "row_num": 3, "tier_num": 1, "position_code": "02-09-3-1", "status": "Empty", "direction": "Export", "bonded": True, "stack_out_date": "2026-03-15", "weight": 8120.0, "commodity": "Spare Parts", "line": "MSC", "expeditor": "Jane Smith", "damages": "None", "seals": "SEAL456", "arrived_at": "2026-03-11T09:30:00+00:00", "positioned_at": "2026-03-11T09:30:00+00:00", "updated_at": "2026-03-11T09:30:00+00:00"})),
+    ("CONT003", "STACK_IN", None, "02-26-2-2", "2026-03-12T07:20:00+00:00", "2026-03-12T07:20:00+00:00", "admin", "BitVantage Admin", "ADMIN", json.dumps({"container_id": "CONT003", "container_type": "45ft", "block": "02", "bay": "26", "row_num": 2, "tier_num": 2, "position_code": "02-26-2-2", "status": "Loaded", "direction": "Import", "bonded": False, "stack_out_date": None, "weight": 30180.0, "commodity": "Steel Coils", "line": "ZIM", "expeditor": "Alex Rail", "damages": "None", "seals": "RAIL789", "arrived_at": "2026-03-12T07:20:00+00:00", "positioned_at": "2026-03-12T07:20:00+00:00", "updated_at": "2026-03-12T07:20:00+00:00"})),
 ]
 
 DEFAULT_SLOT_OVERRIDES = []
@@ -126,6 +128,51 @@ SCHEMA_REQUIRED_TABLES = [
     "notification_logs",
     "sessions",
 ]
+
+INVENTORY_ADDITIONAL_COLUMNS = {
+    "bonded": {
+        "sqlite": "INTEGER NOT NULL DEFAULT 0",
+        "postgres": "BOOLEAN NOT NULL DEFAULT FALSE",
+    },
+    "stack_out_date": {
+        "sqlite": "TEXT",
+        "postgres": "DATE",
+    },
+    "weight": {
+        "sqlite": "REAL",
+        "postgres": "DOUBLE PRECISION",
+    },
+    "commodity": {
+        "sqlite": "TEXT",
+        "postgres": "TEXT",
+    },
+}
+
+OPERATIONS_LOG_ADDITIONAL_COLUMNS = {
+    "emergency_override": {
+        "sqlite": "INTEGER NOT NULL DEFAULT 0",
+        "postgres": "BOOLEAN NOT NULL DEFAULT FALSE",
+    },
+    "override_reason": {
+        "sqlite": "TEXT",
+        "postgres": "TEXT",
+    },
+}
+
+USERS_ADDITIONAL_COLUMNS = {
+    "is_active": {
+        "sqlite": "INTEGER NOT NULL DEFAULT 1",
+        "postgres": "BOOLEAN NOT NULL DEFAULT TRUE",
+    },
+    "deleted_at": {
+        "sqlite": "TEXT",
+        "postgres": "TIMESTAMPTZ",
+    },
+    "deleted_by": {
+        "sqlite": "TEXT",
+        "postgres": "VARCHAR(50)",
+    },
+}
 
 _POSTGRES_POOL: Optional["ConnectionPool"] = None
 
@@ -192,6 +239,10 @@ def utc_now_iso() -> str:
     return datetime.now(timezone.utc).replace(microsecond=0).isoformat()
 
 
+def isoformat_seconds(value: datetime) -> str:
+    return value.replace(microsecond=0).isoformat()
+
+
 def hash_password(password: str, salt: Optional[str] = None) -> str:
     raw_salt = salt or secrets.token_hex(16)
     digest = hashlib.pbkdf2_hmac("sha256", password.encode("utf-8"), raw_salt.encode("utf-8"), PASSWORD_ITERATIONS).hex()
@@ -212,17 +263,23 @@ def public_user(user: Dict[str, Any]) -> Dict[str, Any]:
     created_at = user.get("created_at")
     if hasattr(created_at, "isoformat"):
         created_at = created_at.isoformat()
+    deleted_at = user.get("deleted_at")
+    if hasattr(deleted_at, "isoformat"):
+        deleted_at = deleted_at.isoformat()
     return {
         "user_id": str(user["user_id"]),
         "username": user["username"],
         "full_name": user["full_name"],
         "role": user["role"],
+        "is_active": bool(user.get("is_active", True)),
         "telegram_chat_id": user.get("telegram_chat_id"),
         "notifications_enabled": bool(user.get("notifications_enabled", True)),
         "telegram_notifications_enabled": bool(user.get("telegram_notifications_enabled", True)),
         "receive_all_movement_alerts": bool(user.get("receive_all_movement_alerts", False)),
         "permissions": get_permissions_for_role(user["role"]),
         "created_at": created_at,
+        "deleted_at": deleted_at,
+        "deleted_by": user.get("deleted_by"),
     }
 
 
@@ -338,6 +395,69 @@ def get_surface_position_codes(block: str, bay: str, row_num: int, tier_num: int
     return [f"{block}-{surface_bay}-{row_num}-{tier_num}" for surface_bay in get_surface_bays_from_wide_anchor(normalized_bay)]
 
 
+def get_surface_slot_keys(block: str, bay: str, row_num: int, container_type: str) -> List[str]:
+    normalized_bay = format_bay_number(int(bay))
+    if not is_wide_container(container_type):
+        return [f"{block}-{normalized_bay}-{row_num}"]
+    return [f"{block}-{surface_bay}-{row_num}" for surface_bay in get_surface_bays_from_wide_anchor(normalized_bay)]
+
+
+def get_surface_bays_for_placement(bay: str, container_type: str) -> List[str]:
+    normalized_bay = format_bay_number(int(bay))
+    if not is_wide_container(container_type):
+        return [normalized_bay]
+    return get_surface_bays_from_wide_anchor(normalized_bay)
+
+
+def parse_priority_date(value: Any) -> Optional[datetime]:
+    if value is None:
+        return None
+    if isinstance(value, datetime):
+        if value.tzinfo is None:
+            return value.replace(tzinfo=timezone.utc)
+        return value
+    if isinstance(value, date):
+        return datetime.combine(value, time.min, tzinfo=timezone.utc)
+    raw = str(value).strip()
+    if not raw:
+        return None
+    if len(raw) <= 10:
+        try:
+            return datetime.combine(date.fromisoformat(raw), time.min, tzinfo=timezone.utc)
+        except ValueError:
+            return None
+    try:
+        normalized = raw.replace("Z", "+00:00")
+        parsed = datetime.fromisoformat(normalized)
+    except ValueError:
+        return None
+    if parsed.tzinfo is None:
+        return parsed.replace(tzinfo=timezone.utc)
+    return parsed
+
+
+def get_priority_reference(stack_out_date: Any, arrived_at: Any) -> Dict[str, Any]:
+    planned_date = parse_priority_date(stack_out_date)
+    if planned_date:
+        return {
+            "date": planned_date,
+            "source": "stack out",
+            "label": planned_date.date().isoformat(),
+        }
+    arrival_date = parse_priority_date(arrived_at)
+    if arrival_date:
+        return {
+            "date": arrival_date,
+            "source": "arrival",
+            "label": arrival_date.date().isoformat(),
+        }
+    return {
+        "date": None,
+        "source": "arrival",
+        "label": "not set",
+    }
+
+
 def container_position_is_valid(container_type: str, block: str, bay: str, row_num: int, tier_num: int) -> bool:
     block_record = next((item for item in DEFAULT_BLOCKS if item[0] == block), None)
     if not block_record:
@@ -418,8 +538,11 @@ def reseed_demo_inventory(db: sqlite3.Connection) -> None:
     db.execute("DELETE FROM operations_log")
     db.executemany(
         """
-        INSERT INTO inventory (container_id, container_type, block, bay, row_num, tier_num, position_code, status, direction, line, expeditor, damages, seals, arrived_at, positioned_at, updated_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO inventory (
+            container_id, container_type, block, bay, row_num, tier_num, position_code, status, direction,
+            bonded, stack_out_date, weight, commodity, line, expeditor, damages, seals, arrived_at, positioned_at, updated_at
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
         DEFAULT_INVENTORY,
     )
@@ -430,6 +553,48 @@ def reseed_demo_inventory(db: sqlite3.Connection) -> None:
         """,
         DEFAULT_LOGS,
     )
+
+
+def get_table_columns(db: DBConnection, table_name: str) -> set[str]:
+    if USE_POSTGRES:
+        rows = db.execute(
+            """
+            SELECT column_name
+            FROM information_schema.columns
+            WHERE table_schema = 'public' AND table_name = ?
+            """,
+            (table_name,),
+        ).fetchall()
+        return {row["column_name"] for row in rows}
+    rows = db.execute(f"PRAGMA table_info({table_name})").fetchall()
+    return {row["name"] for row in rows}
+
+
+def ensure_inventory_schema(db: DBConnection) -> None:
+    existing_columns = get_table_columns(db, "inventory")
+    dialect = "postgres" if USE_POSTGRES else "sqlite"
+    for column_name, specs in INVENTORY_ADDITIONAL_COLUMNS.items():
+        if column_name in existing_columns:
+            continue
+        db.execute(f"ALTER TABLE inventory ADD COLUMN {column_name} {specs[dialect]}")
+
+
+def ensure_operations_log_schema(db: DBConnection) -> None:
+    existing_columns = get_table_columns(db, "operations_log")
+    dialect = "postgres" if USE_POSTGRES else "sqlite"
+    for column_name, specs in OPERATIONS_LOG_ADDITIONAL_COLUMNS.items():
+        if column_name in existing_columns:
+            continue
+        db.execute(f"ALTER TABLE operations_log ADD COLUMN {column_name} {specs[dialect]}")
+
+
+def ensure_users_schema(db: DBConnection) -> None:
+    existing_columns = get_table_columns(db, "users")
+    dialect = "postgres" if USE_POSTGRES else "sqlite"
+    for column_name, specs in USERS_ADDITIONAL_COLUMNS.items():
+        if column_name in existing_columns:
+            continue
+        db.execute(f"ALTER TABLE users ADD COLUMN {column_name} {specs[dialect]}")
 
 
 def ensure_postgres_ready(db: DBConnection) -> None:
@@ -454,12 +619,17 @@ def ensure_postgres_ready(db: DBConnection) -> None:
             "Supabase schema is incomplete. Run setup_supabase.sql before starting the backend. "
             f"Missing tables: {', '.join(missing)}."
         )
+    ensure_users_schema(db)
+    ensure_inventory_schema(db)
+    ensure_operations_log_schema(db)
 
 
 def init_db() -> None:
     if USE_POSTGRES:
         with get_db() as db:
             ensure_postgres_ready(db)
+            ensure_inventory_schema(db)
+            ensure_operations_log_schema(db)
             sync_terminal_blocks(db)
             sync_slot_overrides(db)
         return
@@ -478,7 +648,10 @@ def init_db() -> None:
                 notifications_enabled INTEGER NOT NULL,
                 telegram_notifications_enabled INTEGER NOT NULL,
                 receive_all_movement_alerts INTEGER NOT NULL,
-                created_at TEXT NOT NULL
+                created_at TEXT NOT NULL,
+                is_active INTEGER NOT NULL DEFAULT 1,
+                deleted_at TEXT,
+                deleted_by TEXT
             );
             CREATE TABLE IF NOT EXISTS terminal_blocks (
                 block TEXT PRIMARY KEY,
@@ -508,6 +681,10 @@ def init_db() -> None:
                 position_code TEXT NOT NULL,
                 status TEXT NOT NULL,
                 direction TEXT NOT NULL,
+                bonded INTEGER NOT NULL DEFAULT 0,
+                stack_out_date TEXT,
+                weight REAL,
+                commodity TEXT,
                 line TEXT,
                 expeditor TEXT,
                 damages TEXT,
@@ -527,7 +704,9 @@ def init_db() -> None:
                 operator_username TEXT,
                 operator_full_name TEXT,
                 operator_role TEXT,
-                container_snapshot TEXT
+                container_snapshot TEXT,
+                emergency_override INTEGER NOT NULL DEFAULT 0,
+                override_reason TEXT
             );
             CREATE TABLE IF NOT EXISTS notification_logs (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -547,6 +726,9 @@ def init_db() -> None:
             );
             """
         )
+        ensure_users_schema(db)
+        ensure_inventory_schema(db)
+        ensure_operations_log_schema(db)
         count_row = db.execute("SELECT COUNT(*) AS count FROM users").fetchone()
         if count_row["count"] == 0 and DEMO_MODE:
             for user in DEFAULT_USERS:
@@ -597,6 +779,25 @@ def normalize_user_row(user: Any) -> Dict[str, Any]:
     item["notifications_enabled"] = bool(item["notifications_enabled"])
     item["telegram_notifications_enabled"] = bool(item["telegram_notifications_enabled"])
     item["receive_all_movement_alerts"] = bool(item["receive_all_movement_alerts"])
+    item["is_active"] = bool(item.get("is_active", True))
+    return item
+
+
+def normalize_inventory_row(container: Any) -> Dict[str, Any]:
+    item = row_dict(container)
+    if not item:
+        return {}
+    if "bonded" in item:
+        item["bonded"] = bool(item["bonded"])
+    if item.get("weight") is not None:
+        try:
+            item["weight"] = float(item["weight"])
+        except (TypeError, ValueError):
+            pass
+    for key in ("stack_out_date", "arrived_at", "positioned_at", "updated_at"):
+        value = item.get(key)
+        if hasattr(value, "isoformat"):
+            item[key] = value.isoformat()
     return item
 
 
@@ -625,7 +826,8 @@ def list_users(db: Optional[DBConnection] = None) -> List[Dict[str, Any]]:
             rows = db_conn.execute("SELECT * FROM users ORDER BY username").fetchall()
     else:
         rows = db.execute("SELECT * FROM users ORDER BY username").fetchall()
-    return [public_user(normalize_user_row(row)) for row in rows]
+    users = [normalize_user_row(row) for row in rows]
+    return [public_user(user) for user in users if user.get("is_active", True)]
 
 
 def normalize_role(role: str) -> str:
@@ -637,14 +839,14 @@ def normalize_role(role: str) -> str:
 
 def authenticate_user(username: str, password: str) -> Optional[Dict[str, Any]]:
     user = _local_user_row(username)
-    if not user or not verify_password(password, user["password_hash"]):
+    if not user or not user.get("is_active", True) or not verify_password(password, user["password_hash"]):
         return None
     return public_user(user)
 
 
 def create_session(username: str) -> tuple[str, Dict[str, Any]]:
     user = _local_user_row(username)
-    if not user:
+    if not user or not user.get("is_active", True):
         raise ValueError("Unknown user")
     token = secrets.token_urlsafe(32)
     with get_db() as db:
@@ -667,12 +869,14 @@ def get_user_by_token(token: str) -> Optional[Dict[str, Any]]:
         return None
     username = session["username"] if isinstance(session, dict) else session["username"]
     user = _local_user_row(username)
-    return public_user(user) if user else None
+    return public_user(user) if user and user.get("is_active", True) else None
 
 
-def get_user_by_username(username: str) -> Optional[Dict[str, Any]]:
+def get_user_by_username(username: str, *, include_inactive: bool = False) -> Optional[Dict[str, Any]]:
     user = _local_user_row(username)
-    return public_user(user) if user else None
+    if not user or (not include_inactive and not user.get("is_active", True)):
+        return None
+    return public_user(user)
 
 
 def create_user_record(payload: Dict[str, Any]) -> Dict[str, Any]:
@@ -725,6 +929,9 @@ def create_user_record(payload: Dict[str, Any]) -> Dict[str, Any]:
 
 def update_user_role(username: str, role: str) -> Optional[Dict[str, Any]]:
     normalized = normalize_role(role)
+    existing = _local_user_row(username)
+    if not existing or not existing.get("is_active", True):
+        return None
     with get_db() as db:
         cursor = db.execute(
             """
@@ -740,6 +947,9 @@ def update_user_role(username: str, role: str) -> Optional[Dict[str, Any]]:
 
 
 def admin_set_password(username: str, new_password: str) -> Optional[Dict[str, Any]]:
+    existing = _local_user_row(username)
+    if not existing or not existing.get("is_active", True):
+        return None
     with get_db() as db:
         cursor = db.execute("UPDATE users SET password_hash = ? WHERE username = ?", (hash_password(new_password), username))
     if cursor.rowcount == 0:
@@ -747,9 +957,28 @@ def admin_set_password(username: str, new_password: str) -> Optional[Dict[str, A
     return get_user_by_username(username)
 
 
+def archive_user_record(username: str, deleted_by: str) -> Optional[Dict[str, Any]]:
+    with get_db() as db:
+        user = _local_user_row(username, db=db)
+        if not user or not user.get("is_active", True):
+            return None
+        if username == deleted_by:
+            raise ValueError("You cannot delete your own account.")
+        if user["role"] == "ADMIN":
+            active_admin_count = sum(1 for item in list_users(db=db) if item["role"] == "ADMIN")
+            if active_admin_count <= 1:
+                raise ValueError("You cannot delete the last active admin.")
+        db.execute(
+            "UPDATE users SET is_active = ?, deleted_at = ?, deleted_by = ? WHERE username = ?",
+            (bool_int(False), utc_now_iso(), deleted_by, username),
+        )
+        db.execute("DELETE FROM sessions WHERE username = ?", (username,))
+    return get_user_by_username(username, include_inactive=True)
+
+
 def change_own_password(username: str, current_password: str, new_password: str) -> Optional[Dict[str, Any]]:
     user = _local_user_row(username)
-    if not user:
+    if not user or not user.get("is_active", True):
         return None
     if not verify_password(current_password, user["password_hash"]):
         raise ValueError("Current password is incorrect.")
@@ -760,7 +989,7 @@ def change_own_password(username: str, current_password: str, new_password: str)
 
 def update_notification_settings(username: str, updates: Dict[str, Any]) -> Optional[Dict[str, Any]]:
     user = _local_user_row(username)
-    if not user:
+    if not user or not user.get("is_active", True):
         return None
     receive_all = bool(updates.get("receive_all_movement_alerts", user["receive_all_movement_alerts"]))
     if "receive_all_movement_alerts" not in get_permissions_for_role(user["role"]):
@@ -913,6 +1142,33 @@ def update_slot(block: str, bay: str, row: int, updates: Dict[str, Any]) -> Opti
     return get_slot(block, bay, row)
 
 
+def find_direction_conflict_in_bay(
+    block: str,
+    bay: str,
+    direction: str,
+    container_type: str,
+    *,
+    exclude_container_id: Optional[str] = None,
+    inventory_rows: Optional[List[Dict[str, Any]]] = None,
+    db: Optional[DBConnection] = None,
+) -> Optional[Dict[str, Any]]:
+    inventory = inventory_rows if inventory_rows is not None else get_all_inventory(db=db)
+    target_surface_bays = set(get_surface_bays_for_placement(bay, container_type))
+    normalized_direction = str(direction).strip().lower()
+    for item in inventory:
+        if exclude_container_id and item["container_id"] == exclude_container_id:
+            continue
+        if item["block"] != block:
+            continue
+        occupied_surface_bays = set(get_surface_bays_for_placement(item["bay"], item["container_type"]))
+        if not target_surface_bays.intersection(occupied_surface_bays):
+            continue
+        item_direction = str(item.get("direction", "")).strip().lower()
+        if item_direction and item_direction != normalized_direction:
+            return item
+    return None
+
+
 def insert_inventory(container: Dict[str, Any]) -> bool:
     payload = dict(container)
     timestamp = utc_now_iso()
@@ -922,13 +1178,18 @@ def insert_inventory(container: Dict[str, Any]) -> bool:
     with get_db() as db:
         db.execute(
             """
-            INSERT INTO inventory (container_id, container_type, block, bay, row_num, tier_num, position_code, status, direction, line, expeditor, damages, seals, arrived_at, positioned_at, updated_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO inventory (
+                container_id, container_type, block, bay, row_num, tier_num, position_code, status, direction,
+                bonded, stack_out_date, weight, commodity, line, expeditor, damages, seals, arrived_at, positioned_at, updated_at
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 payload["container_id"], payload["container_type"], payload["block"], payload["bay"], payload["row_num"], payload["tier_num"],
-                payload["position_code"], payload["status"], payload["direction"], payload.get("line"), payload.get("expeditor"),
-                payload.get("damages"), payload.get("seals"), payload["arrived_at"], payload["positioned_at"], payload["updated_at"]
+                payload["position_code"], payload["status"], payload["direction"], bool_int(payload.get("bonded", False)),
+                payload.get("stack_out_date"), payload.get("weight"), payload.get("commodity"), payload.get("line"),
+                payload.get("expeditor"), payload.get("damages"), payload.get("seals"),
+                payload["arrived_at"], payload["positioned_at"], payload["updated_at"]
             ),
         )
     return True
@@ -940,7 +1201,7 @@ def check_inventory(container_id: str, db: Optional[DBConnection] = None) -> Opt
             row = db_conn.execute("SELECT * FROM inventory WHERE container_id = ?", (container_id,)).fetchone()
     else:
         row = db.execute("SELECT * FROM inventory WHERE container_id = ?", (container_id,)).fetchone()
-    return row_dict(row) if row else None
+    return normalize_inventory_row(row) if row else None
 
 
 def find_inventory_by_position(position_code: str, exclude_container_id: Optional[str] = None) -> Optional[Dict[str, Any]]:
@@ -952,7 +1213,7 @@ def find_inventory_by_position(position_code: str, exclude_container_id: Optiona
     query += " LIMIT 1"
     with get_db() as db:
         row = db.execute(query, params).fetchone()
-    return row_dict(row) if row else None
+    return normalize_inventory_row(row) if row else None
 
 
 def find_inventory_by_surface_position(
@@ -1012,13 +1273,64 @@ def has_supporting_base(
     return True
 
 
+def find_departure_priority_conflict(
+    block: str,
+    bay: str,
+    row_num: int,
+    tier_num: int,
+    container_type: str,
+    stack_out_date: Any,
+    arrived_at: Any,
+    *,
+    exclude_container_id: Optional[str] = None,
+    inventory_rows: Optional[List[Dict[str, Any]]] = None,
+    db: Optional[DBConnection] = None,
+) -> Optional[Dict[str, Any]]:
+    if int(tier_num) <= 1:
+        return None
+    candidate_priority = get_priority_reference(stack_out_date, arrived_at)
+    if not candidate_priority["date"]:
+        return None
+
+    inventory = inventory_rows if inventory_rows is not None else get_all_inventory(db=db)
+    target_slots = set(get_surface_slot_keys(block, bay, row_num, container_type))
+    conflicts: List[Dict[str, Any]] = []
+
+    for item in inventory:
+        if exclude_container_id and item["container_id"] == exclude_container_id:
+            continue
+        if item["block"] != block or int(item["row_num"]) != int(row_num) or int(item["tier_num"]) >= int(tier_num):
+            continue
+        occupied_slots = set(get_surface_slot_keys(item["block"], item["bay"], item["row_num"], item["container_type"]))
+        if not target_slots.intersection(occupied_slots):
+            continue
+        priority = get_priority_reference(item.get("stack_out_date"), item.get("arrived_at"))
+        if priority["date"] and priority["date"] < candidate_priority["date"]:
+            conflicts.append({"item": item, "priority": priority})
+
+    if not conflicts:
+        return None
+
+    conflicts.sort(key=lambda entry: entry["priority"]["date"])
+    lead = conflicts[0]
+    return {
+        "container_id": lead["item"]["container_id"],
+        "position_code": lead["item"].get("position_code"),
+        "tier_num": int(lead["item"]["tier_num"]),
+        "priority_source": lead["priority"]["source"],
+        "priority_label": lead["priority"]["label"],
+        "candidate_source": candidate_priority["source"],
+        "candidate_label": candidate_priority["label"],
+    }
+
+
 def get_all_inventory(db: Optional[DBConnection] = None) -> List[Dict[str, Any]]:
     if db is None:
         with get_db() as db_conn:
             rows = db_conn.execute("SELECT * FROM inventory ORDER BY position_code").fetchall()
     else:
         rows = db.execute("SELECT * FROM inventory ORDER BY position_code").fetchall()
-    return [row_dict(row) for row in rows]
+    return [normalize_inventory_row(row) for row in rows]
 
 
 def delete_inventory(container_id: str) -> bool:
@@ -1052,25 +1364,33 @@ def insert_log(log_entry: Dict[str, Any], db: Optional[DBConnection] = None) -> 
         with get_db() as db_conn:
             db_conn.execute(
                 """
-                INSERT INTO operations_log (container_id, operation_type, old_position_code, new_position_code, performed_at, created_at, operator_username, operator_full_name, operator_role, container_snapshot)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                INSERT INTO operations_log (
+                    container_id, operation_type, old_position_code, new_position_code, performed_at, created_at,
+                    operator_username, operator_full_name, operator_role, container_snapshot, emergency_override, override_reason
+                )
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     payload["container_id"], payload["operation_type"], payload.get("old_position_code"), payload.get("new_position_code"),
                     payload["performed_at"], payload["created_at"], payload.get("operator_username"), payload.get("operator_full_name"),
-                    payload.get("operator_role"), json_dumps_safe(payload.get("container_snapshot", {}))
+                    payload.get("operator_role"), json_dumps_safe(payload.get("container_snapshot", {})),
+                    bool_int(payload.get("emergency_override", False)), payload.get("override_reason")
                 ),
             )
     else:
         db.execute(
             """
-            INSERT INTO operations_log (container_id, operation_type, old_position_code, new_position_code, performed_at, created_at, operator_username, operator_full_name, operator_role, container_snapshot)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO operations_log (
+                container_id, operation_type, old_position_code, new_position_code, performed_at, created_at,
+                operator_username, operator_full_name, operator_role, container_snapshot, emergency_override, override_reason
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 payload["container_id"], payload["operation_type"], payload.get("old_position_code"), payload.get("new_position_code"),
                 payload["performed_at"], payload["created_at"], payload.get("operator_username"), payload.get("operator_full_name"),
-                payload.get("operator_role"), json_dumps_safe(payload.get("container_snapshot", {}))
+                payload.get("operator_role"), json_dumps_safe(payload.get("container_snapshot", {})),
+                bool_int(payload.get("emergency_override", False)), payload.get("override_reason")
             ),
         )
     return True
@@ -1094,9 +1414,10 @@ def get_operations_log(
     if date_to:
         query += " AND performed_at <= ?"
         params.append(date_to)
-    query += " ORDER BY performed_at ASC"
     if limit:
-        query += f" LIMIT {int(limit)}"
+        query = f"SELECT * FROM ({query} ORDER BY performed_at DESC LIMIT {int(limit)}) AS recent_logs ORDER BY performed_at ASC"
+    else:
+        query += " ORDER BY performed_at ASC"
     if db is None:
         with get_db() as db_conn:
             rows = db_conn.execute(query, params).fetchall()
@@ -1106,21 +1427,211 @@ def get_operations_log(
     for row in rows:
         item = row_dict(row)
         item["container_snapshot"] = decode_json_field(item.get("container_snapshot"), {})
+        item["emergency_override"] = bool(item.get("emergency_override", False))
         logs.append(item)
     return logs
 
 
-def get_bootstrap_payload(current_user: Dict[str, Any], logs_limit: int = 50, include_admin_users: bool = False) -> Dict[str, Any]:
+REPORT_OPERATION_TYPES = {"STACK_IN", "STACK_OUT", "RESTOW"}
+
+
+def _parse_report_local_date(value: Optional[str], label: str) -> Optional[date]:
+    if value is None or str(value).strip() == "":
+        return None
+    try:
+        return datetime.strptime(str(value), "%Y-%m-%d").date()
+    except ValueError as exc:
+        raise ValueError(f"{label} must use YYYY-MM-DD format.") from exc
+
+
+def _to_report_datetime(value: Any) -> Optional[datetime]:
+    if value is None or value == "":
+        return None
+    if isinstance(value, datetime):
+        return value if value.tzinfo else value.replace(tzinfo=timezone.utc)
+    if isinstance(value, date):
+        return datetime.combine(value, time.min, tzinfo=timezone.utc)
+    raw = str(value).strip()
+    if not raw:
+        return None
+    try:
+        parsed = datetime.fromisoformat(raw.replace("Z", "+00:00"))
+    except ValueError:
+        return None
+    return parsed if parsed.tzinfo else parsed.replace(tzinfo=timezone.utc)
+
+
+def _serialize_report_datetime(value: Any) -> Optional[str]:
+    parsed = _to_report_datetime(value)
+    if not parsed:
+        return None
+    return isoformat_seconds(parsed)
+
+
+def _serialize_report_datetime_local(value: Any, utc_offset_minutes: int) -> Optional[str]:
+    parsed = _to_report_datetime(value)
+    if not parsed:
+        return None
+    local_tz = timezone(timedelta(minutes=utc_offset_minutes))
+    return isoformat_seconds(parsed.astimezone(local_tz))
+
+
+def get_operations_report(
+    *,
+    date_from_local: Optional[str] = None,
+    date_to_local: Optional[str] = None,
+    utc_offset_minutes: int = 0,
+    operation_type: Optional[str] = None,
+    operator_query: Optional[str] = None,
+    container_query: Optional[str] = None,
+    db: Optional[DBConnection] = None,
+) -> Dict[str, Any]:
+    start_date = _parse_report_local_date(date_from_local, "Date From")
+    end_date = _parse_report_local_date(date_to_local, "Date To")
+    if start_date and end_date and start_date > end_date:
+        raise ValueError("Date From cannot be later than Date To.")
+
+    normalized_operation_type = (operation_type or "").strip().upper() or None
+    if normalized_operation_type and normalized_operation_type not in REPORT_OPERATION_TYPES:
+        raise ValueError("Operation type must be STACK_IN, STACK_OUT or RESTOW.")
+
+    normalized_operator_query = (operator_query or "").strip().casefold()
+    normalized_container_query = (container_query or "").strip().casefold()
+    local_tz = timezone(timedelta(minutes=utc_offset_minutes))
+    utc_from = None
+    utc_to = None
+    if start_date:
+        utc_from = isoformat_seconds(datetime.combine(start_date, time.min, tzinfo=local_tz).astimezone(timezone.utc))
+    if end_date:
+        utc_to = isoformat_seconds(datetime.combine(end_date, time.max, tzinfo=local_tz).astimezone(timezone.utc))
+
+    raw_items = get_operations_log(date_from=utc_from, date_to=utc_to, db=db)
+    filtered_items: List[Dict[str, Any]] = []
+    operation_counts = {operation: 0 for operation in REPORT_OPERATION_TYPES}
+    operator_totals: Dict[str, Dict[str, Any]] = {}
+    unique_containers = set()
+
+    for entry in raw_items:
+        current_operation = str(entry.get("operation_type") or "").upper()
+        if normalized_operation_type and current_operation != normalized_operation_type:
+            continue
+        if normalized_container_query and normalized_container_query not in str(entry.get("container_id") or "").casefold():
+            continue
+        if normalized_operator_query:
+            searchable_operator = " ".join(
+                filter(
+                    None,
+                    [
+                        str(entry.get("operator_username") or ""),
+                        str(entry.get("operator_full_name") or ""),
+                        str(entry.get("operator_role") or ""),
+                    ],
+                )
+            ).casefold()
+            if normalized_operator_query not in searchable_operator:
+                continue
+
+        serializable = dict(entry)
+        serializable["performed_at"] = _serialize_report_datetime(entry.get("performed_at"))
+        serializable["created_at"] = _serialize_report_datetime(entry.get("created_at"))
+        serializable["performed_at_local"] = _serialize_report_datetime_local(entry.get("performed_at"), utc_offset_minutes)
+        serializable["created_at_local"] = _serialize_report_datetime_local(entry.get("created_at"), utc_offset_minutes)
+        filtered_items.append(serializable)
+
+        if current_operation in operation_counts:
+            operation_counts[current_operation] += 1
+        if serializable.get("container_id"):
+            unique_containers.add(serializable["container_id"])
+
+        operator_key = serializable.get("operator_username") or serializable.get("operator_full_name") or "system"
+        operator_record = operator_totals.setdefault(
+            operator_key,
+            {
+                "username": serializable.get("operator_username"),
+                "full_name": serializable.get("operator_full_name"),
+                "role": serializable.get("operator_role"),
+                "operations": 0,
+            },
+        )
+        operator_record["operations"] += 1
+
+    sorted_operators = sorted(
+        operator_totals.values(),
+        key=lambda item: (-item["operations"], item.get("full_name") or item.get("username") or ""),
+    )
+
+    return {
+        "filters": {
+            "date_from": start_date.isoformat() if start_date else None,
+            "date_to": end_date.isoformat() if end_date else None,
+            "operation_type": normalized_operation_type,
+            "operator_query": operator_query or None,
+            "container_query": container_query or None,
+            "utc_offset_minutes": utc_offset_minutes,
+        },
+        "summary": {
+            "total_records": len(filtered_items),
+            "stack_in": operation_counts["STACK_IN"],
+            "stack_out": operation_counts["STACK_OUT"],
+            "restow": operation_counts["RESTOW"],
+            "unique_containers": len(unique_containers),
+            "unique_users": len(sorted_operators),
+            "operators": sorted_operators,
+        },
+        "generated_at": utc_now_iso(),
+        "generated_at_local": isoformat_seconds(datetime.now(local_tz)),
+        "items": filtered_items,
+    }
+
+
+def get_operation_counts_for_local_day(
+    target_date: Optional[date] = None,
+    utc_offset_minutes: int = 0,
+    db: Optional[DBConnection] = None,
+) -> Dict[str, int]:
+    local_tz = timezone(timedelta(minutes=utc_offset_minutes))
+    local_day = target_date or datetime.now(local_tz).date()
+    start_local = datetime.combine(local_day, time.min, tzinfo=local_tz)
+    end_local = datetime.combine(local_day, time.max, tzinfo=local_tz)
+    logs = get_operations_log(
+        date_from=isoformat_seconds(start_local.astimezone(timezone.utc)),
+        date_to=isoformat_seconds(end_local.astimezone(timezone.utc)),
+        db=db,
+    )
+    counts = {"STACK_IN": 0, "STACK_OUT": 0}
+    for entry in logs:
+        operation_type = entry.get("operation_type")
+        if operation_type in counts:
+            counts[operation_type] += 1
+    return counts
+
+
+def get_bootstrap_payload(
+    current_user: Dict[str, Any],
+    logs_limit: int = 50,
+    include_admin_users: bool = False,
+    dashboard_date: Optional[date] = None,
+    utc_offset_minutes: int = 0,
+) -> Dict[str, Any]:
     with get_db() as db:
         layout = get_terminal_layout(db=db)
         slots = get_all_slots(db=db, layout_records=layout)
         inventory = get_all_inventory(db=db)
         logs = get_operations_log(limit=logs_limit, db=db)
+        operation_counts = get_operation_counts_for_local_day(
+            target_date=dashboard_date,
+            utc_offset_minutes=utc_offset_minutes,
+            db=db,
+        )
         payload = {
             "layout": layout,
             "slots": slots,
             "inventory": inventory,
             "logs": logs,
+            "stats": {
+                "today_in": operation_counts["STACK_IN"],
+                "today_out": operation_counts["STACK_OUT"],
+            },
             "fetched_at": utc_now_iso(),
         }
         if include_admin_users and "manage_users" in current_user.get("permissions", []):

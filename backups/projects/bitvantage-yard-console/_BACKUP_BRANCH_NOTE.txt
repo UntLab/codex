@@ -1,0 +1,21 @@
+BACKUP BRANCH NOTE
+
+Project: bitvantage-yard-console
+Backup repository: UntLab/codex
+Backup branch: backups
+
+Language note:
+This snapshot is marked as an ENGLISH-ONLY branch backup.
+Treat this backup as the English branch baseline for this project.
+
+Source repository:
+UntLab/bitvantage-yard-console
+
+Source branch:
+main
+
+Source commit:
+e1e59d6
+
+Snapshot date:
+2026-05-08

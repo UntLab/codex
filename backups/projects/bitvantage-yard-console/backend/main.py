@@ -5,11 +5,12 @@ from typing import Any, Dict, Optional
 from fastapi import Depends, FastAPI, HTTPException, Query, status
 from fastapi.encoders import jsonable_encoder
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse, PlainTextResponse
+from fastapi.responses import JSONResponse, PlainTextResponse, StreamingResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from fastapi.staticfiles import StaticFiles
 
 import n8n_client
+import report_exports
 import supabase_client
 from models import (
     AdminSetPasswordRequest,
@@ -125,6 +126,96 @@ def ensure_slot_eligible(slot: Dict[str, Any], container_type: str, tier: int) -
         raise HTTPException(status_code=400, detail=f"Slot {slot['slot_code']} supports tiers only up to {slot['max_tiers']}.")
 
 
+def ensure_bay_direction_consistent(
+    block: str,
+    bay: str,
+    direction: str,
+    container_type: str,
+    *,
+    exclude_container_id: Optional[str] = None,
+    db=None,
+    inventory_rows=None,
+) -> None:
+    conflict = supabase_client.find_direction_conflict_in_bay(
+        block,
+        bay,
+        direction,
+        container_type,
+        exclude_container_id=exclude_container_id,
+        db=db,
+        inventory_rows=inventory_rows,
+    )
+    if not conflict:
+        return
+    normalized_bay = str(int(bay)).zfill(2)
+    raise HTTPException(
+        status_code=409,
+        detail=(
+            f"Cannot mix {direction} with {conflict['direction']} in bay {block}-{normalized_bay}. "
+            f"Container {conflict['container_id']} is already assigned there."
+        ),
+    )
+
+
+def can_emergency_override_departure_priority(current_user: Dict[str, Any]) -> bool:
+    return "emergency_departure_override" in current_user.get("permissions", [])
+
+
+def build_departure_priority_message(conflict: Dict[str, Any], *, override_allowed: bool) -> str:
+    message = (
+        f"Cannot place this container above {conflict['container_id']} at {conflict['position_code']} because it leaves earlier "
+        f"({conflict['priority_source']} date {conflict['priority_label']}) than this container's "
+        f"{conflict['candidate_source']} date {conflict['candidate_label']}."
+    )
+    if override_allowed:
+        message += " Emergency override is available, but a reason is required."
+    return message
+
+
+def ensure_departure_priority_allowed(
+    *,
+    block: str,
+    bay: str,
+    row: int,
+    tier: int,
+    container_type: str,
+    stack_out_date: Optional[str],
+    arrived_at: Optional[str],
+    current_user: Dict[str, Any],
+    emergency_override: bool = False,
+    override_reason: Optional[str] = None,
+    exclude_container_id: Optional[str] = None,
+    db=None,
+    inventory_rows=None,
+) -> Dict[str, Any]:
+    conflict = supabase_client.find_departure_priority_conflict(
+        block,
+        bay,
+        row,
+        tier,
+        container_type,
+        stack_out_date,
+        arrived_at,
+        exclude_container_id=exclude_container_id,
+        db=db,
+        inventory_rows=inventory_rows,
+    )
+    if not conflict:
+        return {"emergency_override": False, "override_reason": None, "conflict": None}
+
+    override_allowed = can_emergency_override_departure_priority(current_user)
+    if not emergency_override:
+        raise HTTPException(status_code=409, detail=build_departure_priority_message(conflict, override_allowed=override_allowed))
+    if not override_allowed:
+        raise HTTPException(status_code=403, detail="Emergency override for departure priority is allowed only for Admin or Manager.")
+
+    cleaned_reason = (override_reason or "").strip()
+    if not cleaned_reason:
+        raise HTTPException(status_code=400, detail="Emergency override reason is required for this placement.")
+
+    return {"emergency_override": True, "override_reason": cleaned_reason, "conflict": conflict}
+
+
 def build_log_entry(
     *,
     container_id: str,
@@ -134,6 +225,8 @@ def build_log_entry(
     new_position_code: Optional[str],
     container_snapshot: Dict[str, Any],
     current_user: Dict[str, Any],
+    emergency_override: bool = False,
+    override_reason: Optional[str] = None,
 ) -> Dict[str, Any]:
     return {
         "container_id": container_id,
@@ -145,6 +238,8 @@ def build_log_entry(
         "operator_full_name": current_user["full_name"],
         "operator_role": current_user["role"],
         "container_snapshot": container_snapshot,
+        "emergency_override": emergency_override,
+        "override_reason": override_reason,
     }
 
 
@@ -236,12 +331,17 @@ def get_me(current_user: Dict[str, Any] = Depends(get_current_user)):
 def get_bootstrap(
     logs_limit: int = Query(default=50, ge=1, le=200),
     include_admin_users: bool = Query(default=False),
+    dashboard_date: Optional[str] = Query(default=None, pattern=r"^\d{4}-\d{2}-\d{2}$"),
+    utc_offset_minutes: int = Query(default=0, ge=-720, le=840),
     current_user: Dict[str, Any] = Depends(require_permission("view_inventory")),
 ):
+    target_date = datetime.strptime(dashboard_date, "%Y-%m-%d").date() if dashboard_date else None
     return supabase_client.get_bootstrap_payload(
         current_user,
         logs_limit=logs_limit,
         include_admin_users=include_admin_users,
+        dashboard_date=target_date,
+        utc_offset_minutes=utc_offset_minutes,
     )
 
 
@@ -294,6 +394,17 @@ def admin_update_user_password(username: str, request: AdminSetPasswordRequest, 
     if not updated:
         raise HTTPException(status_code=404, detail="User not found.")
     return {"status": "success"}
+
+
+@app.delete("/api/admin/users/{username}")
+def admin_delete_user(username: str, current_user: Dict[str, Any] = Depends(require_permission("manage_users"))):
+    try:
+        archived = supabase_client.archive_user_record(username, current_user["username"])
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    if not archived:
+        raise HTTPException(status_code=404, detail="User not found.")
+    return archived
 
 
 @app.get("/api/yard/layout")
@@ -349,8 +460,21 @@ def stack_in(request: StackInRequest, current_user: Dict[str, Any] = Depends(req
     existing = supabase_client.check_inventory(request.container_id)
     if existing:
         raise HTTPException(status_code=400, detail="Container ID already exists in inventory. Use Restow to move or Stack Out to remove.")
-    ensure_position_available(normalized)
+    ensure_bay_direction_consistent(normalized["block"], normalized["bay"], request.direction, request.container_type)
     performed_at = supabase_client.utc_now_iso()
+    override_state = ensure_departure_priority_allowed(
+        block=normalized["block"],
+        bay=normalized["bay"],
+        row=normalized["row"],
+        tier=normalized["tier"],
+        container_type=normalized["container_type"],
+        stack_out_date=request.stack_out_date,
+        arrived_at=performed_at,
+        current_user=current_user,
+        emergency_override=request.emergency_override,
+        override_reason=request.override_reason,
+    )
+    ensure_position_available(normalized)
     inventory_data = {
         "container_id": request.container_id,
         "container_type": normalized["container_type"],
@@ -361,6 +485,10 @@ def stack_in(request: StackInRequest, current_user: Dict[str, Any] = Depends(req
         "position_code": normalized["position_code"],
         "status": request.status,
         "direction": request.direction,
+        "bonded": request.bonded,
+        "stack_out_date": request.stack_out_date,
+        "weight": request.weight,
+        "commodity": request.commodity,
         "line": request.line,
         "expeditor": request.expeditor,
         "damages": request.damages,
@@ -368,8 +496,10 @@ def stack_in(request: StackInRequest, current_user: Dict[str, Any] = Depends(req
         "arrived_at": performed_at,
         "positioned_at": performed_at,
     }
+    request_data["emergency_override"] = override_state["emergency_override"]
+    request_data["override_reason"] = override_state["override_reason"]
     supabase_client.insert_inventory(inventory_data)
-    supabase_client.insert_log(build_log_entry(container_id=request.container_id, operation_type="STACK_IN", performed_at=performed_at, old_position_code=None, new_position_code=normalized["position_code"], container_snapshot=inventory_data, current_user=current_user))
+    supabase_client.insert_log(build_log_entry(container_id=request.container_id, operation_type="STACK_IN", performed_at=performed_at, old_position_code=None, new_position_code=normalized["position_code"], container_snapshot=inventory_data, current_user=current_user, emergency_override=override_state["emergency_override"], override_reason=override_state["override_reason"]))
     dispatch_movement_notification(build_notification_payload(request_data=request_data, operation_type="STACK_IN", performed_at=performed_at, old_position_code=None, new_position_code=normalized["position_code"], container_snapshot=inventory_data, current_user=current_user))
     return {"status": "success", "message": f"Container {request.container_id} received and positioned at {normalized['position_code']}."}
 
@@ -402,6 +532,15 @@ def restow(request: RestowRequest, current_user: Dict[str, Any] = Depends(requir
             normalized = validate_position(existing.get("container_type"), request.new_block, request.new_bay, request.new_row, request.new_tier)
         except ValueError as exc:
             raise HTTPException(status_code=400, detail=str(exc))
+        ensure_bay_direction_consistent(
+            normalized["block"],
+            normalized["bay"],
+            existing["direction"],
+            existing["container_type"],
+            exclude_container_id=request.container_id,
+            db=db,
+            inventory_rows=inventory_rows,
+        )
         slot = get_slot_or_404(
             normalized["block"],
             normalized["bay"],
@@ -421,6 +560,21 @@ def restow(request: RestowRequest, current_user: Dict[str, Any] = Depends(requir
             inventory_rows=inventory_rows,
         ):
             raise HTTPException(status_code=400, detail=f"{normalized['container_type']} is not supported by the lower tier at {normalized['position_code']}.")
+        override_state = ensure_departure_priority_allowed(
+            block=normalized["block"],
+            bay=normalized["bay"],
+            row=normalized["row"],
+            tier=normalized["tier"],
+            container_type=normalized["container_type"],
+            stack_out_date=existing.get("stack_out_date"),
+            arrived_at=existing.get("arrived_at"),
+            current_user=current_user,
+            emergency_override=request.emergency_override,
+            override_reason=request.override_reason,
+            exclude_container_id=request.container_id,
+            db=db,
+            inventory_rows=inventory_rows,
+        )
         ensure_position_available(
             normalized,
             exclude_container_id=request.container_id,
@@ -442,10 +596,14 @@ def restow(request: RestowRequest, current_user: Dict[str, Any] = Depends(requir
                 new_position_code=normalized["position_code"],
                 container_snapshot=updated_container,
                 current_user=current_user,
+                emergency_override=override_state["emergency_override"],
+                override_reason=override_state["override_reason"],
             ),
             db=db,
         )
         targets = supabase_client.get_notification_targets("RESTOW", current_user, updated_container, db=db)
+    request_data["emergency_override"] = override_state["emergency_override"]
+    request_data["override_reason"] = override_state["override_reason"]
     dispatch_movement_notification(
         build_notification_payload(
             request_data=request_data,
@@ -469,6 +627,72 @@ def get_inventory(current_user: Dict[str, Any] = Depends(require_permission("vie
 @app.get("/api/containers/logs")
 def get_operations_log(container_id: Optional[str] = Query(default=None), date_from: Optional[str] = Query(default=None), date_to: Optional[str] = Query(default=None), limit: Optional[int] = Query(default=None, ge=1, le=1000), current_user: Dict[str, Any] = Depends(require_permission("view_inventory"))):
     return supabase_client.get_operations_log(container_id=container_id, date_from=date_from, date_to=date_to, limit=limit)
+
+
+@app.get("/api/reports/operations")
+def get_operations_report(
+    date_from: Optional[str] = Query(default=None, pattern=r"^\d{4}-\d{2}-\d{2}$"),
+    date_to: Optional[str] = Query(default=None, pattern=r"^\d{4}-\d{2}-\d{2}$"),
+    operation_type: Optional[str] = Query(default=None),
+    operator_query: Optional[str] = Query(default=None),
+    container_query: Optional[str] = Query(default=None),
+    utc_offset_minutes: int = Query(default=0, ge=-720, le=840),
+    current_user: Dict[str, Any] = Depends(require_permission("view_audit")),
+):
+    try:
+        return supabase_client.get_operations_report(
+            date_from_local=date_from,
+            date_to_local=date_to,
+            utc_offset_minutes=utc_offset_minutes,
+            operation_type=operation_type,
+            operator_query=operator_query,
+            container_query=container_query,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
+
+@app.get("/api/reports/operations/export")
+def export_operations_report(
+    format: str = Query(default="csv", pattern=r"^(csv|pdf)$"),
+    date_from: Optional[str] = Query(default=None, pattern=r"^\d{4}-\d{2}-\d{2}$"),
+    date_to: Optional[str] = Query(default=None, pattern=r"^\d{4}-\d{2}-\d{2}$"),
+    operation_type: Optional[str] = Query(default=None),
+    operator_query: Optional[str] = Query(default=None),
+    container_query: Optional[str] = Query(default=None),
+    utc_offset_minutes: int = Query(default=0, ge=-720, le=840),
+    current_user: Dict[str, Any] = Depends(require_permission("view_audit")),
+):
+    try:
+        report = supabase_client.get_operations_report(
+            date_from_local=date_from,
+            date_to_local=date_to,
+            utc_offset_minutes=utc_offset_minutes,
+            operation_type=operation_type,
+            operator_query=operator_query,
+            container_query=container_query,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
+    filename = report_exports.build_operations_filename(report, format)
+    if format == "pdf":
+        try:
+            payload = report_exports.export_operations_pdf(report)
+        except RuntimeError as exc:
+            raise HTTPException(status_code=503, detail=str(exc))
+        return StreamingResponse(
+            iter([payload]),
+            media_type="application/pdf",
+            headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+        )
+
+    payload = report_exports.export_operations_csv(report)
+    return StreamingResponse(
+        iter([payload]),
+        media_type="text/csv; charset=utf-8",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
 
 
 @app.get("/api/containers/history/{container_id}")

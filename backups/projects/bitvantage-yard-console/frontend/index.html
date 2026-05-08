@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>BitVantage Yard Console</title>
     <link rel="icon" type="image/svg+xml" href="assets/bitvantage-logo.svg">
-    <link rel="stylesheet" href="styles.css?v=20260320-12">
+    <link rel="stylesheet" href="styles.css?v=20260416-01">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
@@ -121,6 +121,21 @@
                 <span class="detail-label">Target Slot Rules</span>
                 <div id="move-confirm-rules" class="history-list"></div>
             </div>
+            <div id="move-confirm-override-panel" class="detail-section override-panel hidden">
+                <span class="detail-label">Emergency Override</span>
+                <label class="toggle-card">
+                    <input id="move-confirm-emergency-override" type="checkbox">
+                    <span>
+                        <strong>Allow blocked stacking order for this move</strong>
+                        <small>Only Admin and Manager can confirm this when no safe slot is available.</small>
+                    </span>
+                </label>
+                <div class="form-group full-width">
+                    <label for="move-confirm-override-reason">Reason</label>
+                    <input id="move-confirm-override-reason" type="text" placeholder="Explain why emergency override is required">
+                </div>
+                <div id="move-confirm-override-feedback" class="form-feedback warning">Emergency override requires a clear operational reason.</div>
+            </div>
             <div class="move-modal-actions">
                 <button id="cancel-move-confirm" type="button" class="btn-secondary modal-submit">Cancel</button>
                 <button id="confirm-move-button" type="button" class="btn-primary modal-submit">Confirm Restow</button>
@@ -147,6 +162,7 @@
                 <li data-tab="stackin-tab" title="Stack In"><i class="fa-solid fa-boxes-packing"></i><span class="nav-label">Stack In</span></li>
                 <li data-tab="stackout-tab" title="Stack Out"><i class="fa-solid fa-truck-ramp-box"></i><span class="nav-label">Stack Out</span></li>
                 <li data-tab="restow-tab" title="Restow"><i class="fa-solid fa-dolly"></i><span class="nav-label">Restow</span></li>
+                <li id="reports-nav-item" class="hidden" data-tab="reports-tab" title="Reports"><i class="fa-solid fa-file-lines"></i><span class="nav-label">Reports</span></li>
                 <li id="admin-nav-item" class="hidden" data-tab="admin-tab" title="Admin"><i class="fa-solid fa-user-shield"></i><span class="nav-label">Admin</span></li>
             </ul>
             <div class="sidebar-credit">
@@ -249,8 +265,8 @@
                                     <div class="toolbar-group">
                                         <label for="viewport-size">Window</label>
                                         <select id="viewport-size">
-                                            <option value="14" selected>Full block</option>
-                                            <option value="10">Compact</option>
+                                            <option value="full" selected>Full block</option>
+                                            <option value="compact">Compact</option>
                                         </select>
                                     </div>
                                 </div>
@@ -283,8 +299,12 @@
                             <div class="panel-heading">
                                 <div>
                                     <h2>Inventory Snapshot</h2>
-                                    <p>Table view for operational cross-checking and printing the current yard state.</p>
+                                    <p id="inventory-summary">Table view for operational cross-checking and printing the current yard state.</p>
                                 </div>
+                                <label class="inventory-search" for="inventory-search">
+                                    <span>Search by Container</span>
+                                    <input id="inventory-search" type="search" placeholder="MSKU1234567">
+                                </label>
                             </div>
                             <table class="modern-table">
                                 <thead>
@@ -379,13 +399,41 @@
                             <div class="form-group"><label>Container Type</label><select id="in-type" required><option value="20ft">20ft (odd bays)</option><option value="40ft">40ft (even bays)</option><option value="45ft">45ft (even bays)</option></select></div>
                             <div class="form-group"><label>Status</label><select id="in-status" required><option value="Loaded">Loaded</option><option value="Empty">Empty</option></select></div>
                             <div class="form-group"><label>Direction</label><select id="in-direction" required><option value="Import">Import</option><option value="Export">Export</option></select></div>
+                            <div class="form-group"><label>Bonded</label><select id="in-bonded" required><option value="false">No</option><option value="true">Yes</option></select></div>
+                            <div class="form-group"><label>Date of Stack Out</label><input type="date" id="in-stack-out-date"></div>
+                            <div class="form-group"><label>Weight</label><input type="number" id="in-weight" min="0" step="0.001" placeholder="27850"></div>
+                            <div class="form-group"><label>Commodity</label><input type="text" id="in-commodity" placeholder="Steel coils"></div>
+                            <div class="form-group full-width"><label>Line</label><input type="text" id="in-line" placeholder="Maersk"></div>
                             <div class="form-title">Target Position</div>
-                            <div class="form-group position-group">
-                                <div><label>Block</label><input type="text" id="in-block" required placeholder="12"></div>
+                            <div id="stackin-position-group" class="form-group position-group">
+                                <div><label>Block</label><select id="in-block" required></select></div>
                                 <div><label>Bay</label><input type="text" id="in-bay" required placeholder="02"></div>
                                 <div><label>Row</label><input type="number" id="in-row" required min="1" max="99" placeholder="2"></div>
                                 <div><label>Tier</label><input type="number" id="in-tier" required min="1" max="4" placeholder="4"></div>
                             </div>
+                        </div>
+                        <div id="stackin-advisory" class="form-feedback neutral">Placement rules and stacking hints will appear here.</div>
+                        <div id="stackin-suggestions-panel" class="detail-section suggestion-panel hidden">
+                            <div class="suggestion-panel-header">
+                                <span class="detail-label">Suggested Position</span>
+                                <small id="stackin-suggestions-summary" class="suggestion-summary">Safe slot suggestions will appear here.</small>
+                            </div>
+                            <div id="stackin-suggestions-list" class="suggestion-list"></div>
+                        </div>
+                        <div id="stackin-override-panel" class="detail-section override-panel hidden">
+                            <span class="detail-label">Emergency Override</span>
+                            <label class="toggle-card">
+                                <input id="stackin-emergency-override" type="checkbox">
+                                <span>
+                                    <strong>Allow blocked stacking order</strong>
+                                    <small>Only Admin and Manager can use this when there is no safe yard position available.</small>
+                                </span>
+                            </label>
+                            <div class="form-group full-width">
+                                <label for="stackin-override-reason">Reason</label>
+                                <input id="stackin-override-reason" type="text" placeholder="Explain why emergency override is required">
+                            </div>
+                            <div id="stackin-override-feedback" class="form-feedback warning">Emergency override requires a clear operational reason.</div>
                         </div>
                         <button id="stackin-submit-button" type="submit" class="btn-primary">Confirm Stack In</button>
                     </form>
@@ -419,8 +467,157 @@
                                 <div><label>Tier</label><input type="number" id="restow-tier" required min="1" max="4" placeholder="4"></div>
                             </div>
                         </div>
+                        <div id="restow-advisory" class="form-feedback neutral">Move rules and stacking checks will appear here.</div>
+                        <div id="restow-override-panel" class="detail-section override-panel hidden">
+                            <span class="detail-label">Emergency Override</span>
+                            <label class="toggle-card">
+                                <input id="restow-emergency-override" type="checkbox">
+                                <span>
+                                    <strong>Allow blocked stacking order</strong>
+                                    <small>Only Admin and Manager can use this when the move is operationally urgent.</small>
+                                </span>
+                            </label>
+                            <div class="form-group full-width">
+                                <label for="restow-override-reason">Reason</label>
+                                <input id="restow-override-reason" type="text" placeholder="Explain why emergency override is required">
+                            </div>
+                            <div id="restow-override-feedback" class="form-feedback warning">Emergency override requires a clear operational reason.</div>
+                        </div>
                         <button id="restow-submit-button" type="submit" class="btn-primary">Confirm Restow</button>
                     </form>
+                </div>
+            </section>
+
+            <section id="reports-tab" class="tab-content">
+                <div class="map-workspace">
+                    <div class="map-column">
+                        <div class="form-container glass">
+                            <div class="panel-heading">
+                                <div>
+                                    <h2>Operations Report</h2>
+                                    <p>Download full movement history by date range, operator and operation type.</p>
+                                </div>
+                                <div class="report-header-actions">
+                                    <button id="reports-refresh" type="button" class="btn-secondary"><i class="fa-solid fa-rotate"></i> Load Preview</button>
+                                    <button id="download-report-csv" type="button" class="btn-secondary"><i class="fa-solid fa-file-csv"></i> CSV</button>
+                                    <button id="download-report-pdf" type="button" class="btn-primary"><i class="fa-solid fa-file-pdf"></i> PDF</button>
+                                </div>
+                            </div>
+                            <form id="reports-filter-form" class="form-grid report-filter-grid">
+                                <div class="form-group">
+                                    <label for="report-date-from">Date From</label>
+                                    <input id="report-date-from" type="date" required>
+                                </div>
+                                <div class="form-group">
+                                    <label for="report-date-to">Date To</label>
+                                    <input id="report-date-to" type="date" required>
+                                </div>
+                                <div class="form-group">
+                                    <label for="report-operation-type">Operation</label>
+                                    <select id="report-operation-type">
+                                        <option value="">All operations</option>
+                                        <option value="STACK_IN">Stack In</option>
+                                        <option value="STACK_OUT">Stack Out</option>
+                                        <option value="RESTOW">Restow</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label for="report-operator-query">Operator</label>
+                                    <input id="report-operator-query" type="text" placeholder="Name, username or role">
+                                </div>
+                                <div class="form-group full-width">
+                                    <label for="report-container-query">Container</label>
+                                    <input id="report-container-query" type="text" placeholder="Optional container ID filter">
+                                </div>
+                            </form>
+                            <div id="reports-feedback" class="form-feedback neutral">Choose a period and load the preview. CSV is best for raw data, PDF is best for a polished shareable report.</div>
+                        </div>
+
+                        <div class="inventory-table-container glass mt-4">
+                            <div class="panel-heading">
+                                <div>
+                                    <h2>Operations Preview</h2>
+                                    <p id="reports-preview-subtitle">Latest filtered movements will appear here before export.</p>
+                                </div>
+                            </div>
+                            <div class="table-scroll report-table-scroll">
+                                <table class="modern-table report-preview-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Date / Time</th>
+                                            <th>Operation</th>
+                                            <th>Container</th>
+                                            <th>Route</th>
+                                            <th>Cargo</th>
+                                            <th>Operator</th>
+                                            <th>Override</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="reports-preview-body"></tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <aside class="inspector-panel glass">
+                        <div class="panel-heading">
+                            <div>
+                                <h2>Report Summary</h2>
+                                <p>Quick totals and active operators for the selected date range.</p>
+                            </div>
+                        </div>
+                        <div class="stats-cards report-summary-cards">
+                            <div class="detail-card">
+                                <span class="detail-label">Records</span>
+                                <strong id="report-total-records">0</strong>
+                                <small>Total movement rows in this report.</small>
+                            </div>
+                            <div class="detail-card">
+                                <span class="detail-label">Containers</span>
+                                <strong id="report-total-containers">0</strong>
+                                <small>Unique containers in the selected period.</small>
+                            </div>
+                            <div class="detail-card">
+                                <span class="detail-label">Stack In</span>
+                                <strong id="report-stack-in-count">0</strong>
+                                <small>Incoming container operations.</small>
+                            </div>
+                            <div class="detail-card">
+                                <span class="detail-label">Stack Out</span>
+                                <strong id="report-stack-out-count">0</strong>
+                                <small>Outgoing container operations.</small>
+                            </div>
+                            <div class="detail-card">
+                                <span class="detail-label">Restow</span>
+                                <strong id="report-restow-count">0</strong>
+                                <small>Internal moves between yard slots.</small>
+                            </div>
+                            <div class="detail-card">
+                                <span class="detail-label">Operators</span>
+                                <strong id="report-total-users">0</strong>
+                                <small>Accounts involved in this period.</small>
+                            </div>
+                        </div>
+                        <div class="detail-section mt-4">
+                            <span class="detail-label">Active Operators</span>
+                            <div id="report-operator-list" class="history-list"></div>
+                        </div>
+                        <div class="detail-section mt-4">
+                            <span class="detail-label">Export Notes</span>
+                            <div id="report-export-notes" class="history-list">
+                                <div class="history-item">
+                                    <strong>CSV</strong>
+                                    <span>Best for Excel, audits and raw reconciliation.</span>
+                                    <small>Includes detailed movement fields and operator data.</small>
+                                </div>
+                                <div class="history-item">
+                                    <strong>PDF</strong>
+                                    <span>Best for management, sharing and printing.</span>
+                                    <small>Includes summary metrics, top operators and full movement table.</small>
+                                </div>
+                            </div>
+                        </div>
+                    </aside>
                 </div>
             </section>
 
@@ -471,6 +668,10 @@
                                 <div class="form-group"><label for="admin-reset-password">Reset password</label><input id="admin-reset-password" type="password" required placeholder="new secure password"></div>
                                 <button type="submit" class="btn-secondary modal-submit">Set New Password</button>
                             </form>
+                            <div class="admin-user-delete-section">
+                                <small id="admin-delete-user-hint" class="admin-user-delete-hint">Delete revokes access immediately and preserves operation history.</small>
+                                <button id="admin-delete-user-button" type="button" class="btn-danger modal-submit">Delete User</button>
+                            </div>
                         </div>
 
                         <div class="panel-heading mt-4"><div><h2>Selected Block</h2><p id="admin-block-subtitle">Pick a block from the table to edit bay, row and equipment settings.</p></div><span id="admin-block-badge" class="slot-badge neutral">No block</span></div>
@@ -515,6 +716,6 @@
     </div>
 
     <div id="toast" class="toast hidden"></div>
-    <script src="app.js?v=20260320-11"></script>
+    <script src="app.js?v=20260416-01"></script>
 </body>
 </html>

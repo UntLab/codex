@@ -8,6 +8,10 @@ class ContainerBase(BaseModel):
     container_type: str = Field(..., description="20ft, 40ft, 45ft")
     status: str = Field(..., description="Loaded or Empty")
     direction: str = Field(..., description="Import or Export")
+    bonded: bool = Field(False, description="Whether the container is bonded")
+    stack_out_date: Optional[str] = Field(None, description="Planned stack out date in YYYY-MM-DD format")
+    weight: Optional[float] = Field(None, ge=0, description="Container weight in kilograms")
+    commodity: Optional[str] = None
     line: Optional[str] = None
     expeditor: Optional[str] = None
     damages: Optional[str] = None
@@ -19,6 +23,8 @@ class StackInRequest(ContainerBase):
     bay: str
     row: int
     tier: int
+    emergency_override: bool = False
+    override_reason: Optional[str] = Field(None, description="Reason for emergency override when stacking order is broken")
 
 
 class StackOutRequest(BaseModel):
@@ -31,6 +37,8 @@ class RestowRequest(BaseModel):
     new_bay: str
     new_row: int
     new_tier: int
+    emergency_override: bool = False
+    override_reason: Optional[str] = Field(None, description="Reason for emergency override when stacking order is broken")
 
 
 class LoginRequest(BaseModel):
