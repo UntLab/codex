@@ -1,0 +1,10 @@
+.DS_Store
+.env
+.venv/
+.playwright-cli/
+backend/.venv/
+backend/__pycache__/
+backend/*.pyc
+backend/**/*.pyc
+backend/bitvantage_local.db
+frontend/.DS_Store
