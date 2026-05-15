@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 320" role="img" aria-labelledby="title desc">
+  <title id="title">BitVantage</title>
+  <desc id="desc">BitVantage logo with container frame and wordmark.</desc>
+  <defs>
+    <linearGradient id="blueStroke" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#0fb4ff"/>
+      <stop offset="100%" stop-color="#1397e4"/>
+    </linearGradient>
+    <linearGradient id="yellowFill" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#ffd300"/>
+      <stop offset="100%" stop-color="#f6c300"/>
+    </linearGradient>
+  </defs>
+  <g transform="translate(0 20)">
+    <polygon fill="url(#yellowFill)" points="0,20 76,0 76,260 0,240"/>
+    <polygon fill="#1ba6ee" points="76,0 194,24 194,236 76,260"/>
+    <path fill="none" stroke="url(#blueStroke)" stroke-width="10" d="M194 24L1590 44M194 236L1590 216M194 24L194 236"/>
+  </g>
+  <text x="284" y="205" fill="#f6f8fb" font-family="Inter, Arial, sans-serif" font-size="176" font-weight="300" letter-spacing="4">BITVANTAGE</text>
+</svg>

@@ -1,0 +1,15 @@
+{
+  "project": "bitvantage-yard-console",
+  "backup_type": "code_snapshot_pre_own_server_migration",
+  "created_at": "2026-05-15T19:03:43.096Z",
+  "source_path": "/Users/ais/GPT/Projects/bitvantage-yard-console",
+  "git_commit_short": "f8bfd81",
+  "git_commit_full": "f8bfd818076d150b5897896e42f3fd27df40ea38",
+  "git_branch": "main",
+  "production_changed": false,
+  "notes": [
+    "Railway production was not changed.",
+    "Secrets, .env, .venv, local DB, .git, caches and .local files are excluded.",
+    "Production database backup is stored separately outside Git."
+  ]
+}
