@@ -1,0 +1,10 @@
+Project: bitvantage-yard-console
+Repository: UntLab/bitvantage-yard-console
+Snapshot timestamp: 2026-05-18__19-23-14 Asia/Baku
+Source commit: f7c6964ff0f28e74721e7cde2109ce5b01235a2b
+Source branch: main
+Production domain: https://bitvantage.online
+Old backup domain: https://bv.bitvantage.online
+Backup type: tracked source snapshot for GitHub backup branch; secrets excluded.
+Secure local bundle: /Users/ais/Documents/Playground/secure-db-backups/bitvantage-yard-console__2026-05-18__19-23-14__current-production__f7c6964
+Notes: current production code snapshot after upper-tier stack-out protection and own-server cutover.

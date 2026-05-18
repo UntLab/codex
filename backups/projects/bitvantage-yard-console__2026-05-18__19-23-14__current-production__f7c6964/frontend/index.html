@@ -1,0 +1,729 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BitVantage Yard Console</title>
+    <link rel="icon" type="image/svg+xml" href="assets/bitvantage-logo.svg">
+    <link rel="stylesheet" href="styles.css?v=20260511-block-select-lock-01">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <div id="auth-screen" class="auth-screen">
+        <div class="auth-card">
+            <div class="auth-copy">
+                <div class="language-switcher auth-language-switcher" aria-label="Language">
+                    <button type="button" class="language-option" data-language-option="en">EN</button>
+                    <button type="button" class="language-option" data-language-option="uk">UA</button>
+                </div>
+                <span class="auth-kicker">BitVantage Access</span>
+                <h1>Sign In To The Yard Console</h1>
+                <p>Each terminal operator works under a personal account. Actions, moves and timestamps are logged under the active session.</p>
+            </div>
+            <form id="login-form" class="auth-form">
+                <div class="form-group">
+                    <label for="login-username">Username</label>
+                    <input id="login-username" type="text" autocomplete="username" required placeholder="Enter username">
+                </div>
+                <div class="form-group">
+                    <label for="login-password">Password</label>
+                    <input id="login-password" type="password" autocomplete="current-password" required placeholder="Enter password">
+                </div>
+                <button id="auth-submit-button" type="submit" class="btn-primary auth-submit">Enter BitVantage</button>
+            </form>
+            <p id="auth-error" class="auth-error hidden"></p>
+        </div>
+    </div>
+
+    <div id="settings-modal" class="modal hidden">
+        <div class="modal-backdrop" data-close-settings="true"></div>
+        <div class="modal-card">
+            <div class="panel-heading">
+                <div>
+                    <h2>Notification Settings</h2>
+                    <p>Personal Telegram preferences for the current account.</p>
+                </div>
+                <button id="close-settings" type="button" class="mini-nav-btn" aria-label="Close settings">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            <form id="settings-form" class="settings-form">
+                <label class="toggle-card">
+                    <input id="settings-notifications-enabled" type="checkbox">
+                    <span>
+                        <strong>Account notifications enabled</strong>
+                        <small>Master switch for personal alert delivery.</small>
+                    </span>
+                </label>
+                <label class="toggle-card">
+                    <input id="settings-telegram-enabled" type="checkbox">
+                    <span>
+                        <strong>Telegram notifications enabled</strong>
+                        <small>Receive move notifications directly in Telegram.</small>
+                    </span>
+                </label>
+                <label class="toggle-card">
+                    <input id="settings-receive-all" type="checkbox">
+                    <span>
+                        <strong>Receive all movement alerts</strong>
+                        <small>Used for supervisors monitoring the full yard.</small>
+                    </span>
+                </label>
+                <div class="detail-section">
+                    <span class="detail-label">Who gets notified on each move</span>
+                    <div id="recipient-preview" class="history-list"></div>
+                </div>
+                <div class="detail-section">
+                    <span class="detail-label">Latest Delivery Attempts</span>
+                    <div id="notification-delivery-feed" class="history-list"></div>
+                </div>
+                <div class="detail-section">
+                    <span class="detail-label">Change My Password</span>
+                    <div id="password-form" class="settings-form compact-form">
+                        <div class="form-group">
+                            <label for="current-password">Current password</label>
+                            <input id="current-password" type="password" autocomplete="current-password" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="new-password">New password</label>
+                            <input id="new-password" type="password" autocomplete="new-password" required>
+                        </div>
+                        <button id="update-own-password" type="button" class="btn-secondary modal-submit">Update My Password</button>
+                    </div>
+                </div>
+                <button type="submit" class="btn-primary">Save Notification Settings</button>
+            </form>
+        </div>
+    </div>
+
+    <div id="move-confirm-modal" class="modal hidden">
+        <div class="modal-backdrop" data-close-move="true"></div>
+        <div class="modal-card move-modal-card">
+            <div class="panel-heading">
+                <div>
+                    <h2>Confirm Move</h2>
+                    <p>Review the destination before the container is restowed.</p>
+                </div>
+                <button id="close-move-confirm" type="button" class="mini-nav-btn" aria-label="Close move confirm">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            <div class="move-summary-grid">
+                <div class="detail-card">
+                    <span class="detail-label">Container</span>
+                    <strong id="move-confirm-container"></strong>
+                    <small id="move-confirm-type"></small>
+                </div>
+                <div class="detail-card">
+                    <span class="detail-label">Route</span>
+                    <strong id="move-confirm-route"></strong>
+                    <small id="move-confirm-tier"></small>
+                </div>
+            </div>
+            <div class="detail-section">
+                <span class="detail-label">Target Slot Rules</span>
+                <div id="move-confirm-rules" class="history-list"></div>
+            </div>
+            <div id="move-confirm-override-panel" class="detail-section override-panel hidden">
+                <span class="detail-label">Emergency Override</span>
+                <label class="toggle-card">
+                    <input id="move-confirm-emergency-override" type="checkbox">
+                    <span>
+                        <strong>Allow blocked stacking order for this move</strong>
+                        <small>Only Admin and Manager can confirm this when no safe slot is available.</small>
+                    </span>
+                </label>
+                <div class="form-group full-width">
+                    <label for="move-confirm-override-reason">Reason</label>
+                    <input id="move-confirm-override-reason" type="text" placeholder="Explain why emergency override is required">
+                </div>
+                <div id="move-confirm-override-feedback" class="form-feedback warning">Emergency override requires a clear operational reason.</div>
+            </div>
+            <div class="move-modal-actions">
+                <button id="cancel-move-confirm" type="button" class="btn-secondary modal-submit">Cancel</button>
+                <button id="confirm-move-button" type="button" class="btn-primary modal-submit">Confirm Restow</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="app-shell" class="app-container app-shell app-shell-hidden">
+        <nav class="sidebar">
+            <div class="sidebar-topbar no-print">
+                <button id="sidebar-toggle" type="button" class="sidebar-toggle-btn" aria-label="Toggle sidebar">
+                    <i class="fa-solid fa-bars"></i>
+                </button>
+            </div>
+            <div class="brand-lockup">
+                <img class="brand-logo" src="assets/bitvantage-logo.svg" alt="BitVantage">
+                <div class="brand-meta">
+                    <span class="brand-kicker">BitVantage</span>
+                    <strong>Yard Console</strong>
+                </div>
+            </div>
+            <ul class="nav-links">
+                <li class="active" data-tab="dashboard-tab" title="Terminal Map"><i class="fa-solid fa-table-cells-large"></i><span class="nav-label">Terminal Map</span></li>
+                <li data-tab="stackin-tab" title="Stack In"><i class="fa-solid fa-boxes-packing"></i><span class="nav-label">Stack In</span></li>
+                <li data-tab="stackout-tab" title="Stack Out"><i class="fa-solid fa-truck-ramp-box"></i><span class="nav-label">Stack Out</span></li>
+                <li data-tab="restow-tab" title="Restow"><i class="fa-solid fa-dolly"></i><span class="nav-label">Restow</span></li>
+                <li id="reports-nav-item" class="hidden" data-tab="reports-tab" title="Reports"><i class="fa-solid fa-file-lines"></i><span class="nav-label">Reports</span></li>
+                <li id="admin-nav-item" class="hidden" data-tab="admin-tab" title="Admin"><i class="fa-solid fa-user-shield"></i><span class="nav-label">Admin</span></li>
+            </ul>
+            <div class="sidebar-credit">
+                <span>Built by UntLab</span>
+                <small>software developer</small>
+            </div>
+        </nav>
+
+        <main class="content">
+            <header class="app-header">
+                <div class="header-copy">
+                    <span class="header-kicker">Tablet Console</span>
+                    <h1>Terminal Yard Map</h1>
+                </div>
+                <div class="language-switcher no-print" aria-label="Language">
+                    <button type="button" class="language-option" data-language-option="en">EN</button>
+                    <button type="button" class="language-option" data-language-option="uk">UA</button>
+                </div>
+            </header>
+
+            <div id="activity-indicator" class="activity-indicator hidden no-print" aria-live="polite">
+                <span class="activity-spinner" aria-hidden="true"></span>
+                <strong id="activity-text">Syncing yard data...</strong>
+            </div>
+
+            <section id="dashboard-tab" class="tab-content active dashboard-layout">
+                <div class="map-workspace compact-workspace top-workspace">
+                    <div class="map-column">
+                        <div class="map-panel glass dashboard-overview-panel">
+                            <div class="panel-heading">
+                                <div>
+                                    <h2>Terminal Overview</h2>
+                                    <p>Two rail-side storage blocks mirror the real yard: a compact west stack and a long east stack around the track.</p>
+                                </div>
+                                <div class="map-legend">
+                                    <span class="legend-chip"><i class="legend-dot type-20ft"></i>20ft</span>
+                                    <span class="legend-chip"><i class="legend-dot type-40ft"></i>40ft</span>
+                                    <span class="legend-chip"><i class="legend-dot type-45ft"></i>45ft</span>
+                                    <span class="legend-chip"><i class="legend-dot type-empty"></i>Free</span>
+                                </div>
+                            </div>
+                            <div id="terminal-overview" class="terminal-overview"></div>
+                        </div>
+                    </div>
+                    <aside class="inspector-panel glass dashboard-side-stack no-print">
+                        <div class="header-stats-inline">
+                            <div class="header-stat-pill">
+                                <span class="header-stat-label">Containers</span>
+                                <strong id="total-containers">0</strong>
+                            </div>
+                            <div class="header-stat-pill">
+                                <span class="header-stat-label">In</span>
+                                <strong id="today-in">0</strong>
+                            </div>
+                            <div class="header-stat-pill">
+                                <span class="header-stat-label">Out</span>
+                                <strong id="today-out">0</strong>
+                            </div>
+                            <div class="header-stat-pill">
+                                <span class="header-stat-label">Block</span>
+                                <strong id="selected-block-load">-</strong>
+                            </div>
+                        </div>
+                        <div class="dashboard-actions compact-header-actions">
+                            <button id="refresh-dashboard" type="button" class="btn-secondary"><i class="fa-solid fa-rotate"></i> Refresh</button>
+                            <button id="print-inventory" type="button" class="btn-secondary"><i class="fa-solid fa-print"></i> Print</button>
+                        </div>
+                        <div class="user-badge no-print compact-session">
+                            <div class="compact-session-meta">
+                                <span class="user-badge-label">Session</span>
+                                <strong id="session-user-name">Not signed in</strong>
+                                <div class="compact-session-secondary">
+                                    <small id="session-user-role">-</small>
+                                    <small id="live-status">offline</small>
+                                </div>
+                            </div>
+                            <div class="user-badge-actions">
+                                <button id="open-settings" type="button" class="badge-action-btn" aria-label="Open settings"><i class="fa-solid fa-sliders"></i></button>
+                                <button id="logout-button" type="button" class="badge-action-btn" aria-label="Log out"><i class="fa-solid fa-right-from-bracket"></i></button>
+                            </div>
+                        </div>
+                    </aside>
+                </div>
+
+                <div class="map-workspace compact-workspace">
+                    <div class="map-column main-column-stack">
+                        <div class="bay-panel glass">
+                            <div class="panel-heading">
+                                <div>
+                                    <h2 id="bay-panel-title">Block 01</h2>
+                                    <p id="bay-panel-subtitle">Top-down bay and row view. Tap a slot to inspect the stack.</p>
+                                </div>
+                                <div class="bay-toolbar no-print">
+                                    <div class="toolbar-group">
+                                        <label for="tier-visibility">Layer</label>
+                                        <select id="tier-visibility">
+                                            <option value="top">Top</option>
+                                            <option value="1">Tier 1</option>
+                                            <option value="2">Tier 2</option>
+                                            <option value="3">Tier 3</option>
+                                            <option value="4">Tier 4</option>
+                                        </select>
+                                    </div>
+                                    <div class="toolbar-group">
+                                        <label for="viewport-size">Window</label>
+                                        <select id="viewport-size">
+                                            <option value="full" selected>Full block</option>
+                                            <option value="compact">Compact</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="viewport-toolbar no-print">
+                                <div class="viewport-nav">
+                                    <span class="viewport-label">Rows</span>
+                                    <button id="rows-prev" type="button" class="mini-nav-btn"><i class="fa-solid fa-chevron-left"></i></button>
+                                    <strong id="rows-range">1-3</strong>
+                                    <button id="rows-next" type="button" class="mini-nav-btn"><i class="fa-solid fa-chevron-right"></i></button>
+                                </div>
+                                <div class="viewport-nav">
+                                    <span class="viewport-label">Bays</span>
+                                    <button id="bays-prev" type="button" class="mini-nav-btn"><i class="fa-solid fa-chevron-left"></i></button>
+                                    <strong id="bays-range">01-27</strong>
+                                    <button id="bays-next" type="button" class="mini-nav-btn"><i class="fa-solid fa-chevron-right"></i></button>
+                                </div>
+                                <div class="viewport-summary"><span id="viewport-summary-text">Showing first window of block</span></div>
+                                <form id="viewport-jump" class="viewport-jump">
+                                    <label class="viewport-label" for="jump-bay">Jump</label>
+                                    <input id="jump-bay" type="number" min="1" max="99" placeholder="Bay">
+                                    <input id="jump-row" type="number" min="1" max="99" placeholder="Row">
+                                    <button id="jump-to-slot" type="submit" class="mini-nav-btn jump-btn" aria-label="Jump to slot"><i class="fa-solid fa-location-crosshairs"></i></button>
+                                </form>
+                            </div>
+                            <div id="bay-grid" class="bay-grid"></div>
+                        </div>
+
+                        <div class="inventory-table-container glass inventory-inline-panel">
+                            <div class="panel-heading">
+                                <div>
+                                    <h2>Inventory Snapshot</h2>
+                                    <p id="inventory-summary">Table view for operational cross-checking and printing the current yard state.</p>
+                                </div>
+                                <label class="inventory-search" for="inventory-search">
+                                    <span>Search by Container</span>
+                                    <input id="inventory-search" type="search" placeholder="MSKU1234567">
+                                </label>
+                            </div>
+                            <table class="modern-table">
+                                <thead>
+                                    <tr>
+                                        <th>Container</th>
+                                        <th>Type</th>
+                                        <th>Position (Block-Bay-Row-Tier)</th>
+                                        <th>Status</th>
+                                        <th>Direction</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="inventory-list"></tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <aside class="inspector-panel glass">
+                        <div class="panel-heading">
+                            <div>
+                                <h2>Slot Inspector</h2>
+                                <p id="inspector-subtitle">Select a block or container on the map.</p>
+                            </div>
+                            <span id="selected-position-badge" class="slot-badge neutral">No selection</span>
+                        </div>
+                        <div id="inspector-empty" class="inspector-empty">
+                            <p>The map follows a tablet-first yard flow: choose a block, then a slot, then a stack layer.</p>
+                            <p>20ft containers use odd bays. 40ft containers use even bays 2, 6, 10... and 45ft only the edge wide bays.</p>
+                        </div>
+                        <div id="inspector-content" class="inspector-content hidden">
+                            <div class="detail-card">
+                                <span class="detail-label">Base Position</span>
+                                <strong id="detail-slot"></strong>
+                                <small id="detail-rule"></small>
+                            </div>
+                            <div class="detail-card">
+                                <span class="detail-label">Stack Capacity</span>
+                                <strong id="detail-capacity"></strong>
+                                <small id="detail-next-tier"></small>
+                            </div>
+                            <div id="selected-container-card" class="container-card"></div>
+                            <form id="target-move-widget" class="detail-section target-move-widget hidden no-print">
+                                <div class="target-move-header">
+                                    <span class="detail-label">Quick Restow</span>
+                                    <strong id="target-move-container">No container armed</strong>
+                                    <small id="target-move-block">Target block: --</small>
+                                </div>
+                                <div class="target-move-grid">
+                                    <div class="form-group">
+                                        <label for="target-move-bay">Target Bay</label>
+                                        <input id="target-move-bay" type="number" min="1" max="99" placeholder="26" inputmode="numeric">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="target-move-row">Target Row</label>
+                                        <input id="target-move-row" type="number" min="1" max="99" placeholder="1" inputmode="numeric">
+                                    </div>
+                                </div>
+                                <small id="target-move-helper" class="target-move-helper"></small>
+                                <div id="target-move-feedback" class="target-move-feedback neutral">Enter a target bay and row.</div>
+                                <button id="target-move-submit" type="submit" class="btn-primary target-move-submit">OK</button>
+                            </form>
+                            <div class="detail-section">
+                                <span class="detail-label">Stack Layers</span>
+                                <div id="stack-layers" class="stack-layers"></div>
+                            </div>
+                            <div class="inspector-actions no-print">
+                                <button id="prefill-restow" type="button" class="btn-secondary inspector-btn"><i class="fa-solid fa-arrows-up-down-left-right"></i> Prepare Restow</button>
+                                <button id="prefill-stackout" type="button" class="btn-secondary inspector-btn"><i class="fa-solid fa-truck-ramp-box"></i> Prepare Stack Out</button>
+                            </div>
+                            <div class="detail-section">
+                                <span class="detail-label">Container History</span>
+                                <div id="container-history" class="history-list"></div>
+                            </div>
+                            <div class="detail-section">
+                                <span class="detail-label">Notification Routing Preview</span>
+                                <div id="routing-preview" class="history-list"></div>
+                            </div>
+                        </div>
+                        <div class="detail-section mt-4">
+                            <span class="detail-label">Live Operations Feed</span>
+                            <div id="activity-feed" class="history-list"></div>
+                        </div>
+                    </aside>
+                </div>
+            </section>
+
+            <section id="stackin-tab" class="tab-content">
+                <div class="form-container glass">
+                    <h2>Stack In</h2>
+                    <form id="stackin-form">
+                        <div class="form-grid">
+                            <div class="form-group"><label>Container ID</label><input type="text" id="in-id" required placeholder="MSKU1234567"></div>
+                            <div class="form-group"><label>Container Type</label><select id="in-type" required><option value="20ft">20ft (odd bays)</option><option value="40ft">40ft (even bays)</option><option value="45ft">45ft (even bays)</option></select></div>
+                            <div class="form-group"><label>Status</label><select id="in-status" required><option value="Loaded">Loaded</option><option value="Empty">Empty</option></select></div>
+                            <div class="form-group"><label>Direction</label><select id="in-direction" required><option value="Import">Import</option><option value="Export">Export</option></select></div>
+                            <div class="form-group"><label>Bonded</label><select id="in-bonded" required><option value="false">No</option><option value="true">Yes</option></select></div>
+                            <div class="form-group"><label>Date of Stack Out</label><input type="date" id="in-stack-out-date"></div>
+                            <div class="form-group"><label>Weight</label><input type="number" id="in-weight" min="0" step="0.001" placeholder="27850"></div>
+                            <div class="form-group"><label>Commodity</label><input type="text" id="in-commodity" placeholder="Steel coils"></div>
+                            <div class="form-group full-width"><label>Line</label><input type="text" id="in-line" placeholder="Maersk"></div>
+                            <div class="form-title">Target Position</div>
+                            <div id="stackin-position-group" class="form-group position-group">
+                                <div><label>Block</label><select id="in-block" required></select></div>
+                                <div><label>Bay</label><input type="text" id="in-bay" required placeholder="02"></div>
+                                <div><label>Row</label><input type="number" id="in-row" required min="1" max="99" placeholder="2"></div>
+                                <div><label>Tier</label><input type="number" id="in-tier" required min="1" max="4" placeholder="4"></div>
+                            </div>
+                        </div>
+                        <div id="stackin-advisory" class="form-feedback neutral">Placement rules and stacking hints will appear here.</div>
+                        <div id="stackin-suggestions-panel" class="detail-section suggestion-panel hidden">
+                            <div class="suggestion-panel-header">
+                                <span class="detail-label">Suggested Position</span>
+                                <small id="stackin-suggestions-summary" class="suggestion-summary">Safe slot suggestions will appear here.</small>
+                            </div>
+                            <div id="stackin-suggestions-list" class="suggestion-list"></div>
+                        </div>
+                        <div id="stackin-override-panel" class="detail-section override-panel hidden">
+                            <span class="detail-label">Emergency Override</span>
+                            <label class="toggle-card">
+                                <input id="stackin-emergency-override" type="checkbox">
+                                <span>
+                                    <strong>Allow blocked stacking order</strong>
+                                    <small>Only Admin and Manager can use this when there is no safe yard position available.</small>
+                                </span>
+                            </label>
+                            <div class="form-group full-width">
+                                <label for="stackin-override-reason">Reason</label>
+                                <input id="stackin-override-reason" type="text" placeholder="Explain why emergency override is required">
+                            </div>
+                            <div id="stackin-override-feedback" class="form-feedback warning">Emergency override requires a clear operational reason.</div>
+                        </div>
+                        <button id="stackin-submit-button" type="submit" class="btn-primary">Confirm Stack In</button>
+                    </form>
+                </div>
+            </section>
+
+            <section id="stackout-tab" class="tab-content">
+                <div class="form-container glass">
+                    <h2>Stack Out</h2>
+                    <form id="stackout-form">
+                        <div class="form-group full-width">
+                            <label>Container ID</label>
+                            <input type="text" id="out-id" required placeholder="MSKU1234567">
+                        </div>
+                        <button id="stackout-submit-button" type="submit" class="btn-danger">Confirm Stack Out</button>
+                    </form>
+                </div>
+            </section>
+
+            <section id="restow-tab" class="tab-content">
+                <div class="form-container glass">
+                    <h2>Restow</h2>
+                    <form id="restow-form">
+                        <div class="form-grid">
+                            <div class="form-group full-width"><label>Container ID</label><input type="text" id="restow-id" required placeholder="MSKU1234567"></div>
+                            <div class="form-title">New Position</div>
+                            <div class="form-group position-group">
+                                <div><label>Block</label><input type="text" id="restow-block" required placeholder="12"></div>
+                                <div><label>Bay</label><input type="text" id="restow-bay" required placeholder="02"></div>
+                                <div><label>Row</label><input type="number" id="restow-row" required min="1" max="99" placeholder="2"></div>
+                                <div><label>Tier</label><input type="number" id="restow-tier" required min="1" max="4" placeholder="4"></div>
+                            </div>
+                        </div>
+                        <div id="restow-advisory" class="form-feedback neutral">Move rules and stacking checks will appear here.</div>
+                        <div id="restow-override-panel" class="detail-section override-panel hidden">
+                            <span class="detail-label">Emergency Override</span>
+                            <label class="toggle-card">
+                                <input id="restow-emergency-override" type="checkbox">
+                                <span>
+                                    <strong>Allow blocked stacking order</strong>
+                                    <small>Only Admin and Manager can use this when the move is operationally urgent.</small>
+                                </span>
+                            </label>
+                            <div class="form-group full-width">
+                                <label for="restow-override-reason">Reason</label>
+                                <input id="restow-override-reason" type="text" placeholder="Explain why emergency override is required">
+                            </div>
+                            <div id="restow-override-feedback" class="form-feedback warning">Emergency override requires a clear operational reason.</div>
+                        </div>
+                        <button id="restow-submit-button" type="submit" class="btn-primary">Confirm Restow</button>
+                    </form>
+                </div>
+            </section>
+
+            <section id="reports-tab" class="tab-content">
+                <div class="map-workspace">
+                    <div class="map-column">
+                        <div class="form-container glass">
+                            <div class="panel-heading">
+                                <div>
+                                    <h2>Operations Report</h2>
+                                    <p>Download full movement history by date range, operator and operation type.</p>
+                                </div>
+                                <div class="report-header-actions">
+                                    <button id="reports-refresh" type="button" class="btn-secondary"><i class="fa-solid fa-rotate"></i> Load Preview</button>
+                                    <button id="download-report-csv" type="button" class="btn-secondary"><i class="fa-solid fa-file-csv"></i> CSV</button>
+                                    <button id="download-report-pdf" type="button" class="btn-primary"><i class="fa-solid fa-file-pdf"></i> PDF</button>
+                                </div>
+                            </div>
+                            <form id="reports-filter-form" class="form-grid report-filter-grid">
+                                <div class="form-group">
+                                    <label for="report-date-from">Date From</label>
+                                    <input id="report-date-from" type="date" required>
+                                </div>
+                                <div class="form-group">
+                                    <label for="report-date-to">Date To</label>
+                                    <input id="report-date-to" type="date" required>
+                                </div>
+                                <div class="form-group">
+                                    <label for="report-operation-type">Operation</label>
+                                    <select id="report-operation-type">
+                                        <option value="">All operations</option>
+                                        <option value="STACK_IN">Stack In</option>
+                                        <option value="STACK_OUT">Stack Out</option>
+                                        <option value="RESTOW">Restow</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label for="report-operator-query">Operator</label>
+                                    <input id="report-operator-query" type="text" placeholder="Name, username or role">
+                                </div>
+                                <div class="form-group full-width">
+                                    <label for="report-container-query">Container</label>
+                                    <input id="report-container-query" type="text" placeholder="Optional container ID filter">
+                                </div>
+                            </form>
+                            <div id="reports-feedback" class="form-feedback neutral">Choose a period and load the preview. CSV is best for raw data, PDF is best for a polished shareable report.</div>
+                        </div>
+
+                        <div class="inventory-table-container glass mt-4">
+                            <div class="panel-heading">
+                                <div>
+                                    <h2>Operations Preview</h2>
+                                    <p id="reports-preview-subtitle">Latest filtered movements will appear here before export.</p>
+                                </div>
+                            </div>
+                            <div class="table-scroll report-table-scroll">
+                                <table class="modern-table report-preview-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Date / Time</th>
+                                            <th>Operation</th>
+                                            <th>Container</th>
+                                            <th>Route</th>
+                                            <th>Cargo</th>
+                                            <th>Operator</th>
+                                            <th>Override</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="reports-preview-body"></tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <aside class="inspector-panel glass">
+                        <div class="panel-heading">
+                            <div>
+                                <h2>Report Summary</h2>
+                                <p>Quick totals and active operators for the selected date range.</p>
+                            </div>
+                        </div>
+                        <div class="stats-cards report-summary-cards">
+                            <div class="detail-card">
+                                <span class="detail-label">Records</span>
+                                <strong id="report-total-records">0</strong>
+                                <small>Total movement rows in this report.</small>
+                            </div>
+                            <div class="detail-card">
+                                <span class="detail-label">Containers</span>
+                                <strong id="report-total-containers">0</strong>
+                                <small>Unique containers in the selected period.</small>
+                            </div>
+                            <div class="detail-card">
+                                <span class="detail-label">Stack In</span>
+                                <strong id="report-stack-in-count">0</strong>
+                                <small>Incoming container operations.</small>
+                            </div>
+                            <div class="detail-card">
+                                <span class="detail-label">Stack Out</span>
+                                <strong id="report-stack-out-count">0</strong>
+                                <small>Outgoing container operations.</small>
+                            </div>
+                            <div class="detail-card">
+                                <span class="detail-label">Restow</span>
+                                <strong id="report-restow-count">0</strong>
+                                <small>Internal moves between yard slots.</small>
+                            </div>
+                            <div class="detail-card">
+                                <span class="detail-label">Operators</span>
+                                <strong id="report-total-users">0</strong>
+                                <small>Accounts involved in this period.</small>
+                            </div>
+                        </div>
+                        <div class="detail-section mt-4">
+                            <span class="detail-label">Active Operators</span>
+                            <div id="report-operator-list" class="history-list"></div>
+                        </div>
+                        <div class="detail-section mt-4">
+                            <span class="detail-label">Export Notes</span>
+                            <div id="report-export-notes" class="history-list">
+                                <div class="history-item">
+                                    <strong>CSV</strong>
+                                    <span>Best for Excel, audits and raw reconciliation.</span>
+                                    <small>Includes detailed movement fields and operator data.</small>
+                                </div>
+                                <div class="history-item">
+                                    <strong>PDF</strong>
+                                    <span>Best for management, sharing and printing.</span>
+                                    <small>Includes summary metrics, top operators and full movement table.</small>
+                                </div>
+                            </div>
+                        </div>
+                    </aside>
+                </div>
+            </section>
+
+            <section id="admin-tab" class="tab-content">
+                <div class="map-workspace">
+                    <div class="map-column">
+                        <div class="form-container glass">
+                            <div class="panel-heading"><div><h2>Admin User Management</h2><p>Create operator accounts, assign roles and keep access under direct admin control.</p></div></div>
+                            <form id="create-user-form" class="form-grid">
+                                <div class="form-group"><label for="create-username">Username</label><input id="create-username" type="text" required placeholder="yard02"></div>
+                                <div class="form-group"><label for="create-fullname">Full name</label><input id="create-fullname" type="text" required placeholder="Operator Name"></div>
+                                <div class="form-group"><label for="create-password">Temporary password</label><input id="create-password" type="password" required placeholder="temp123"></div>
+                                <div class="form-group"><label for="create-role">Role</label><select id="create-role" required><option value="TALLYMAN">TALLYMAN</option><option value="PLANNER">PLANNER</option><option value="MANAGER">MANAGER</option><option value="ADMIN">ADMIN</option></select></div>
+                                <div class="form-group full-width"><label for="create-telegram">Telegram chat / username</label><input id="create-telegram" type="text" placeholder="@operator_chat"></div>
+                                <button type="submit" class="btn-primary full-width-btn">Create User</button>
+                            </form>
+                        </div>
+
+                        <div class="inventory-table-container glass mt-4">
+                            <div class="panel-heading"><div><h2>Active Users</h2><p>Only admin can create users, assign roles and reset passwords.</p></div></div>
+                            <table class="modern-table"><thead><tr><th>User</th><th>Role</th><th>Telegram</th><th>Alerts</th></tr></thead><tbody id="admin-users-list"></tbody></table>
+                        </div>
+
+                        <div class="inventory-table-container glass mt-4">
+                            <div class="panel-heading"><div><h2>Terminal Blocks</h2><p>Layout settings for each storage block. Changes update the map window immediately.</p></div></div>
+                            <table class="modern-table"><thead><tr><th>Block</th><th>Label</th><th>Bays</th><th>Rows</th><th>Tiers</th></tr></thead><tbody id="admin-blocks-list"></tbody></table>
+                        </div>
+
+                        <div class="inventory-table-container glass mt-4">
+                            <div class="panel-heading"><div><h2>Slot Directory</h2><p>Block-level slot catalog for the currently visible viewport. Each slot can be blocked or restricted by container type and max tiers.</p></div></div>
+                            <div class="table-scroll">
+                                <table class="modern-table"><thead><tr><th>Slot</th><th>Status</th><th>Types</th><th>Max tiers</th></tr></thead><tbody id="admin-slots-list"></tbody></table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <aside class="inspector-panel glass">
+                        <div class="panel-heading"><div><h2>Selected User</h2><p id="admin-user-subtitle">Pick a user from the table to edit role or reset password.</p></div><span id="admin-user-badge" class="slot-badge neutral">No user</span></div>
+                        <div id="admin-user-empty" class="inspector-empty"><p>Admin account controls who can access the yard console.</p><p>Operators can change only their own password. Admin can create users, assign roles and reset passwords.</p></div>
+                        <div id="admin-user-content" class="inspector-content hidden">
+                            <div class="detail-card"><span class="detail-label">Username</span><strong id="admin-detail-username"></strong><small id="admin-detail-fullname"></small></div>
+                            <div class="detail-card"><span class="detail-label">Permissions</span><strong id="admin-detail-role"></strong><small id="admin-detail-permissions"></small></div>
+                            <form id="admin-role-form" class="settings-form compact-form">
+                                <div class="form-group"><label for="admin-role-select">Assign role</label><select id="admin-role-select" required><option value="TALLYMAN">TALLYMAN</option><option value="PLANNER">PLANNER</option><option value="MANAGER">MANAGER</option><option value="ADMIN">ADMIN</option></select></div>
+                                <button type="submit" class="btn-secondary modal-submit">Update Role</button>
+                            </form>
+                            <form id="admin-password-form" class="settings-form compact-form">
+                                <div class="form-group"><label for="admin-reset-password">Reset password</label><input id="admin-reset-password" type="password" required placeholder="new secure password"></div>
+                                <button type="submit" class="btn-secondary modal-submit">Set New Password</button>
+                            </form>
+                            <div class="admin-user-delete-section">
+                                <small id="admin-delete-user-hint" class="admin-user-delete-hint">Delete revokes access immediately and preserves operation history.</small>
+                                <button id="admin-delete-user-button" type="button" class="btn-danger modal-submit">Delete User</button>
+                            </div>
+                        </div>
+
+                        <div class="panel-heading mt-4"><div><h2>Selected Block</h2><p id="admin-block-subtitle">Pick a block from the table to edit bay, row and equipment settings.</p></div><span id="admin-block-badge" class="slot-badge neutral">No block</span></div>
+                        <div id="admin-block-empty" class="inspector-empty"><p>Block settings control how much of the yard is visible and available for operations.</p><p>Use this panel to keep the digital map aligned with the real terminal layout.</p></div>
+                        <div id="admin-block-content" class="inspector-content hidden">
+                            <div class="detail-card"><span class="detail-label">Block</span><strong id="admin-block-code"></strong><small id="admin-block-label"></small></div>
+                            <form id="admin-block-form" class="settings-form compact-form">
+                                <div class="form-group"><label for="admin-block-name">Label</label><input id="admin-block-name" type="text" required placeholder="Import East"></div>
+                                <div class="form-grid">
+                                    <div class="form-group"><label for="admin-block-bays">Bay count</label><input id="admin-block-bays" type="number" min="1" max="99" required></div>
+                                    <div class="form-group"><label for="admin-block-rows">Row count</label><input id="admin-block-rows" type="number" min="1" max="99" required></div>
+                                    <div class="form-group"><label for="admin-block-tiers">Tier count</label><input id="admin-block-tiers" type="number" min="1" max="4" required></div>
+                                    <div class="form-group"><label for="admin-block-equipment">Equipment</label><input id="admin-block-equipment" type="text" placeholder="RTG-01"></div>
+                                </div>
+                                <button type="submit" class="btn-secondary modal-submit">Save Block Layout</button>
+                            </form>
+                        </div>
+
+                        <div class="panel-heading mt-4"><div><h2>Selected Slot</h2><p id="admin-slot-subtitle">Pick a slot from the slot directory to manage availability and allowed container types.</p></div><span id="admin-slot-badge" class="slot-badge neutral">No slot</span></div>
+                        <div id="admin-slot-empty" class="inspector-empty"><p>Slot settings let you block a physical address or adjust max tiers and allowed container types for that exact location.</p><p>This is the foundation of the full slot directory inside each block.</p></div>
+                        <div id="admin-slot-content" class="inspector-content hidden">
+                            <div class="detail-card"><span class="detail-label">Slot</span><strong id="admin-slot-code"></strong><small id="admin-slot-summary"></small></div>
+                            <form id="admin-slot-form" class="settings-form compact-form">
+                                <label class="toggle-card"><input id="admin-slot-blocked" type="checkbox"><span><strong>Block this slot</strong><small>Blocked slots stay in the catalog but cannot accept new operations until you unblock them.</small></span></label>
+                                <div class="form-group"><label for="admin-slot-tiers">Max tiers</label><input id="admin-slot-tiers" type="number" min="1" max="4" required></div>
+                                <div class="detail-section">
+                                    <span class="detail-label">Allowed container types</span>
+                                    <div class="checkbox-grid">
+                                        <label class="toggle-card compact-toggle"><input id="slot-type-20ft" type="checkbox"><span><strong>20ft</strong></span></label>
+                                        <label class="toggle-card compact-toggle"><input id="slot-type-40ft" type="checkbox"><span><strong>40ft</strong></span></label>
+                                        <label class="toggle-card compact-toggle"><input id="slot-type-45ft" type="checkbox"><span><strong>45ft</strong></span></label>
+                                    </div>
+                                </div>
+                                <div class="form-group"><label for="admin-slot-notes">Notes</label><input id="admin-slot-notes" type="text" placeholder="Blocked by equipment / reserved lane"></div>
+                                <button type="submit" class="btn-secondary modal-submit">Save Slot Settings</button>
+                            </form>
+                        </div>
+                    </aside>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <div id="toast" class="toast hidden"></div>
+    <script src="app.js?v=20260518-stackout-upper-block"></script>
+</body>
+</html>

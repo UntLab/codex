@@ -1,0 +1,105 @@
+{
+  "name": "BitVantage Telegram Group Notifications",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "bitvantage-telegram-group",
+        "authentication": "headerAuth",
+        "responseMode": "responseNode"
+      },
+      "id": "bitvantage-webhook",
+      "name": "BitVantage Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        240,
+        300
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "REPLACE_WITH_HEADER_AUTH_CREDENTIAL_ID",
+          "name": "BitVantage Webhook Secret"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "message",
+        "operation": "sendMessage",
+        "chatId": "REPLACE_WITH_TELEGRAM_GROUP_CHAT_ID",
+        "text": "={{ (() => { const payload = $json.body || $json; const labels = { STACK_IN: 'STACK IN', RESTOW: 'RESTOW', STACK_OUT: 'STACK OUT' }; const c = payload.container_snapshot || {}; const operatorData = payload.operator || {}; const operator = operatorData.full_name ? `${operatorData.full_name} (@${operatorData.username || 'unknown'})` : (operatorData.username || 'Unknown'); return [ `<b>${labels[payload.operation_type] || payload.operation_type || 'MOVE'}</b>`, `<b>Container:</b> ${c.container_id || '-'}`, `<b>Type:</b> ${c.container_type || '-'}`, `<b>Old:</b> ${payload.old_position_code || '-'}`, `<b>New:</b> ${payload.new_position_code || '-'}`, `<b>Operator:</b> ${operator}`, `<b>Time:</b> ${payload.performed_at || '-'}` ].join('\\n'); })() }}",
+        "additionalFields": {
+          "appendAttribution": false,
+          "disable_web_page_preview": true,
+          "parse_mode": "HTML"
+        }
+      },
+      "id": "send-telegram-message",
+      "name": "Send Telegram Message",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        560,
+        300
+      ],
+      "credentials": {
+        "telegramApi": {
+          "id": "REPLACE_WITH_TELEGRAM_CREDENTIAL_ID",
+          "name": "BitVantage Telegram Bot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "ok",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "id": "respond-ok",
+      "name": "Respond OK",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        840,
+        300
+      ]
+    }
+  ],
+  "connections": {
+    "BitVantage Webhook": {
+      "main": [
+        [
+          {
+            "node": "Send Telegram Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Telegram Message": {
+      "main": [
+        [
+          {
+            "node": "Respond OK",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {},
+  "active": false,
+  "versionId": "bitvantage-telegram-group-v1",
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "tags": []
+}
