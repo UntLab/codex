@@ -1,3 +1,4 @@
+import os
 from pathlib import Path
 from datetime import date, datetime, time, timezone
 from typing import Any, Dict, Optional
@@ -30,6 +31,7 @@ from validators import validate_position
 
 app = FastAPI(title="BitVantage Yard API", version="1.0")
 security = HTTPBearer(auto_error=False)
+DEFAULT_PAUSED_OPERATION_BLOCKS = "01"
 
 app.add_middleware(
     CORSMiddleware,
@@ -49,6 +51,37 @@ def model_to_dict(model: Any) -> Dict[str, Any]:
     if hasattr(model, "model_dump"):
         return model.model_dump()
     return model.dict()
+
+
+def normalize_block_code(block: str) -> str:
+    value = str(block or "").strip()
+    return value.zfill(2) if value.isdigit() and len(value) < 2 else value
+
+
+def get_paused_operation_blocks() -> set[str]:
+    raw_blocks = os.getenv("BITVANTAGE_PAUSED_BLOCKS", DEFAULT_PAUSED_OPERATION_BLOCKS)
+    return {
+        normalize_block_code(block)
+        for block in raw_blocks.split(",")
+        if normalize_block_code(block)
+    }
+
+
+def build_block_pause_message(block: str) -> str:
+    normalized_block = normalize_block_code(block)
+    return (
+        f"Block {normalized_block} is temporarily paused for new Stack In and Restow operations. "
+        "Existing containers remain available for Stack Out."
+    )
+
+
+def ensure_block_accepts_new_placements(block: str) -> None:
+    if normalize_block_code(block) in get_paused_operation_blocks():
+        raise HTTPException(status_code=409, detail=build_block_pause_message(block))
+
+
+def get_runtime_config() -> Dict[str, Any]:
+    return {"paused_operation_blocks": sorted(get_paused_operation_blocks())}
 
 
 def get_current_user(credentials: Optional[HTTPAuthorizationCredentials] = Depends(security)) -> Dict[str, Any]:
@@ -172,6 +205,16 @@ def build_departure_priority_message(conflict: Dict[str, Any], *, override_allow
     return message
 
 
+def build_front_buffer_message(alternative: Dict[str, Any], *, override_allowed: bool) -> str:
+    message = (
+        "Row 1 is reserved as the working access lane while rows 2-6 have safe available positions. "
+        f"Use {alternative['position_code']} first."
+    )
+    if override_allowed:
+        message += " Emergency override is available, but a reason is required."
+    return message
+
+
 def ensure_departure_priority_allowed(
     *,
     block: str,
@@ -214,6 +257,84 @@ def ensure_departure_priority_allowed(
         raise HTTPException(status_code=400, detail="Emergency override reason is required for this placement.")
 
     return {"emergency_override": True, "override_reason": cleaned_reason, "conflict": conflict}
+
+
+def ensure_front_buffer_allowed(
+    *,
+    block: str,
+    bay: str,
+    row: int,
+    container_type: str,
+    direction: str,
+    stack_out_date: Optional[str],
+    arrived_at: Optional[str],
+    current_user: Dict[str, Any],
+    emergency_override: bool = False,
+    override_reason: Optional[str] = None,
+    exclude_container_id: Optional[str] = None,
+    db=None,
+    inventory_rows=None,
+    layout_records=None,
+    overrides_by_slot=None,
+) -> Dict[str, Any]:
+    if not supabase_client.is_front_buffer_row(row):
+        return {"emergency_override": False, "override_reason": None, "conflict": None}
+
+    alternative = supabase_client.find_non_buffer_placement_alternative(
+        block,
+        container_type,
+        direction,
+        stack_out_date,
+        arrived_at,
+        exclude_container_id=exclude_container_id,
+        inventory_rows=inventory_rows,
+        layout_records=layout_records,
+        overrides_by_slot=overrides_by_slot,
+        db=db,
+    )
+    if not alternative:
+        return {"emergency_override": False, "override_reason": None, "conflict": None}
+
+    override_allowed = can_emergency_override_departure_priority(current_user)
+    if not emergency_override:
+        raise HTTPException(status_code=409, detail=build_front_buffer_message(alternative, override_allowed=override_allowed))
+    if not override_allowed:
+        raise HTTPException(status_code=403, detail="Emergency override for row 1 access lane usage is allowed only for Admin or Manager.")
+    cleaned_reason = (override_reason or "").strip()
+    if not cleaned_reason:
+        raise HTTPException(status_code=400, detail="Emergency override reason is required for row 1 access lane usage.")
+    return {"emergency_override": True, "override_reason": cleaned_reason, "conflict": alternative}
+
+
+def combine_override_states(*states: Dict[str, Any]) -> Dict[str, Any]:
+    active = [state for state in states if state.get("emergency_override")]
+    if not active:
+        return {"emergency_override": False, "override_reason": None}
+    return {
+        "emergency_override": True,
+        "override_reason": active[0].get("override_reason"),
+    }
+
+
+def ensure_container_clear_for_removal(container: Dict[str, Any], *, inventory_rows=None, db=None) -> None:
+    blockers = supabase_client.find_upper_blocking_containers(container, inventory_rows=inventory_rows, db=db)
+    if not blockers:
+        return
+    blocker_summary = ", ".join(
+        f"{item['container_id']} at {item.get('position_code') or 'unknown position'}"
+        for item in blockers[:5]
+    )
+    remaining_count = len(blockers) - 5
+    if remaining_count > 0:
+        blocker_summary += f", and {remaining_count} more"
+    raise HTTPException(
+        status_code=409,
+        detail=(
+            f"Cannot move or stack out {container['container_id']} from {container.get('position_code') or 'this position'} "
+            f"because upper tier container(s) are still above it: {blocker_summary}. "
+            "Restow the upper tier container(s) first."
+        ),
+    )
 
 
 def build_log_entry(
@@ -336,13 +457,15 @@ def get_bootstrap(
     current_user: Dict[str, Any] = Depends(require_permission("view_inventory")),
 ):
     target_date = datetime.strptime(dashboard_date, "%Y-%m-%d").date() if dashboard_date else None
-    return supabase_client.get_bootstrap_payload(
+    payload = supabase_client.get_bootstrap_payload(
         current_user,
         logs_limit=logs_limit,
         include_admin_users=include_admin_users,
         dashboard_date=target_date,
         utc_offset_minutes=utc_offset_minutes,
     )
+    payload["config"] = get_runtime_config()
+    return payload
 
 
 @app.patch("/api/users/me/notifications")
@@ -453,6 +576,7 @@ def stack_in(request: StackInRequest, current_user: Dict[str, Any] = Depends(req
         normalized = validate_position(request.container_type, request.block, request.bay, request.row, request.tier)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
+    ensure_block_accepts_new_placements(normalized["block"])
     slot = get_slot_or_404(normalized["block"], normalized["bay"], normalized["row"], normalized["container_type"])
     ensure_slot_eligible(slot, normalized["container_type"], normalized["tier"])
     if not supabase_client.has_supporting_base(normalized["block"], normalized["bay"], normalized["row"], normalized["tier"], normalized["container_type"]):
@@ -462,7 +586,7 @@ def stack_in(request: StackInRequest, current_user: Dict[str, Any] = Depends(req
         raise HTTPException(status_code=400, detail="Container ID already exists in inventory. Use Restow to move or Stack Out to remove.")
     ensure_bay_direction_consistent(normalized["block"], normalized["bay"], request.direction, request.container_type)
     performed_at = supabase_client.utc_now_iso()
-    override_state = ensure_departure_priority_allowed(
+    departure_override_state = ensure_departure_priority_allowed(
         block=normalized["block"],
         bay=normalized["bay"],
         row=normalized["row"],
@@ -474,6 +598,19 @@ def stack_in(request: StackInRequest, current_user: Dict[str, Any] = Depends(req
         emergency_override=request.emergency_override,
         override_reason=request.override_reason,
     )
+    front_buffer_override_state = ensure_front_buffer_allowed(
+        block=normalized["block"],
+        bay=normalized["bay"],
+        row=normalized["row"],
+        container_type=normalized["container_type"],
+        direction=request.direction,
+        stack_out_date=request.stack_out_date,
+        arrived_at=performed_at,
+        current_user=current_user,
+        emergency_override=request.emergency_override,
+        override_reason=request.override_reason,
+    )
+    override_state = combine_override_states(departure_override_state, front_buffer_override_state)
     ensure_position_available(normalized)
     inventory_data = {
         "container_id": request.container_id,
@@ -507,13 +644,16 @@ def stack_in(request: StackInRequest, current_user: Dict[str, Any] = Depends(req
 @app.post("/api/containers/stack-out")
 def stack_out(request: StackOutRequest, current_user: Dict[str, Any] = Depends(require_permission("stack_out"))):
     request_data = model_to_dict(request)
-    existing = supabase_client.check_inventory(request.container_id)
-    if not existing:
-        raise HTTPException(status_code=404, detail="Container ID not found in inventory.")
-    old_position = existing.get("position_code")
-    performed_at = supabase_client.utc_now_iso()
-    supabase_client.delete_inventory(request.container_id)
-    supabase_client.insert_log(build_log_entry(container_id=request.container_id, operation_type="STACK_OUT", performed_at=performed_at, old_position_code=old_position, new_position_code=None, container_snapshot=existing, current_user=current_user))
+    with supabase_client.get_db() as db:
+        inventory_rows = supabase_client.get_all_inventory(db=db)
+        existing = next((item for item in inventory_rows if item["container_id"] == request.container_id), None)
+        if not existing:
+            raise HTTPException(status_code=404, detail="Container ID not found in inventory.")
+        ensure_container_clear_for_removal(existing, inventory_rows=inventory_rows)
+        old_position = existing.get("position_code")
+        performed_at = supabase_client.utc_now_iso()
+        supabase_client.delete_inventory(request.container_id, db=db)
+        supabase_client.insert_log(build_log_entry(container_id=request.container_id, operation_type="STACK_OUT", performed_at=performed_at, old_position_code=old_position, new_position_code=None, container_snapshot=existing, current_user=current_user), db=db)
     dispatch_movement_notification(build_notification_payload(request_data=request_data, operation_type="STACK_OUT", performed_at=performed_at, old_position_code=old_position, new_position_code=None, container_snapshot=existing, current_user=current_user))
     return {"status": "success", "message": f"Container {request.container_id} checked out."}
 
@@ -528,10 +668,12 @@ def restow(request: RestowRequest, current_user: Dict[str, Any] = Depends(requir
         existing = next((item for item in inventory_rows if item["container_id"] == request.container_id), None)
         if not existing:
             raise HTTPException(status_code=404, detail="Container ID not found in inventory.")
+        ensure_container_clear_for_removal(existing, inventory_rows=inventory_rows)
         try:
             normalized = validate_position(existing.get("container_type"), request.new_block, request.new_bay, request.new_row, request.new_tier)
         except ValueError as exc:
             raise HTTPException(status_code=400, detail=str(exc))
+        ensure_block_accepts_new_placements(normalized["block"])
         ensure_bay_direction_consistent(
             normalized["block"],
             normalized["bay"],
@@ -560,7 +702,7 @@ def restow(request: RestowRequest, current_user: Dict[str, Any] = Depends(requir
             inventory_rows=inventory_rows,
         ):
             raise HTTPException(status_code=400, detail=f"{normalized['container_type']} is not supported by the lower tier at {normalized['position_code']}.")
-        override_state = ensure_departure_priority_allowed(
+        departure_override_state = ensure_departure_priority_allowed(
             block=normalized["block"],
             bay=normalized["bay"],
             row=normalized["row"],
@@ -575,6 +717,24 @@ def restow(request: RestowRequest, current_user: Dict[str, Any] = Depends(requir
             db=db,
             inventory_rows=inventory_rows,
         )
+        front_buffer_override_state = ensure_front_buffer_allowed(
+            block=normalized["block"],
+            bay=normalized["bay"],
+            row=normalized["row"],
+            container_type=normalized["container_type"],
+            direction=existing["direction"],
+            stack_out_date=existing.get("stack_out_date"),
+            arrived_at=existing.get("arrived_at"),
+            current_user=current_user,
+            emergency_override=request.emergency_override,
+            override_reason=request.override_reason,
+            exclude_container_id=request.container_id,
+            db=db,
+            inventory_rows=inventory_rows,
+            layout_records=layout_records,
+            overrides_by_slot=overrides_by_slot,
+        )
+        override_state = combine_override_states(departure_override_state, front_buffer_override_state)
         ensure_position_available(
             normalized,
             exclude_container_id=request.container_id,

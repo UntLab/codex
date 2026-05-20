@@ -5,21 +5,634 @@ const API_ROOT = `${API_ORIGIN}/api`;
 const STORAGE_TOKEN_KEY = "bitvantage_auth_token";
 const STORAGE_USER_KEY = "bitvantage_user";
 const STORAGE_SIDEBAR_KEY = "bitvantage_sidebar_collapsed";
+const STORAGE_LANGUAGE_KEY = "bitvantage_language";
 const AUTO_REFRESH_MS = 15000;
 const MAX_TIER_COUNT = 4;
-const DEFAULT_VIEWPORT_SIZE = 14;
+const COMPACT_VIEWPORT_SIZE = 10;
+const DEFAULT_VIEWPORT_MODE = "full";
+const DEFAULT_LANGUAGE = "en";
+const SUPPORTED_LANGUAGES = ["en", "uk"];
+const DEFAULT_PAUSED_OPERATION_BLOCKS = ["01"];
+const DEFAULT_SELECTED_BLOCK = "02";
+const LOCALIZABLE_ATTRIBUTES = ["placeholder", "aria-label", "title", "alt"];
+
+const TEXT_NODE_ORIGINALS = new WeakMap();
+const ATTR_ORIGINALS = new WeakMap();
+
+const UK_TEXT = {
+    "BitVantage Yard Console": "Консоль майданчика BitVantage",
+    "BitVantage Access": "Доступ BitVantage",
+    "Sign In To The Yard Console": "Вхід у Yard Console",
+    "Each terminal operator works under a personal account. Actions, moves and timestamps are logged under the active session.": "Кожен оператор терміналу працює під особистим акаунтом. Дії, переміщення й час фіксуються в активній сесії.",
+    "Username": "Логін",
+    "Password": "Пароль",
+    "Enter username": "Введіть логін",
+    "Enter password": "Введіть пароль",
+    "Enter BitVantage": "Увійти в BitVantage",
+    "Language": "Мова",
+    "Notification Settings": "Налаштування сповіщень",
+    "Personal Telegram preferences for the current account.": "Персональні Telegram-налаштування для поточного акаунта.",
+    "Close settings": "Закрити налаштування",
+    "Account notifications enabled": "Сповіщення акаунта увімкнені",
+    "Master switch for personal alert delivery.": "Головний перемикач персональних сповіщень.",
+    "Telegram notifications enabled": "Telegram-сповіщення увімкнені",
+    "Receive move notifications directly in Telegram.": "Отримувати сповіщення про рухи напряму в Telegram.",
+    "Receive all movement alerts": "Отримувати всі сповіщення про рухи",
+    "Used for supervisors monitoring the full yard.": "Для керівників зміни, які контролюють увесь майданчик.",
+    "Who gets notified on each move": "Хто отримує сповіщення при кожному русі",
+    "Latest Delivery Attempts": "Останні спроби доставки",
+    "Change My Password": "Змінити мій пароль",
+    "Current password": "Поточний пароль",
+    "New password": "Новий пароль",
+    "Update My Password": "Оновити мій пароль",
+    "Save Notification Settings": "Зберегти налаштування сповіщень",
+    "Confirm Move": "Підтвердити переміщення",
+    "Review the destination before the container is restowed.": "Перевірте адресу призначення перед перестановкою контейнера.",
+    "Close move confirm": "Закрити підтвердження переміщення",
+    "Container": "Контейнер",
+    "Route": "Маршрут",
+    "Target Slot Rules": "Правила цільової комірки",
+    "Emergency Override": "Екстрене підтвердження",
+    "Access Lane Block": "Блокування робочого проїзду",
+    "Stacking Order Block": "Блокування порядку штабелювання",
+    "Allow blocked stacking order for this move": "Дозволити заблокований порядок штабелювання для цього переміщення",
+    "Only Admin and Manager can confirm this when no safe slot is available.": "Лише Admin і Manager можуть підтвердити це, коли немає безпечної комірки.",
+    "Reason": "Причина",
+    "Explain why emergency override is required": "Поясніть, чому потрібне екстрене підтвердження",
+    "Emergency override requires a clear operational reason.": "Для екстреного підтвердження потрібна чітка операційна причина.",
+    "Cancel": "Скасувати",
+    "Confirm Restow": "Підтвердити перестановку",
+    "Confirm Override": "Підтвердити екстрене рішення",
+    "Toggle sidebar": "Згорнути або розгорнути меню",
+    "BitVantage": "BitVantage",
+    "Yard Console": "Yard Console",
+    "Terminal Map": "Карта терміналу",
+    "Stack In": "Постановка",
+    "Stack Out": "Видача",
+    "Restow": "Перестановка",
+    "Reports": "Звіти",
+    "Admin": "Адмін",
+    "Built by UntLab": "Створено UntLab",
+    "software developer": "розробник ПЗ",
+    "Tablet Console": "Планшетна консоль",
+    "Terminal Yard Map": "Карта термінального майданчика",
+    "Syncing yard data...": "Синхронізація даних майданчика...",
+    "Terminal Overview": "Огляд терміналу",
+    "Two rail-side storage blocks mirror the real yard: a compact west stack and a long east stack around the track.": "Два залізничні блоки відображають реальний майданчик: компактний західний стек і довгий східний стек уздовж колії.",
+    "Free": "Вільно",
+    "Containers": "Контейнери",
+    "In": "Вхід",
+    "Out": "Вихід",
+    "Block": "Блок",
+    "Refresh": "Оновити",
+    "Print": "Друк",
+    "Session": "Сесія",
+    "Not signed in": "Вхід не виконано",
+    "offline": "офлайн",
+    "Open settings": "Відкрити налаштування",
+    "Log out": "Вийти",
+    "Block 01": "Блок 01",
+    "Top-down bay and row view. Tap a slot to inspect the stack.": "Вигляд беїв і рядів зверху. Натисніть комірку, щоб переглянути стек.",
+    "Layer": "Шар",
+    "Top": "Верх",
+    "Tier 1": "Ярус 1",
+    "Tier 2": "Ярус 2",
+    "Tier 3": "Ярус 3",
+    "Tier 4": "Ярус 4",
+    "Window": "Вікно",
+    "Full block": "Повний блок",
+    "Compact": "Компактно",
+    "Rows": "Ряди",
+    "Bays": "Беї",
+    "Showing first window of block": "Показано перше вікно блока",
+    "Jump": "Перехід",
+    "Bay": "Бей",
+    "Row": "Ряд",
+    "Jump to slot": "Перейти до комірки",
+    "Inventory Snapshot": "Зріз інвентарю",
+    "Table view for operational cross-checking and printing the current yard state.": "Табличний вигляд для операційної перевірки та друку поточного стану майданчика.",
+    "Search by Container": "Пошук за контейнером",
+    "Type": "Тип",
+    "Position (Block-Bay-Row-Tier)": "Позиція (Блок-Бей-Ряд-Ярус)",
+    "Status": "Статус",
+    "Direction": "Напрям",
+    "Slot Inspector": "Інспектор комірки",
+    "Select a block or container on the map.": "Виберіть блок або контейнер на карті.",
+    "No selection": "Нічого не вибрано",
+    "The map follows a tablet-first yard flow: choose a block, then a slot, then a stack layer.": "Карта побудована під планшетний сценарій: виберіть блок, потім комірку, потім ярус стека.",
+    "20ft containers use odd bays. 40ft containers use even bays 2, 6, 10... and 45ft only the edge wide bays.": "20ft контейнери використовують непарні беї. 40ft — парні беї 2, 6, 10..., а 45ft — лише крайні широкі беї.",
+    "Base Position": "Базова позиція",
+    "Stack Capacity": "Місткість стека",
+    "Quick Restow": "Швидка перестановка",
+    "No container armed": "Контейнер не вибрано",
+    "Target block: --": "Цільовий блок: --",
+    "Target Bay": "Цільовий бей",
+    "Target Row": "Цільовий ряд",
+    "Enter a target bay and row.": "Введіть цільовий бей і ряд.",
+    "Stack Layers": "Яруси стека",
+    "Prepare Restow": "Підготувати перестановку",
+    "Prepare Stack Out": "Підготувати видачу",
+    "Container History": "Історія контейнера",
+    "Notification Routing Preview": "Попередній перегляд маршрутизації сповіщень",
+    "Live Operations Feed": "Жива стрічка операцій",
+    "Container ID": "ID контейнера",
+    "Container Type": "Тип контейнера",
+    "20ft (odd bays)": "20ft (непарні беї)",
+    "40ft (even bays)": "40ft (парні беї)",
+    "45ft (even bays)": "45ft (парні беї)",
+    "Loaded": "Завантажений",
+    "Empty": "Порожній",
+    "Import": "Імпорт",
+    "Export": "Експорт",
+    "Bonded": "Bonded",
+    "No": "Ні",
+    "Yes": "Так",
+    "Date of Stack Out": "Дата видачі",
+    "Weight": "Вага",
+    "Commodity": "Вантаж",
+    "Line": "Лінія",
+    "Target Position": "Цільова позиція",
+    "Placement rules and stacking hints will appear here.": "Правила постановки та підказки щодо штабелювання з’являться тут.",
+    "Suggested Position": "Рекомендована позиція",
+    "Safe slot suggestions will appear here.": "Рекомендації безпечних комірок з’являться тут.",
+    "Allow blocked stacking order": "Дозволити заблокований порядок штабелювання",
+    "Only Admin and Manager can use this when there is no safe yard position available.": "Лише Admin і Manager можуть використати це, коли немає безпечної позиції на майданчику.",
+    "Confirm Stack In": "Підтвердити постановку",
+    "Confirm Stack Out": "Підтвердити видачу",
+    "New Position": "Нова позиція",
+    "Move rules and stacking checks will appear here.": "Правила переміщення та перевірки штабелювання з’являться тут.",
+    "Only Admin and Manager can use this when the move is operationally urgent.": "Лише Admin і Manager можуть використати це, коли переміщення операційно термінове.",
+    "Operations Report": "Операційний звіт",
+    "Download full movement history by date range, operator and operation type.": "Завантажуйте повну історію рухів за періодом, оператором і типом операції.",
+    "Load Preview": "Завантажити перегляд",
+    "Date From": "Дата з",
+    "Date To": "Дата по",
+    "Operation": "Операція",
+    "All operations": "Усі операції",
+    "Operator": "Оператор",
+    "Name, username or role": "Ім’я, логін або роль",
+    "Optional container ID filter": "Необов’язковий фільтр ID контейнера",
+    "Choose a period and load the preview. CSV is best for raw data, PDF is best for a polished shareable report.": "Виберіть період і завантажте перегляд. CSV краще для сирих даних, PDF — для готового звіту.",
+    "Operations Preview": "Перегляд операцій",
+    "Latest filtered movements will appear here before export.": "Останні відфільтровані рухи з’являться тут перед експортом.",
+    "Date / Time": "Дата / час",
+    "Cargo": "Вантаж",
+    "Override": "Екстр. підтвердження",
+    "Report Summary": "Підсумок звіту",
+    "Quick totals and active operators for the selected date range.": "Швидкі підсумки й активні оператори за вибраний період.",
+    "Records": "Записи",
+    "Total movement rows in this report.": "Усі рядки рухів у цьому звіті.",
+    "Unique containers in the selected period.": "Унікальні контейнери за вибраний період.",
+    "Incoming container operations.": "Операції приймання контейнерів.",
+    "Outgoing container operations.": "Операції видачі контейнерів.",
+    "Internal moves between yard slots.": "Внутрішні переміщення між комірками майданчика.",
+    "Operators": "Оператори",
+    "Accounts involved in this period.": "Акаунти, задіяні в цьому періоді.",
+    "Active Operators": "Активні оператори",
+    "Export Notes": "Нотатки експорту",
+    "Best for Excel, audits and raw reconciliation.": "Найкраще для Excel, аудиту та сирого звіряння.",
+    "Includes detailed movement fields and operator data.": "Містить детальні поля рухів і дані операторів.",
+    "Best for management, sharing and printing.": "Найкраще для керівництва, надсилання та друку.",
+    "Includes summary metrics, top operators and full movement table.": "Містить підсумкові метрики, топ операторів і повну таблицю рухів.",
+    "Admin User Management": "Керування користувачами",
+    "Create operator accounts, assign roles and keep access under direct admin control.": "Створюйте акаунти операторів, призначайте ролі й тримайте доступ під прямим контролем адміністратора.",
+    "Full name": "Повне ім’я",
+    "Operator Name": "Ім’я оператора",
+    "Temporary password": "Тимчасовий пароль",
+    "Role": "Роль",
+    "Telegram chat / username": "Telegram чат / логін",
+    "Create User": "Створити користувача",
+    "Active Users": "Активні користувачі",
+    "Only admin can create users, assign roles and reset passwords.": "Лише адміністратор може створювати користувачів, призначати ролі й скидати паролі.",
+    "User": "Користувач",
+    "Telegram": "Telegram",
+    "Alerts": "Сповіщення",
+    "Terminal Blocks": "Блоки терміналу",
+    "Layout settings for each storage block. Changes update the map window immediately.": "Налаштування схеми кожного блоку зберігання. Зміни одразу оновлюють вікно карти.",
+    "Label": "Назва",
+    "Tiers": "Яруси",
+    "Slot Directory": "Довідник комірок",
+    "Block-level slot catalog for the currently visible viewport. Each slot can be blocked or restricted by container type and max tiers.": "Каталог комірок блоку для поточного видимого вікна. Кожну комірку можна заблокувати або обмежити типом контейнера й максимальною кількістю ярусів.",
+    "Slot": "Комірка",
+    "Types": "Типи",
+    "Max tiers": "Макс. ярусів",
+    "Selected User": "Вибраний користувач",
+    "Pick a user from the table to edit role or reset password.": "Виберіть користувача з таблиці, щоб змінити роль або скинути пароль.",
+    "No user": "Користувача не вибрано",
+    "Admin account controls who can access the yard console.": "Адмін-акаунт контролює, хто має доступ до Yard Console.",
+    "Operators can change only their own password. Admin can create users, assign roles and reset passwords.": "Оператори можуть змінювати лише власний пароль. Admin може створювати користувачів, призначати ролі й скидати паролі.",
+    "Permissions": "Права",
+    "Assign role": "Призначити роль",
+    "Update Role": "Оновити роль",
+    "Reset password": "Скинути пароль",
+    "new secure password": "новий безпечний пароль",
+    "Set New Password": "Встановити новий пароль",
+    "Delete revokes access immediately and preserves operation history.": "Видалення одразу відкликає доступ і зберігає історію операцій.",
+    "Delete User": "Видалити користувача",
+    "Selected Block": "Вибраний блок",
+    "Pick a block from the table to edit bay, row and equipment settings.": "Виберіть блок із таблиці, щоб змінити беї, ряди й обладнання.",
+    "No block": "Блок не вибрано",
+    "Block settings control how much of the yard is visible and available for operations.": "Налаштування блоку визначають, яка частина майданчика видима й доступна для операцій.",
+    "Use this panel to keep the digital map aligned with the real terminal layout.": "Використовуйте цю панель, щоб цифрова карта відповідала реальній схемі терміналу.",
+    "Bay count": "Кількість беїв",
+    "Row count": "Кількість рядів",
+    "Tier count": "Кількість ярусів",
+    "Equipment": "Обладнання",
+    "Save Block Layout": "Зберегти схему блоку",
+    "Selected Slot": "Вибрана комірка",
+    "Pick a slot from the slot directory to manage availability and allowed container types.": "Виберіть комірку з довідника, щоб керувати доступністю й дозволеними типами контейнерів.",
+    "No slot": "Комірку не вибрано",
+    "Slot settings let you block a physical address or adjust max tiers and allowed container types for that exact location.": "Налаштування комірки дозволяють заблокувати фізичну адресу або змінити максимальні яруси й дозволені типи контейнерів для цієї локації.",
+    "This is the foundation of the full slot directory inside each block.": "Це основа повного довідника комірок у кожному блоці.",
+    "Block this slot": "Заблокувати цю комірку",
+    "Blocked slots stay in the catalog but cannot accept new operations until you unblock them.": "Заблоковані комірки лишаються в каталозі, але не приймають нові операції, доки ви їх не розблокуєте.",
+    "Allowed container types": "Дозволені типи контейнерів",
+    "Notes": "Нотатки",
+    "Blocked by equipment / reserved lane": "Заблоковано обладнанням / резервна смуга",
+    "Save Slot Settings": "Зберегти налаштування комірки",
+    "Signing in...": "Вхід...",
+    "Refreshing yard data...": "Оновлення даних майданчика...",
+    "Loading terminal data...": "Завантаження даних терміналу...",
+    "Session expired. Sign in again.": "Сесія завершилась. Увійдіть знову.",
+    "Authentication required.": "Потрібна авторизація.",
+    "Login failed.": "Вхід не виконано.",
+    "Signed out.": "Вихід виконано.",
+    "Failed to save settings.": "Не вдалося зберегти налаштування.",
+    "Notification settings saved.": "Налаштування сповіщень збережено.",
+    "Failed to update password.": "Не вдалося оновити пароль.",
+    "Your password was updated.": "Ваш пароль оновлено.",
+    "Sign in to inspect recipients.": "Увійдіть, щоб переглянути отримувачів.",
+    "Sign in to inspect delivery attempts.": "Увійдіть, щоб переглянути спроби доставки.",
+    "This role cannot inspect global delivery attempts.": "Ця роль не може переглядати глобальні спроби доставки.",
+    "Failed to load notification attempts.": "Не вдалося завантажити спроби доставки.",
+    "No delivery attempts yet. The first movement event will appear here.": "Спроб доставки ще немає. Перша подія руху з’явиться тут.",
+    "Shift manager coverage": "Покриття керівника зміни",
+    "Yard planning supervision": "Нагляд планувальника майданчика",
+    "Assigned expeditor when container has one": "Призначений експедитор, якщо він є в контейнера",
+    "Shift control room for stack out and critical events": "Диспетчерська зміни для видачі та критичних подій",
+    "Notification routing preview for the current account.": "Попередній перегляд маршрутизації сповіщень для поточного акаунта.",
+    "Select a container on the map first.": "Спочатку виберіть контейнер на карті.",
+    "Move mode cancelled.": "Режим переміщення скасовано.",
+    "Enter target bay and row, then press OK.": "Введіть цільовий бей і ряд, потім натисніть OK.",
+    "Emergency override must be enabled for this placement.": "Для цієї постановки потрібно увімкнути екстрене підтвердження.",
+    "Emergency override must be enabled for this move.": "Для цього переміщення потрібно увімкнути екстрене підтвердження.",
+    "Enter a reason for the emergency override.": "Введіть причину екстреного підтвердження.",
+    "Emergency override selected. Enter a reason to continue with this placement.": "Екстрене підтвердження вибрано. Введіть причину, щоб продовжити постановку.",
+    "Emergency override selected. Enter a reason to continue with this move.": "Екстрене підтвердження вибрано. Введіть причину, щоб продовжити переміщення.",
+    "Enter a short reason before confirming the emergency override.": "Введіть коротку причину перед підтвердженням.",
+    "Emergency override is required for this blocked stacking order.": "Для цього заблокованого порядку штабелювання потрібне екстрене підтвердження.",
+    "Emergency override will be logged with your reason.": "Екстрене підтвердження буде записано разом із вашою причиною.",
+    "Operation failed.": "Операція не виконана.",
+    "Operation completed.": "Операцію завершено.",
+    "Processing Stack In...": "Виконується постановка...",
+    "Processing Stack Out...": "Виконується видача...",
+    "Processing Restow...": "Виконується перестановка...",
+    "Moving to target...": "Переміщення до цілі...",
+    "Failed to load terminal data.": "Не вдалося завантажити дані терміналу.",
+    "Failed to fetch inventory.": "Не вдалося отримати інвентар.",
+    "Failed to load users.": "Не вдалося завантажити користувачів.",
+    "Failed to create user.": "Не вдалося створити користувача.",
+    "Failed to update role.": "Не вдалося оновити роль.",
+    "Failed to reset password.": "Не вдалося скинути пароль.",
+    "Failed to delete user.": "Не вдалося видалити користувача.",
+    "Failed to update block layout.": "Не вдалося оновити схему блоку.",
+    "Failed to update slot.": "Не вдалося оновити комірку.",
+    "Delete User (Unavailable)": "Видалити користувача (недоступно)",
+    "You cannot delete the account you are currently using.": "Не можна видалити акаунт, яким ви зараз користуєтесь.",
+    "No access": "Немає доступу",
+    "no equipment": "без обладнання",
+    "Open": "Відкрита",
+    "Blocked": "Заблокована",
+    "Paused": "Призупинено",
+    "Off": "Вимкнено",
+    "No container data": "Немає даних контейнерів",
+    "No containers match the current search.": "За поточним пошуком контейнерів не знайдено.",
+    "Select a slot or container on the map.": "Виберіть комірку або контейнер на карті.",
+    "Stack details, current container and audit trail for the selected slot.": "Деталі стека, поточний контейнер і аудит вибраної комірки.",
+    "Slot blocked in directory": "Комірку заблоковано в довіднику",
+    "Stack is full": "Стек заповнений",
+    "Slot blocked": "Комірку заблоковано",
+    "Selected container": "Вибраний контейнер",
+    "Stack Out": "Видача",
+    "Arrival": "Прибуття",
+    "Not set": "Не задано",
+    "Slot is free": "Комірка вільна",
+    "Slot is blocked": "Комірку заблоковано",
+    "Use this address for Stack In or as a Restow target.": "Використовуйте цю адресу для постановки або як ціль перестановки.",
+    "Admin must unblock this slot before it can accept containers.": "Admin має розблокувати комірку, перш ніж вона зможе приймати контейнери.",
+    "Cancel Map Target": "Скасувати ціль на карті",
+    "Pick Target On Map": "Вибрати ціль на карті",
+    "Arm a container to enter a target bay and row.": "Виберіть контейнер, щоб ввести цільовий бей і ряд.",
+    "Enter target bay and row. The system will accept only a valid address for this container type.": "Введіть цільовий бей і ряд. Система прийме лише коректну адресу для цього типу контейнера.",
+    "Slot is free. Pick it as a target for a new or moved container.": "Комірка вільна. Виберіть її як ціль для нового або переміщуваного контейнера.",
+    "Pick a container in the stack to inspect its route.": "Виберіть контейнер у стеку, щоб переглянути маршрут.",
+    "Loading container history...": "Завантаження історії контейнера...",
+    "No history found yet.": "Історії поки не знайдено.",
+    "No recent activity loaded.": "Останні дії не завантажено.",
+    "Select a container to inspect who gets notified.": "Виберіть контейнер, щоб переглянути отримувачів сповіщення.",
+    "Routing preview available after live notification requests.": "Попередній перегляд маршрутизації доступний після живих запитів сповіщень.",
+    "Source container no longer exists.": "Вихідний контейнер більше не існує.",
+    "Choose a different target slot.": "Виберіть іншу цільову комірку.",
+    "Selected slot is blocked in the slot directory.": "Вибрану комірку заблоковано в довіднику.",
+    "No free tier in the selected stack.": "У вибраному стеку немає вільного ярусу.",
+    "Enter both target bay and target row.": "Введіть і цільовий бей, і цільовий ряд.",
+    "Failed to move container.": "Не вдалося перемістити контейнер.",
+    "Container moved.": "Контейнер переміщено.",
+    "Lowest available tier": "Найнижчий доступний ярус",
+    "Free ground slot reduces reshuffles": "Вільна нижня комірка зменшує перестановки",
+    "Close to same commodity flow": "Близько до потоку такого самого вантажу",
+    "Block has healthy spare capacity": "У блоці є добрий запас місткості",
+    "No safe slot suggestion is available for the current yard state.": "Для поточного стану майданчика немає безпечної рекомендації.",
+    "Try a different type, direction, or release a safer slot first.": "Спробуйте інший тип, напрям або спочатку звільніть безпечнішу комірку.",
+    "Best": "Найкраще",
+    "Selected": "Вибрано",
+    "Use": "Використати",
+    "Safe current-yard placement": "Безпечна позиція в поточному майданчику",
+    "Block paused for new operations": "Блок призупинено для нових операцій",
+    "Block must contain exactly 2 digits, or 3 digits in exceptional cases.": "Блок має містити рівно 2 цифри або 3 цифри у виняткових випадках.",
+    "Bay must contain exactly 2 digits, or 3 digits in exceptional cases.": "Бей має містити рівно 2 цифри або 3 цифри у виняткових випадках.",
+    "Rule violation: 20ft containers cannot be placed in even bays.": "Порушення правила: 20ft контейнери не можна ставити в парні беї.",
+    "Authentication failed": "Авторизація не вдалася",
+    "Invalid username or password.": "Невірний логін або пароль.",
+    "Choose both Date From and Date To.": "Виберіть і дату з, і дату по.",
+    "Loading operations report...": "Завантаження операційного звіту...",
+    "Failed to load operations report.": "Не вдалося завантажити операційний звіт.",
+    "Choose both Date From and Date To before exporting.": "Перед експортом виберіть і дату з, і дату по.",
+    "Building PDF report...": "Формування PDF-звіту...",
+    "Preparing CSV export...": "Підготовка CSV-експорту...",
+    "Loading filtered operations from the yard log...": "Завантаження відфільтрованих операцій із журналу майданчика...",
+    "No movements matched the selected filters.": "За вибраними фільтрами рухів не знайдено.",
+    "Load a report to preview the full movement history.": "Завантажте звіт, щоб переглянути повну історію рухів.",
+    "No movements found for the selected date range.": "За вибраний період рухів не знайдено.",
+    "No operators matched this period yet.": "За цей період операторів поки не знайдено.",
+    "No role recorded": "Роль не записана",
+    "System": "Система",
+    "OUT": "ВИХІД",
+    "IN": "ВХІД"
+};
+
+const UK_PATTERNS = [
+    [/^Signed in as (.+)\.$/, (match) => `Вхід виконано: ${match[1]}.`],
+    [/^User (.+) created\.$/, (match) => `Користувача ${match[1]} створено.`],
+    [/^Role updated for (.+)\.$/, (match) => `Роль оновлено для ${match[1]}.`],
+    [/^Password reset for (.+)\.$/, (match) => `Пароль скинуто для ${match[1]}.`],
+    [/^User (.+) deleted\.$/, (match) => `Користувача ${match[1]} видалено.`],
+    [/^Deleting (.+)\.\.\.$/, (match) => `Видалення ${match[1]}...`],
+    [/^Block (.+) updated\.$/, (match) => `Блок ${match[1]} оновлено.`],
+    [/^Slot (.+) updated\.$/, (match) => `Комірку ${match[1]} оновлено.`],
+    [/^Stack Out prepared for (.+)\.$/, (match) => `Видачу підготовлено для ${match[1]}.`],
+    [/^Loaded (.+) movement record\(s\)\.$/, (match) => `Завантажено записів руху: ${match[1]}.`],
+    [/^(.+) report downloaded\.$/, (match) => `${match[1]} звіт завантажено.`],
+    [/^Failed to export (.+) report\.$/, (match) => `Не вдалося експортувати ${match[1]} звіт.`],
+    [/^Ready to export (.+) movement record\(s\) for (.+) to (.+)\.$/, (match) => `Готово до експорту ${match[1]} записів руху за період ${match[2]} - ${match[3]}.`],
+    [/^(.+) record\(s\) matched\. Preview uses the same filters as the download files\.$/, (match) => `Знайдено записів: ${match[1]}. Перегляд використовує ті самі фільтри, що й файли завантаження.`],
+    [/^Showing (.+) of (.+) container\(s\) matching "(.+)"\.$/, (match) => `Показано ${match[1]} з ${match[2]} контейнерів за пошуком "${match[3]}".`],
+    [/^Rows page (.+)\/(.+) · Bays page (.+)\/(.+) · (.+) tiers standard$/, (match) => `Сторінка рядів ${match[1]}/${match[2]} · Сторінка беїв ${match[3]}/${match[4]} · стандарт ${match[5]} яруси`],
+    [/^online · (.+) · auto$/, (match) => `онлайн · ${match[1]} · авто`],
+    [/^Target block: (.+)$/, (match) => `Цільовий блок: ${match[1]}`],
+    [/^Block (.+)$/, (match) => `Блок ${match[1]}`],
+    [/^Allowed types: (.+)$/, (match) => `Дозволені типи: ${match[1]}`],
+    [/^(.+) \/ (.+) tiers occupied$/, (match) => `${match[1]} / ${match[2]} ярусів зайнято`],
+    [/^Next free tier: (.+) of (.+)$/, (match) => `Наступний вільний ярус: ${match[1]} з ${match[2]}`],
+    [/^Target tier (.+) of (.+)$/, (match) => `Цільовий ярус ${match[1]} з ${match[2]}`],
+    [/^(.+) containers$/, (match) => `${match[1]} контейнерів`],
+    [/^(.+)% loaded · (.+) tiers$/, (match) => `${match[1]}% завантажено · ${match[2]} яруси`],
+    [/^(.+) x (.+) surface$/, (match) => `поверхня ${match[1]} x ${match[2]}`],
+    [/^Top mode shows the highest container in each rail slot\. 40ft and 45ft containers span two horizontal cells in the same row\. (.+)\.$/, (match) => `Верхній режим показує найвищий контейнер у кожній залізничній комірці. 40ft і 45ft займають дві горизонтальні клітинки в одному ряду. ${translateTextToUkrainian(match[1])}.`],
+    [/^Tier (.+) mode isolates one stack layer\. Standard supports up to (.+) tiers\.$/, (match) => `Режим ярусу ${match[1]} показує один шар стека. Стандарт підтримує до ${match[2]} ярусів.`],
+    [/^20ft: use odd bays in block (.+) like 01, 03, 05, 07\.\.\.$/, (match) => `20ft: використовуйте непарні беї в блоці ${match[1]}, наприклад 01, 03, 05, 07...`],
+    [/^40ft: use wide bays (.+) in block (.+)\.$/, (match) => `40ft: використовуйте широкі беї ${match[1]} у блоці ${match[2]}.`],
+    [/^45ft: only edge bays 02 and (.+) are allowed in block (.+)\.$/, (match) => `45ft: дозволені лише крайні беї 02 і ${match[1]} у блоці ${match[2]}.`],
+    [/^Bay must be between 1 and (.+)\.$/, (match) => `Бей має бути від 1 до ${match[1]}.`],
+    [/^Row must be between 1 and (.+)\.$/, (match) => `Ряд має бути від 1 до ${match[1]}.`],
+    [/^20ft containers can be moved only to odd bays like 01, 03, 05\.\.\.$/, () => "20ft контейнери можна переміщувати лише в непарні беї, наприклад 01, 03, 05..."],
+    [/^40ft containers use wide bays (.+)\.$/, (match) => `40ft контейнери використовують широкі беї ${match[1]}.`],
+    [/^45ft containers use edge bays 02 and (.+) only\.$/, (match) => `45ft контейнери використовують лише крайні беї 02 і ${match[1]}.`],
+    [/^45ft containers can be moved only to 02 or (.+) in block (.+)\.$/, (match) => `45ft контейнери можна переміщувати лише в 02 або ${match[1]} у блоці ${match[2]}.`],
+    [/^Ready: (.+)$/, (match) => `Готово: ${match[1]}`],
+    [/^Emergency override required: (.+)$/, (match) => `Потрібне екстрене підтвердження: ${translateTextToUkrainian(match[1])}`],
+    [/^Target prepared: (.+)\. Press OK to move\.$/, (match) => `Ціль підготовлено: ${match[1]}. Натисніть OK для переміщення.`],
+    [/^(.+) cannot be placed at this bay\.$/, (match) => `${match[1]} не можна поставити в цей бей.`],
+    [/^Selected slot does not allow (.+)\.$/, (match) => `Вибрана комірка не дозволяє ${match[1]}.`],
+    [/^Selected slot is already occupied by (.+) on tier (.+)\.$/, (match) => `Вибрана комірка вже зайнята контейнером ${match[1]} на ярусі ${match[2]}.`],
+    [/^Bay (.+) already contains (.+) container (.+)\. Import and Export cannot be mixed in one bay\.$/, (match) => `Бей ${match[1]} вже містить контейнер напрямку ${translateText(match[2])} ${match[3]}. Імпорт і експорт не можна змішувати в одному беї.`],
+    [/^(.+) is not supported by the tier below in this slot\.$/, (match) => `${match[1]} не має опори нижнього ярусу в цій комірці.`],
+    [/^(.+) containers must use even bays like 02, 06 or 26\.$/, (match) => `${match[1]} контейнери мають використовувати парні беї, наприклад 02, 06 або 26.`],
+    [/^Container (.+) is not in inventory\.$/, (match) => `Контейнер ${match[1]} відсутній в інвентарі.`],
+    [/^Supported placement at tier (.+)$/, (match) => `Постановка з опорою на ярусі ${match[1]}`],
+    [/^Keeps (.+) grouped in block$/, (match) => `Тримає ${match[1]} разом у блоці`],
+    [/^Best safe slot auto-filled\. (.+) recommendation(s)? available\.$/, (match) => `Найкращу безпечну комірку заповнено автоматично. Доступно рекомендацій: ${match[1]}.`],
+    [/^(.+) safe recommendation(s)? available\.$/, (match) => `Доступно безпечних рекомендацій: ${match[1]}.`],
+    [/^Alt (.+)$/, (match) => `Варіант ${match[1]}`],
+    [/^Rows page (.+)$/, (match) => `Сторінка рядів ${match[1]}`],
+    [/^Jumped to (.+)\.$/, (match) => `Перехід до ${match[1]}.`],
+    [/^Enter both bay and row\.$/, () => "Введіть і бей, і ряд."],
+    [/^Target is outside block (.+)\.$/, (match) => `Ціль поза межами блоку ${match[1]}.`],
+    [/^(.+) · Paused$/, (match) => `${match[1]} · Призупинено`],
+    [/^Block (.+) is temporarily paused for new Stack In and Restow operations\. Existing containers remain available for Stack Out\.$/, (match) => `Блок ${match[1]} тимчасово призупинено для нових постановок і перестановок. Наявні контейнери можна видавати через Stack Out.`],
+    [/^Block (.+) is not available in the current terminal layout\.$/, (match) => `Блок ${match[1]} недоступний у поточній схемі терміналу.`],
+    [/^Row must be between 1 and (.+) for block (.+)\.$/, (match) => `Ряд має бути від 1 до ${match[1]} для блоку ${match[2]}.`],
+    [/^Tier must be between 1 and (.+) for block (.+)\.$/, (match) => `Ярус має бути від 1 до ${match[1]} для блоку ${match[2]}.`],
+    [/^Bay must be between 01 and (.+) for block (.+)\.$/, (match) => `Бей має бути від 01 до ${match[1]} для блоку ${match[2]}.`],
+    [/^Rule violation: (.+) containers cannot be placed in odd bays\.$/, (match) => `Порушення правила: ${match[1]} контейнери не можна ставити в непарні беї.`],
+    [/^45ft containers can use only bays (.+) in block (.+)\.$/, (match) => `45ft контейнери можуть використовувати лише беї ${match[1]} у блоці ${match[2]}.`],
+    [/^(.+) containers cannot start at bay (.+) in block (.+)\.$/, (match) => `${match[1]} контейнери не можуть починатися з бея ${match[2]} у блоці ${match[3]}.`],
+    [/^Slot (.+) is blocked in the slot directory\.$/, (match) => `Комірку ${match[1]} заблоковано в довіднику.`],
+    [/^Slot (.+) does not allow container type (.+)\.$/, (match) => `Комірка ${match[1]} не дозволяє тип контейнера ${match[2]}.`],
+    [/^Slot (.+) supports tiers only up to (.+)\.$/, (match) => `Комірка ${match[1]} підтримує лише до ${match[2]} ярусів.`],
+    [/^(.+) is not supported by the lower tier at (.+)\.$/, (match) => `${match[1]} не має опори нижнього ярусу в позиції ${match[2]}.`],
+    [/^Position (.+) is already occupied by container (.+)\.$/, (match) => `Позиція ${match[1]} вже зайнята контейнером ${match[2]}.`],
+    [/^Cannot move or stack out (.+) from (.+) because upper tier container\(s\) are still above it: (.+)\. Restow the upper tier container\(s\) first\.$/, (match) => `Не можна перемістити або видати ${match[1]} з позиції ${match[2]}, бо зверху ще стоять контейнер(и): ${match[3]}. Спочатку переставте верхні яруси.`],
+    [/^Stacking order blocked: (.+) Enable Emergency Override to continue\.$/, (match) => `Порядок штабелювання заблоковано: ${translateTextToUkrainian(match[1])} Увімкніть екстрене підтвердження, щоб продовжити.`],
+    [/^Stacking order blocked: (.+) Enable emergency override to continue\.$/, (match) => `Порядок штабелювання заблоковано: ${translateTextToUkrainian(match[1])} Увімкніть екстрене підтвердження, щоб продовжити.`],
+    [/^Stacking order blocked: (.+)$/, (match) => `Порядок штабелювання заблоковано: ${translateTextToUkrainian(match[1])}`],
+    [/^Access lane blocked: (.+) Enable Emergency Override to continue\.$/, (match) => `Робочий проїзд заблоковано: ${translateTextToUkrainian(match[1])} Увімкніть екстрене підтвердження, щоб продовжити.`],
+    [/^Access lane blocked: (.+)$/, (match) => `Робочий проїзд заблоковано: ${translateTextToUkrainian(match[1])}`],
+    [/^Emergency override ready: (.+)$/, (match) => `Екстрене підтвердження готове: ${translateTextToUkrainian(match[1])}`],
+    [/^Emergency override will be logged against lower container (.+)\.$/, (match) => `Екстрене підтвердження буде записано для нижнього контейнера ${match[1]}.`],
+    [/^Emergency override will be logged for row 1 access lane usage\.$/, () => "Екстрене підтвердження буде записано для використання робочого проїзду в ряду 1."],
+    [/^Emergency override selected\. Enter a reason to use row 1 while safer yard positions are available\.$/, () => "Екстрене підтвердження вибрано. Вкажіть причину використання ряду 1, поки є безпечніші позиції на майданчику."],
+    [/^Placement looks good: (.+) is valid for (.+) and matches the current yard rules\.$/, (match) => `Позиція коректна: ${match[1]} підходить для ${match[2]} і відповідає поточним правилам майданчика.`],
+    [/^Move looks good: target (.+) respects current stacking order\.$/, (match) => `Переміщення коректне: ціль ${match[1]} відповідає поточному порядку штабелювання.`],
+    [/^(.+) is scheduled by (stack out|arrival) date (.+), which is earlier than this container's (stack out|arrival) date (.+)\.$/, (match) => `${match[1]} запланований за датою ${match[2] === "stack out" ? "видачі" : "прибуття"} ${match[3]}, що раніше за дату ${match[4] === "stack out" ? "видачі" : "прибуття"} цього контейнера ${match[5]}.`],
+    [/^Row 1 is reserved as the working access lane while rows 2-6 have safe available positions\. Use (.+) first\.$/, (match) => `Ряд 1 зарезервовано як робочий проїзд, поки в рядах 2-6 є безпечні позиції. Спочатку використайте ${match[1]}.`],
+    [/^Row (.+) matches planned stack-out access$/, (match) => `Ряд ${match[1]} відповідає плановій доступності для видачі`],
+    [/^No stack-out date: row (.+) zone keeps access lane clear$/, (match) => `Немає дати видачі: зона ряду ${match[1]} залишає робочий проїзд вільним`],
+    [/^Uses row 1 only because no safer yard slot is available$/, () => "Ряд 1 використовується лише тому, що немає безпечнішої комірки"],
+    [/^Showing current viewport for block (.+): bays (.+)-(.+), rows (.+)-(.+)\.$/, (match) => `Показано поточне вікно блоку ${match[1]}: беї ${match[2]}-${match[3]}, ряди ${match[4]}-${match[5]}.`],
+    [/^(.+) · max (.+) tiers$/, (match) => `${match[1]} · макс. ${match[2]} ярусів`],
+    [/^(.+) operation\(s\)$/, (match) => `${match[1]} операцій`],
+    [/^(.+) target\(s\) · HTTP (.+)$/, (match) => `${match[1]} цілей · HTTP ${match[2]}`],
+    [/^Delivered to n8n$/, () => "Доставлено в n8n"],
+    [/^Waiting for n8n \/ delivery failed$/, () => "Очікування n8n / доставка не вдалася"],
+];
 
 const DEFAULT_LAYOUT = [
     { block: "01", bayCount: 10, rowCount: 2, tierCount: MAX_TIER_COUNT, label: "West Rail Block", equipment: "Left of the railway", footprint: "10 x 2" },
-    { block: "02", bayCount: 14, rowCount: 6, tierCount: MAX_TIER_COUNT, label: "East Rail Block", equipment: "Right of the railway", footprint: "14 x 6" },
+    { block: "02", bayCount: 36, rowCount: 6, tierCount: MAX_TIER_COUNT, label: "East Rail Block", equipment: "Right of the railway", footprint: "70 x 6" },
 ];
 
+function normalizeLanguage(language) {
+    return SUPPORTED_LANGUAGES.includes(language) ? language : DEFAULT_LANGUAGE;
+}
+
+function getInitialLanguage() {
+    try {
+        const storedLanguage = localStorage.getItem(STORAGE_LANGUAGE_KEY);
+        if (SUPPORTED_LANGUAGES.includes(storedLanguage)) return storedLanguage;
+    } catch {
+        return DEFAULT_LANGUAGE;
+    }
+    const browserLanguage = String(navigator.language || "").toLowerCase();
+    return browserLanguage.startsWith("uk") ? "uk" : DEFAULT_LANGUAGE;
+}
+
+function getActiveLanguage() {
+    return normalizeLanguage(typeof state === "undefined" ? getInitialLanguage() : state.language);
+}
+
+function translateTextToUkrainian(value) {
+    if (value == null) return "";
+    const text = String(value);
+    if (!text.trim()) return text;
+    const exact = UK_TEXT[text];
+    if (exact) return exact;
+    if (text.includes(" · ")) {
+        return text.split(" · ").map((segment) => translateTextToUkrainian(segment)).join(" · ");
+    }
+    for (const [pattern, build] of UK_PATTERNS) {
+        const match = text.match(pattern);
+        if (match) return build(match);
+    }
+    return text;
+}
+
+function translateText(value) {
+    if (value == null) return "";
+    const text = String(value);
+    if (getActiveLanguage() !== "uk") return text;
+    return translateTextToUkrainian(text);
+}
+
+function localizeRawText(raw) {
+    const leading = raw.match(/^\s*/)?.[0] || "";
+    const trailing = raw.match(/\s*$/)?.[0] || "";
+    const core = raw.trim();
+    return core ? `${leading}${translateText(core)}${trailing}` : raw;
+}
+
+function localizeTextNode(node) {
+    if (!TEXT_NODE_ORIGINALS.has(node)) {
+        TEXT_NODE_ORIGINALS.set(node, node.nodeValue);
+    } else {
+        const original = TEXT_NODE_ORIGINALS.get(node);
+        const current = node.nodeValue;
+        const originalCore = original.trim();
+        const currentCore = current.trim();
+        const ukCore = originalCore ? translateTextToUkrainian(originalCore) : "";
+        if (currentCore && currentCore !== originalCore && currentCore !== ukCore) {
+            TEXT_NODE_ORIGINALS.set(node, current);
+        }
+    }
+    node.nodeValue = localizeRawText(TEXT_NODE_ORIGINALS.get(node));
+}
+
+function getAttributeOriginals(element) {
+    if (!ATTR_ORIGINALS.has(element)) ATTR_ORIGINALS.set(element, new Map());
+    return ATTR_ORIGINALS.get(element);
+}
+
+function localizeAttributes(element) {
+    const originals = getAttributeOriginals(element);
+    LOCALIZABLE_ATTRIBUTES.forEach((attribute) => {
+        if (!element.hasAttribute(attribute)) return;
+        const current = element.getAttribute(attribute);
+        if (!originals.has(attribute)) {
+            originals.set(attribute, current);
+        } else {
+            const original = originals.get(attribute);
+            const translatedOriginal = translateTextToUkrainian(original);
+            if (current && current !== original && current !== translatedOriginal) {
+                originals.set(attribute, current);
+            }
+        }
+        element.setAttribute(attribute, translateText(originals.get(attribute)));
+    });
+}
+
+function localizeElement(root = document.body) {
+    if (!root) return;
+    if (root.nodeType === Node.ELEMENT_NODE) localizeAttributes(root);
+    const elements = root.querySelectorAll ? root.querySelectorAll("*") : [];
+    elements.forEach(localizeAttributes);
+    const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
+        acceptNode(node) {
+            if (!node.nodeValue.trim()) return NodeFilter.FILTER_REJECT;
+            const parentTag = node.parentElement?.tagName;
+            if (["SCRIPT", "STYLE"].includes(parentTag)) return NodeFilter.FILTER_REJECT;
+            return NodeFilter.FILTER_ACCEPT;
+        },
+    });
+    let node = walker.nextNode();
+    while (node) {
+        localizeTextNode(node);
+        node = walker.nextNode();
+    }
+}
+
+function applyI18n() {
+    document.documentElement.lang = getActiveLanguage() === "uk" ? "uk" : "en";
+    document.title = translateText("BitVantage Yard Console");
+    document.querySelectorAll("[data-language-option]").forEach((button) => {
+        const isActive = button.dataset.languageOption === getActiveLanguage();
+        button.classList.toggle("active", isActive);
+        button.setAttribute("aria-pressed", String(isActive));
+    });
+    localizeElement(document.body);
+}
+
+function refreshLocalizedUi() {
+    renderBusyState();
+    syncSessionBadge();
+    renderDashboard({ clamp: false });
+    renderOperationsReport();
+    if (state.currentUser?.permissions?.includes("manage_users")) renderAdminUsers();
+    if (state.currentUser?.permissions?.includes("manage_layout")) {
+        renderAdminBlocks();
+        renderAdminSlots();
+    }
+    applyI18n();
+}
+
+function setLanguage(language) {
+    const nextLanguage = normalizeLanguage(language);
+    if (state.language === nextLanguage) {
+        applyI18n();
+        return;
+    }
+    state.language = nextLanguage;
+    try {
+        localStorage.setItem(STORAGE_LANGUAGE_KEY, nextLanguage);
+    } catch {
+        // Keep the language active for this session even if storage is unavailable.
+    }
+    refreshLocalizedUi();
+}
+
+function setupLanguageSelector() {
+    document.querySelectorAll("[data-language-option]").forEach((button) => {
+        button.addEventListener("click", () => setLanguage(button.dataset.languageOption));
+    });
+}
+
 const state = {
+    language: getInitialLanguage(),
     authToken: null,
     currentUser: null,
     layoutConfig: [],
     terminalLayout: [],
     slotCatalog: [],
+    pausedOperationBlocks: new Set(DEFAULT_PAUSED_OPERATION_BLOCKS),
     slotRecordsByBlock: new Map(),
     slotRecordIndex: new Map(),
     inventory: [],
@@ -50,11 +663,11 @@ const state = {
     selectedAdminUser: null,
     selectedAdminBlock: null,
     selectedAdminSlot: null,
-    selectedBlock: "01",
+    selectedBlock: DEFAULT_SELECTED_BLOCK,
     selectedSlotKey: null,
     selectedContainerId: null,
     tierVisibility: "top",
-    viewportSize: DEFAULT_VIEWPORT_SIZE,
+    viewportMode: DEFAULT_VIEWPORT_MODE,
     rowPage: 0,
     bayPage: 0,
     lastLoadedAt: null,
@@ -106,6 +719,7 @@ function renderBusyState() {
         if (active) {
             indicator.classList.remove("hidden");
             text.textContent = state.operationBusyLabel || (state.authBusy ? "Signing in..." : (state.lastLoadedAt ? "Refreshing yard data..." : "Loading terminal data..."));
+            localizeElement(text);
         } else {
             indicator.classList.add("hidden");
         }
@@ -133,6 +747,7 @@ function renderBusyState() {
 }
 
 document.addEventListener("DOMContentLoaded", async () => {
+    setupLanguageSelector();
     setupTabs();
     setupForms();
     setupDashboardActions();
@@ -144,6 +759,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     setupMoveConfirmation();
     setupAdmin();
     setupReports();
+    applyI18n();
     restoreLocalSession();
     renderBusyState();
 
@@ -219,7 +835,15 @@ function setupForms() {
     bindFormDirtyTracking("stackout-form", "stackout");
     bindFormDirtyTracking("restow-form", "restow");
     renderStackInBlockOptions();
-    ["in-block", "in-bay", "in-row", "in-tier"].forEach((id) => {
+    ["in-block", "in-type", "in-direction", "in-stack-out-date"].forEach((id) => {
+        on(id, "input", () => {
+            state.stackInPositionDirty = false;
+        });
+        on(id, "change", () => {
+            state.stackInPositionDirty = false;
+        });
+    });
+    ["in-bay", "in-row", "in-tier"].forEach((id) => {
         on(id, "input", () => {
             state.stackInPositionDirty = true;
         });
@@ -344,7 +968,7 @@ function setupDashboardActions() {
         renderDashboard({ stats: false, overview: false, inventory: false, activity: false, liveStatus: false });
     });
     on("viewport-size", "change", (event) => {
-        state.viewportSize = Number(event.target.value);
+        state.viewportMode = event.target.value === "compact" ? "compact" : "full";
         state.rowPage = 0;
         state.bayPage = 0;
         renderDashboard({ stats: false, overview: false, inventory: false, activity: false, liveStatus: false });
@@ -537,7 +1161,7 @@ function setupMoveConfirmation() {
     on("confirm-move-button", "click", async () => {
         if (!state.pendingMove) return;
         const pending = { ...state.pendingMove };
-        if (pending.departureRuleConflict) {
+        if (getMoveTargetOverrideConflict(pending)) {
             pending.emergencyOverride = checked("move-confirm-emergency-override");
             pending.overrideReason = optionalValue("move-confirm-override-reason");
             if (!pending.emergencyOverride) {
@@ -834,6 +1458,7 @@ function persistUser() {
 function setAuthError(message = "") {
     const authError = document.getElementById("auth-error");
     authError.textContent = message;
+    localizeElement(authError);
     authError.classList.toggle("hidden", !message);
 }
 
@@ -843,6 +1468,7 @@ function resetSessionState() {
     state.layoutConfig = [];
     state.terminalLayout = [];
     state.slotCatalog = [];
+    state.pausedOperationBlocks = new Set(DEFAULT_PAUSED_OPERATION_BLOCKS);
     state.slotRecordsByBlock = new Map();
     state.slotRecordIndex = new Map();
     state.inventory = [];
@@ -869,7 +1495,7 @@ function resetSessionState() {
     state.selectedAdminUser = null;
     state.selectedAdminBlock = null;
     state.selectedAdminSlot = null;
-    state.selectedBlock = "01";
+    state.selectedBlock = DEFAULT_SELECTED_BLOCK;
     state.selectedSlotKey = null;
     state.selectedContainerId = null;
     state.rowPage = 0;
@@ -938,6 +1564,7 @@ function renderNotificationPreview() {
     const preview = document.getElementById("recipient-preview");
     if (!state.currentUser) {
         preview.innerHTML = `<div class="history-empty">Sign in to inspect recipients.</div>`;
+        localizeElement(preview);
         return;
     }
     const recipients = [];
@@ -947,12 +1574,14 @@ function renderNotificationPreview() {
     recipients.push("Assigned expeditor when container has one");
     recipients.push("Shift control room for stack out and critical events");
     preview.innerHTML = recipients.map((item) => `<div class="history-item"><strong>${item}</strong><small>Notification routing preview for the current account.</small></div>`).join("");
+    localizeElement(preview);
 }
 
 async function loadNotificationDeliveryFeed() {
     const feed = document.getElementById("notification-delivery-feed");
     if (!state.authToken) {
         feed.innerHTML = `<div class="history-empty">Sign in to inspect delivery attempts.</div>`;
+        localizeElement(feed);
         return;
     }
     try {
@@ -960,6 +1589,7 @@ async function loadNotificationDeliveryFeed() {
         if (!response.ok) {
             if (response.status === 403) {
                 feed.innerHTML = `<div class="history-empty">This role cannot inspect global delivery attempts.</div>`;
+                localizeElement(feed);
                 return;
             }
             throw new Error("Failed to load notification attempts.");
@@ -967,11 +1597,14 @@ async function loadNotificationDeliveryFeed() {
         const logs = await response.json();
         if (!logs.length) {
             feed.innerHTML = `<div class="history-empty">No delivery attempts yet. The first movement event will appear here.</div>`;
+            localizeElement(feed);
             return;
         }
         feed.innerHTML = logs.map((entry) => `<div class="history-item"><strong>${entry.operation_type} · ${entry.container_id}</strong><span>${entry.success ? "Delivered to n8n" : "Waiting for n8n / delivery failed"}</span><small>${entry.targets.length} target(s) · HTTP ${entry.status_code || 0}</small></div>`).join("");
+        localizeElement(feed);
     } catch (error) {
         feed.innerHTML = `<div class="history-empty">${error.message}</div>`;
+        localizeElement(feed);
     }
 }
 
@@ -981,10 +1614,12 @@ function syncSessionBadge() {
     if (!state.currentUser) {
         nameEl.textContent = "Not signed in";
         roleEl.textContent = "offline";
+        localizeElement(document.querySelector(".compact-session"));
         return;
     }
     nameEl.textContent = state.currentUser.full_name;
     roleEl.textContent = `${state.currentUser.role} · @${state.currentUser.username}`;
+    localizeElement(document.querySelector(".compact-session"));
 }
 
 function syncRoleBasedUi() {
@@ -1190,11 +1825,13 @@ function renderOperationsReport() {
 
     if (!state.reports.loaded) {
         tbody.innerHTML = `<tr><td colspan="7" class="report-empty-cell">Load a report to preview the full movement history.</td></tr>`;
+        localizeElement(document.getElementById("reports-tab"));
         return;
     }
 
     if (!hasItems) {
         tbody.innerHTML = `<tr><td colspan="7" class="report-empty-cell">No movements found for the selected date range.</td></tr>`;
+        localizeElement(document.getElementById("reports-tab"));
         return;
     }
 
@@ -1221,6 +1858,7 @@ function renderOperationsReport() {
             </tr>
         `;
     }).join("");
+    localizeElement(document.getElementById("reports-tab"));
 }
 
 function renderReportOperators(operators) {
@@ -1228,6 +1866,7 @@ function renderReportOperators(operators) {
     if (!list) return;
     if (!operators.length) {
         list.innerHTML = `<div class="history-empty">No operators matched this period yet.</div>`;
+        localizeElement(list);
         return;
     }
     list.innerHTML = operators.slice(0, 12).map((operator) => {
@@ -1235,6 +1874,7 @@ function renderReportOperators(operators) {
         const meta = [operator.username ? `@${operator.username}` : null, operator.role].filter(Boolean).join(" · ");
         return `<div class="history-item"><strong>${escapeHtml(label)}</strong><span>${escapeHtml(meta || "No role recorded")}</span><small>${operator.operations} operation(s)</small></div>`;
     }).join("");
+    localizeElement(list);
 }
 
 function formatOperationRoute(entry) {
@@ -1258,6 +1898,7 @@ function getOverrideElements(prefix) {
 function setOverrideFeedback(node, tone, message) {
     if (!node) return;
     node.textContent = message;
+    localizeElement(node);
     node.classList.remove("neutral", "warning", "error");
     node.classList.add(tone);
 }
@@ -1294,6 +1935,16 @@ function syncOverridePanel(prefix, config = {}) {
     setOverrideFeedback(feedback, "warning", readyMessage || "Emergency override will be logged with your reason.");
 }
 
+function getMoveTargetOverrideConflict(moveTarget) {
+    return moveTarget?.departureRuleConflict || moveTarget?.frontBufferConflict || null;
+}
+
+function getMoveTargetOverrideMessage(moveTarget) {
+    if (moveTarget?.departureRuleConflict) return moveTarget.departureRuleConflict.message;
+    if (moveTarget?.frontBufferConflict) return moveTarget.frontBufferConflict.message;
+    return "";
+}
+
 function openMoveConfirmModal(moveTarget) {
     state.pendingMove = {
         ...moveTarget,
@@ -1305,11 +1956,13 @@ function openMoveConfirmModal(moveTarget) {
     setText("move-confirm-type", `${moveTarget.movingContainer.container_type} · ${moveTarget.movingContainer.status} · ${moveTarget.movingContainer.direction}`);
     setText("move-confirm-route", `${moveTarget.movingContainer.position_code} -> ${moveTarget.target.block}-${moveTarget.target.bay}-${moveTarget.target.row}-${moveTarget.nextTier}`);
     setText("move-confirm-tier", `Target tier ${moveTarget.nextTier} of ${moveTarget.slotRecord.max_tiers}`);
-    const conflictMarkup = moveTarget.departureRuleConflict
+    const conflictMessage = getMoveTargetOverrideMessage(moveTarget);
+    const conflictTitle = moveTarget.frontBufferConflict ? "Access Lane Block" : "Stacking Order Block";
+    const conflictMarkup = conflictMessage
         ? `
         <div class="history-item move-rule-item">
-            <strong>Stacking Order Block</strong>
-            <span>${escapeHtml(moveTarget.departureRuleConflict.message)}</span>
+            <strong>${conflictTitle}</strong>
+            <span>${escapeHtml(conflictMessage)}</span>
             <small>This move is blocked unless an emergency override is confirmed and logged.</small>
         </div>
         `
@@ -1329,6 +1982,7 @@ function openMoveConfirmModal(moveTarget) {
     `;
     renderMoveConfirmOverridePanel(moveTarget);
     document.getElementById("move-confirm-modal").classList.remove("hidden");
+    localizeElement(document.getElementById("move-confirm-modal"));
 }
 
 function closeMoveConfirmModal() {
@@ -1343,9 +1997,13 @@ function closeMoveConfirmModal() {
 
 function renderMoveConfirmOverridePanel(moveTarget) {
     const confirmButton = document.getElementById("confirm-move-button");
-    if (!moveTarget?.departureRuleConflict) {
+    const overrideConflict = getMoveTargetOverrideConflict(moveTarget);
+    if (!overrideConflict) {
         hideOverridePanel("move-confirm");
-        if (confirmButton) confirmButton.textContent = "Confirm Restow";
+        if (confirmButton) {
+            confirmButton.textContent = "Confirm Restow";
+            localizeElement(confirmButton);
+        }
         return;
     }
     const { checkbox, reason } = getOverrideElements("move-confirm");
@@ -1356,10 +2014,15 @@ function renderMoveConfirmOverridePanel(moveTarget) {
     }
     syncOverridePanel("move-confirm", {
         visible: true,
-        conflictMessage: `${moveTarget.departureRuleConflict.message} Enable emergency override to continue.`,
-        readyMessage: `Emergency override will be logged against lower container ${moveTarget.departureRuleConflict.item.container_id}.`,
+        conflictMessage: `${getMoveTargetOverrideMessage(moveTarget)} Enable emergency override to continue.`,
+        readyMessage: moveTarget.departureRuleConflict
+            ? `Emergency override will be logged against lower container ${moveTarget.departureRuleConflict.item.container_id}.`
+            : "Emergency override will be logged for row 1 access lane usage.",
     });
-    if (confirmButton) confirmButton.textContent = checked("move-confirm-emergency-override") ? "Confirm Override" : "Confirm Restow";
+    if (confirmButton) {
+        confirmButton.textContent = checked("move-confirm-emergency-override") ? "Confirm Override" : "Confirm Restow";
+        localizeElement(confirmButton);
+    }
 }
 
 function startAutoRefresh() {
@@ -1481,6 +2144,10 @@ function getDashboardStatsFromPayload(payload = {}) {
 function applyInventoryPayload(payload = {}) {
     state.layoutConfig = Array.isArray(payload.layout) ? payload.layout : [];
     state.slotCatalog = Array.isArray(payload.slots) ? payload.slots : [];
+    const pausedBlocks = Array.isArray(payload.config?.paused_operation_blocks)
+        ? payload.config.paused_operation_blocks
+        : DEFAULT_PAUSED_OPERATION_BLOCKS;
+    state.pausedOperationBlocks = new Set(pausedBlocks.map(formatBlockCode).filter(Boolean));
     state.inventory = Array.isArray(payload.inventory)
         ? payload.inventory.map((item) => ({
             ...item,
@@ -1525,6 +2192,7 @@ async function loadInventoryLegacy() {
         slots: slotsResponse.ok ? await slotsResponse.json() : [],
         inventory: await inventoryResponse.json(),
         logs: logsResponse.ok ? await logsResponse.json() : [],
+        config: { paused_operation_blocks: DEFAULT_PAUSED_OPERATION_BLOCKS },
     };
 }
 
@@ -1627,7 +2295,7 @@ async function submitForm(form, url, payload) {
                 tier: payload.new_tier,
             });
             state.selectedContainerId = payload.container_id;
-            state.selectedBlock = payload.new_block;
+            setSelectedBlock(payload.new_block);
             state.selectedSlotKey = getSlotKey(payload.new_block, ["40ft", "45ft"].includes(findContainerById(payload.container_id)?.container_type) ? getSurfaceStartBayFromWideAnchor(String(payload.new_bay).padStart(2, "0")) : String(payload.new_bay).padStart(2, "0"), payload.new_row);
             ensureSlotVisible(payload.new_block, String(payload.new_bay).padStart(2, "0"), payload.new_row);
             ensureContainerHistory(payload.container_id);
@@ -1645,7 +2313,7 @@ async function submitForm(form, url, payload) {
                 const updatedContainer = findContainerById(payload.container_id);
                 if (updatedContainer) {
                     state.selectedContainerId = updatedContainer.container_id;
-                    state.selectedBlock = updatedContainer.block;
+                    setSelectedBlock(updatedContainer.block);
                     state.selectedSlotKey = getSlotKey(updatedContainer.block, getSurfaceStartBay(updatedContainer), updatedContainer.row_num);
                     ensureContainerHistory(updatedContainer.container_id);
                 } else {
@@ -1664,16 +2332,41 @@ async function submitForm(form, url, payload) {
 function preserveSelection() {
     const layouts = getTerminalLayout();
     const availableBlocks = layouts.map((layout) => layout.block);
-    if (!availableBlocks.includes(state.selectedBlock)) state.selectedBlock = availableBlocks[0] || "01";
+    if (!availableBlocks.includes(state.selectedBlock)) {
+        setSelectedBlock(getFirstOperationalBlock(layouts));
+    } else if (!canSelectBlock(state.selectedBlock)) {
+        setSelectedBlock(getFirstOperationalBlock(layouts));
+        state.selectedSlotKey = null;
+        state.selectedContainerId = null;
+        state.rowPage = 0;
+        state.bayPage = 0;
+    }
     if (state.selectedContainerId && !findContainerById(state.selectedContainerId)) state.selectedContainerId = null;
     if (state.selectedSlotKey) {
         const parsed = parseSlotKey(state.selectedSlotKey);
-        if (!parsed || !availableBlocks.includes(parsed.block)) {
+        if (!parsed || !availableBlocks.includes(parsed.block) || !canSelectBlock(parsed.block)) {
             state.selectedSlotKey = null;
         } else {
             ensureSlotVisible(parsed.block, parsed.bay, parsed.row);
         }
     }
+    if (state.selectedContainerId && !canSelectContainerForMap(state.selectedContainerId)) state.selectedContainerId = null;
+}
+
+function getFirstOperationalBlock(layouts = getTerminalLayout()) {
+    return layouts.find((layout) => !isBlockPausedForNewPlacements(layout.block))?.block
+        || layouts[0]?.block
+        || DEFAULT_SELECTED_BLOCK;
+}
+
+function setSelectedBlock(block, options = {}) {
+    const nextBlock = formatBlockCode(block || DEFAULT_SELECTED_BLOCK);
+    if (!canSelectBlock(nextBlock) && !options.force) {
+        state.selectedBlock = getFirstOperationalBlock();
+        return false;
+    }
+    state.selectedBlock = nextBlock;
+    return true;
 }
 
 function getTerminalLayout() {
@@ -1687,6 +2380,28 @@ function getBlockLayout(block) {
 
 function formatBayNumber(value) {
     return String(Number(value)).padStart(2, "0");
+}
+
+function formatBlockCode(value) {
+    const block = String(value || "").trim();
+    return /^\d{1,2}$/.test(block) ? block.padStart(2, "0") : block;
+}
+
+function isBlockPausedForNewPlacements(block) {
+    return state.pausedOperationBlocks.has(formatBlockCode(block));
+}
+
+function canSelectBlock(block) {
+    return !isBlockPausedForNewPlacements(block);
+}
+
+function canSelectContainerForMap(containerId) {
+    const container = findContainerById(containerId);
+    return Boolean(container && canSelectBlock(container.block));
+}
+
+function getBlockPauseMessage(block) {
+    return `Block ${formatBlockCode(block)} is temporarily paused for new Stack In and Restow operations. Existing containers remain available for Stack Out.`;
 }
 
 function parseBayNumber(value) {
@@ -1703,6 +2418,34 @@ function getMaxSurfaceBay(block) {
 
 function getMaxWideBay(block) {
     return getMaxSurfaceBay(block) - 1;
+}
+
+function isFrontBufferRow(row) {
+    return Number(row) === 1;
+}
+
+function getBlockCorridorAfterBays(block) {
+    return block === "02" ? new Set(["39"]) : new Set();
+}
+
+function getVisibleBayColumns(block, visibleBays) {
+    const corridorAfter = getBlockCorridorAfterBays(block);
+    const columns = [];
+    visibleBays.forEach((bay, index) => {
+        columns.push({ type: "bay", bay });
+        if (corridorAfter.has(bay) && visibleBays[index + 1]) {
+            columns.push({ type: "corridor", key: `${block}-${bay}-corridor` });
+        }
+    });
+    return columns;
+}
+
+function getBayColumnMap(columns) {
+    const map = new Map();
+    columns.forEach((column, index) => {
+        if (column.type === "bay") map.set(column.bay, index + 2);
+    });
+    return map;
 }
 
 function canStartWideAtSurfaceBay(block, bay) {
@@ -1878,6 +2621,10 @@ function renderDashboard(options = {}) {
     if (liveStatus) updateLiveStatus();
     renderStackInAdvisory();
     renderRestowAdvisory();
+    localizeElement(document.getElementById("dashboard-tab"));
+    localizeElement(document.getElementById("stackin-tab"));
+    localizeElement(document.getElementById("stackout-tab"));
+    localizeElement(document.getElementById("restow-tab"));
 }
 
 function refreshBayGridSelectionState() {
@@ -1921,16 +2668,20 @@ function renderOverview() {
         const total = blockSlots.length || (layout.bays.length * layout.rows.length);
         const percent = total === 0 ? 0 : Math.round((occupied / total) * 100);
         const overviewGrid = getOverviewGridConfig(layout);
+        const isPaused = isBlockPausedForNewPlacements(layout.block);
+        const selectionLocked = !canSelectBlock(layout.block);
+        const pauseLabel = isPaused ? `<span class="terminal-block-pause-badge">Paused</span>` : "";
         return `
-            <button type="button" class="terminal-block ${layout.block === state.selectedBlock ? "active" : ""}" data-block="${layout.block}" aria-label="Open ${layout.label}">
+            <button type="button" class="terminal-block ${layout.block === state.selectedBlock ? "active" : ""} ${isPaused ? "is-paused" : ""} ${selectionLocked ? "is-selection-locked" : ""}" data-block="${layout.block}" aria-label="Open ${escapeHtml(layout.label)}${isPaused ? " paused" : ""}" ${selectionLocked ? "disabled aria-disabled=\"true\"" : ""}>
                 <div class="terminal-block-top">
                     <div class="terminal-block-meta">
                         <span class="terminal-block-kicker">Block ${layout.block}</span>
-                        <strong>${layout.label}</strong>
-                        <small>${layout.equipment || "Rail-side operation"}</small>
+                        <strong>${escapeHtml(layout.label)}</strong>
+                        <small>${escapeHtml(layout.equipment || "Rail-side operation")}</small>
                     </div>
                     <div class="terminal-block-stat">
                         <span class="terminal-block-ratio">${occupied}/${total}</span>
+                        ${pauseLabel}
                         <small>${overviewGrid.footprintLabel} surface</small>
                     </div>
                 </div>
@@ -1945,7 +2696,11 @@ function renderOverview() {
         `;
     }).join("");
     overview.querySelectorAll(".terminal-block").forEach((button) => button.addEventListener("click", () => {
-        state.selectedBlock = button.dataset.block;
+        if (!canSelectBlock(button.dataset.block)) {
+            showToast(getBlockPauseMessage(button.dataset.block), "warning");
+            return;
+        }
+        setSelectedBlock(button.dataset.block, { manual: true });
         state.selectedSlotKey = null;
         state.selectedContainerId = null;
         if (state.moveDraftContainerId) state.moveTargetDraft.block = button.dataset.block;
@@ -1957,12 +2712,13 @@ function renderOverview() {
 
 function getOverviewGridConfig(layout) {
     if (layout.block === "02") {
+        const columns = getVisibleBayColumns(layout.block, layout.bays).length;
         return {
-            columns: 28,
+            columns,
             rows: layout.rows.length,
-            footprintLabel: `28 x ${layout.rows.length}`,
+            footprintLabel: `70 x ${layout.rows.length}`,
             className: "dense-overview-grid",
-            rowHeight: "12px",
+            rowHeight: "10px",
             gap: "0.16rem",
             minHeight: `${Math.max(96, layout.rows.length * 18)}px`,
         };
@@ -1980,10 +2736,16 @@ function getOverviewGridConfig(layout) {
 
 function renderDenseOverviewMiniGrid(layout) {
     const cells = [];
+    const columns = getVisibleBayColumns(layout.block, layout.bays);
+    const columnMap = new Map();
+    columns.forEach((column, index) => {
+        if (column.type === "bay") columnMap.set(column.bay, index + 1);
+    });
     [...layout.rows].reverse().forEach((row, rowIndex) => {
-        for (let column = 1; column <= 28; column += 1) {
-            cells.push(`<span class="mini-cell type-empty" style="grid-column:${column};grid-row:${rowIndex + 1};"></span>`);
-        }
+        columns.forEach((column, columnIndex) => {
+            const className = column.type === "corridor" ? "mini-cell mini-corridor" : "mini-cell type-empty";
+            cells.push(`<span class="${className}" style="grid-column:${columnIndex + 1};grid-row:${rowIndex + 1};"></span>`);
+        });
     });
 
     [...layout.rows].reverse().forEach((row, rowIndex) => {
@@ -1991,7 +2753,8 @@ function renderDenseOverviewMiniGrid(layout) {
         layout.bays.forEach((bay) => {
             const supportWideContainer = getCoveredWideSupportContainer(layout.block, bay, row);
             if (supportWideContainer) {
-                const gridColumn = Math.min(parseBayNumber(getSurfaceStartBay(supportWideContainer)), 28);
+                const gridColumn = columnMap.get(getSurfaceStartBay(supportWideContainer));
+                if (!gridColumn) return;
                 cells.push(`<span class="mini-cell type-${supportWideContainer.container_type} support-fragment dense-part" style="grid-column:${gridColumn};grid-row:${rowIndex + 1};"></span>`);
                 return;
             }
@@ -2002,7 +2765,8 @@ function renderDenseOverviewMiniGrid(layout) {
             if (anchoredWideContainer) {
                 if (rendered.has(anchoredWideContainer.container_id)) return;
                 const surfaceStartBay = getSurfaceStartBayFromWideAnchor(anchoredWideContainer.bay);
-                const gridColumn = Math.min(parseBayNumber(surfaceStartBay), 28);
+                const gridColumn = columnMap.get(surfaceStartBay);
+                if (!gridColumn) return;
                 cells.push(`<span class="mini-cell type-${anchoredWideContainer.container_type} wide dense-part" style="grid-column:${gridColumn} / span 2;grid-row:${rowIndex + 1};"></span>`);
                 rendered.add(anchoredWideContainer.container_id);
                 return;
@@ -2010,7 +2774,8 @@ function renderDenseOverviewMiniGrid(layout) {
 
             const visibleContainer = getVisibleContainerForSlot(getSlotContainers(layout.block, bay, row));
             if (!visibleContainer || rendered.has(visibleContainer.container_id)) return;
-            const gridColumn = Math.min(parseBayNumber(bay) + 1, 28);
+            const gridColumn = columnMap.get(bay);
+            if (!gridColumn) return;
             cells.push(`<span class="mini-cell type-${visibleContainer.container_type} dense-part" style="grid-column:${gridColumn};grid-row:${rowIndex + 1};"></span>`);
             rendered.add(visibleContainer.container_id);
         });
@@ -2049,11 +2814,12 @@ function renderMiniGrid(layout, overviewGrid = getOverviewGridConfig(layout)) {
 
 function renderBayGrid() {
     const layout = getBlockLayout(state.selectedBlock);
-    const maxViewportSize = layout.bays.length;
-    if (state.viewportSize > maxViewportSize) state.viewportSize = maxViewportSize;
+    const viewportSize = getViewportSize(layout);
     const visibleRows = getVisibleRows(layout);
     const visibleBays = getVisibleBays(layout);
-    const isFullBlockView = state.viewportSize >= layout.bays.length;
+    const visibleBayColumns = getVisibleBayColumns(layout.block, visibleBays);
+    const bayColumnMap = getBayColumnMap(visibleBayColumns);
+    const isFullBlockView = viewportSize >= layout.bays.length;
     const isDenseView = visibleBays.length >= 10;
     setText("bay-panel-title", `${layout.label} · Block ${layout.block}`);
     setText("bay-panel-subtitle", state.tierVisibility === "top" ? `Top mode shows the highest container in each rail slot. 40ft and 45ft containers span two horizontal cells in the same row. ${layout.equipment || "Rail-side handling"}.` : `Tier ${state.tierVisibility} mode isolates one stack layer. Standard supports up to ${layout.tierCount} tiers.`);
@@ -2063,14 +2829,26 @@ function renderBayGrid() {
     const visualRows = [...visibleRows].reverse();
     const items = [`<span class="axis-cell" style="grid-column:1;grid-row:1;">Row</span>`];
 
-    visibleBays.forEach((bay, bayIndex) => {
-        items.push(`<span class="bay-header-cell" style="grid-column:${bayIndex + 2};grid-row:1;">${bay}</span>`);
+    visibleBayColumns.forEach((column, columnIndex) => {
+        const gridColumn = columnIndex + 2;
+        if (column.type === "corridor") {
+            items.push(`<span class="yard-corridor-header" style="grid-column:${gridColumn};grid-row:1;" title="Service lane"></span>`);
+            return;
+        }
+        items.push(`<span class="bay-header-cell" style="grid-column:${gridColumn};grid-row:1;">${column.bay}</span>`);
     });
 
     visualRows.forEach((row, rowIndex) => {
         const gridRow = rowIndex + 2;
         items.push(`<span class="row-header-cell" style="grid-column:1;grid-row:${gridRow};">${row}</span>`);
+        visibleBayColumns.forEach((column, columnIndex) => {
+            if (column.type === "corridor") {
+                items.push(`<span class="yard-corridor-cell" style="grid-column:${columnIndex + 2};grid-row:${gridRow};" aria-hidden="true"></span>`);
+            }
+        });
         visibleBays.forEach((bay, bayIndex) => {
+            const gridColumn = bayColumnMap.get(bay);
+            if (!gridColumn) return;
             const supportWideContainer = getCoveredWideSupportContainer(layout.block, bay, row);
             if (supportWideContainer) {
                 items.push(renderWideSupportCell({
@@ -2078,7 +2856,7 @@ function renderBayGrid() {
                     bay,
                     row,
                     container: supportWideContainer,
-                    gridColumn: bayIndex + 2,
+                    gridColumn,
                     gridRow,
                 }));
                 return;
@@ -2098,7 +2876,7 @@ function renderBayGrid() {
                     slotContainers: anchorSlotContainers,
                     visibleContainer: anchoredWideContainer,
                     tierCount: layout.tierCount,
-                    gridColumn: bayIndex + 2,
+                    gridColumn,
                     gridRow,
                     spanCols: 2,
                     condensed: isDenseView,
@@ -2117,7 +2895,7 @@ function renderBayGrid() {
                 slotContainers,
                 visibleContainer,
                 tierCount: layout.tierCount,
-                gridColumn: bayIndex + 2,
+                gridColumn,
                 gridRow,
                 spanCols,
                 condensed: isDenseView,
@@ -2128,7 +2906,10 @@ function renderBayGrid() {
     const bayCellWidth = visibleBays.length > 12 ? 44 : visibleBays.length > 10 ? 52 : 72;
     bayGrid.classList.toggle("compact-grid", visibleBays.length > 12);
     bayGrid.classList.toggle("condensed-grid", isDenseView);
-    bayGrid.style.gridTemplateColumns = `72px repeat(${visibleBays.length}, minmax(${bayCellWidth}px, 1fr))`;
+    const columnTemplate = visibleBayColumns
+        .map((column) => column.type === "corridor" ? "34px" : `minmax(${bayCellWidth}px, 1fr)`)
+        .join(" ");
+    bayGrid.style.gridTemplateColumns = `72px ${columnTemplate}`;
     bayGrid.style.gridAutoRows = visibleBays.length > 12 ? "72px" : visibleBays.length > 10 ? "78px" : "88px";
     bayGrid.innerHTML = items.join("");
 }
@@ -2164,7 +2945,9 @@ function renderWideSupportCell({ block, bay, row, container, gridColumn, gridRow
             draggable="false"
             aria-label="Support slot ${block}-${bay}-${row}"
             title="Support slot ${block}-${bay}-${row}"
-        ></button>
+        >
+            <strong class="slot-title">${container.container_id}</strong>
+        </button>
     `;
 }
 
@@ -2183,7 +2966,7 @@ function renderSlotCell({ block, bay, row, slotRecord, slotContainers, visibleCo
         state.draggingContainerId
         && slotKeys.some((candidateSlotKey) => canDropContainerOnSlot(state.draggingContainerId, candidateSlotKey))
     );
-    const title = condensed ? (visibleContainer ? `T${visibleContainer.tier_num}` : slotRecord.enabled ? "" : "X") : visibleContainer ? visibleContainer.container_id : slotRecord.enabled ? "Free" : "Blocked";
+    const title = visibleContainer ? visibleContainer.container_id : slotRecord.enabled ? "" : "Blocked";
     const meta = condensed ? "" : visibleContainer ? `${visibleContainer.container_type.toUpperCase()} · Tier ${visibleContainer.tier_num}` : slotRecord.enabled ? "" : "Blocked slot";
     const code = condensed ? "" : `${block}-${bay}-${row}`;
     const classes = [
@@ -2202,7 +2985,7 @@ function renderSlotCell({ block, bay, row, slotRecord, slotContainers, visibleCo
     return `
         <button type="button" class="${classes}" style="grid-column:${gridColumn} / span ${spanCols};grid-row:${gridRow};" data-slot-key="${slotKey}" data-alt-slot-key="${alternateSlotKey || ""}" data-container-id="${visibleContainer ? visibleContainer.container_id : ""}" draggable="${canDrag ? "true" : "false"}">
             ${code ? `<span class="slot-code">${code}</span>` : ""}
-            <strong class="slot-title">${title}</strong>
+            ${title ? `<strong class="slot-title">${title}</strong>` : ""}
             ${meta ? `<span class="slot-meta">${meta}</span>` : ""}
             <span class="slot-stack">${slotContainers.length}/${slotRecord.max_tiers || tierCount}</span>
         </button>
@@ -2227,6 +3010,7 @@ function renderAdminUsers() {
     if (!canManageUsers) {
         tbody.innerHTML = "";
         renderAdminUserInspector();
+        localizeElement(document.getElementById("admin-tab"));
         return;
     }
     tbody.innerHTML = state.adminUsers.map((user) => `<tr data-admin-username="${user.username}"><td><strong>${user.full_name}</strong><br><small>@${user.username}</small></td><td>${user.role}</td><td>${user.telegram_chat_id || "-"}</td><td>${user.telegram_notifications_enabled ? "Telegram" : "Off"}</td></tr>`).join("");
@@ -2235,6 +3019,7 @@ function renderAdminUsers() {
         renderAdminUserInspector();
     }));
     renderAdminUserInspector();
+    localizeElement(document.getElementById("admin-tab"));
 }
 
 function renderAdminUserInspector() {
@@ -2247,6 +3032,7 @@ function renderAdminUserInspector() {
         empty.classList.remove("hidden");
         content.classList.add("hidden");
         badge.textContent = state.currentUser?.permissions?.includes("manage_users") ? "No user" : "No access";
+        localizeElement(document.getElementById("admin-tab"));
         return;
     }
     empty.classList.add("hidden");
@@ -2267,6 +3053,7 @@ function renderAdminUserInspector() {
             ? "You cannot delete the account you are currently using."
             : "Delete revokes access immediately and preserves operation history.";
     }
+    localizeElement(document.getElementById("admin-tab"));
 }
 
 function renderAdminBlocks() {
@@ -2274,6 +3061,7 @@ function renderAdminBlocks() {
     if (!state.currentUser?.permissions?.includes("manage_layout")) {
         tbody.innerHTML = "";
         renderAdminBlockInspector();
+        localizeElement(document.getElementById("admin-tab"));
         return;
     }
     const blocks = state.layoutConfig.length ? state.layoutConfig : DEFAULT_LAYOUT;
@@ -2283,7 +3071,7 @@ function renderAdminBlocks() {
         const block = blocksList.find((entry) => entry.block === row.dataset.adminBlock);
         state.selectedAdminBlock = block || null;
         state.selectedAdminSlot = null;
-        state.selectedBlock = block?.block || state.selectedBlock;
+        if (block && canSelectBlock(block.block)) setSelectedBlock(block.block, { manual: true });
         state.rowPage = 0;
         state.bayPage = 0;
         renderAdminBlockInspector();
@@ -2293,6 +3081,7 @@ function renderAdminBlocks() {
     if (state.selectedAdminBlock) state.selectedAdminBlock = blocks.find((item) => item.block === state.selectedAdminBlock.block) || null;
     renderAdminBlockInspector();
     renderAdminSlots();
+    localizeElement(document.getElementById("admin-tab"));
 }
 
 function renderAdminBlockInspector() {
@@ -2303,6 +3092,7 @@ function renderAdminBlockInspector() {
         empty.classList.remove("hidden");
         content.classList.add("hidden");
         badge.textContent = state.currentUser?.permissions?.includes("manage_layout") ? "No block" : "No access";
+        localizeElement(document.getElementById("admin-tab"));
         return;
     }
     empty.classList.add("hidden");
@@ -2315,6 +3105,7 @@ function renderAdminBlockInspector() {
     setValue("admin-block-rows", String(state.selectedAdminBlock.row_count || state.selectedAdminBlock.rowCount));
     setValue("admin-block-tiers", String(state.selectedAdminBlock.tier_count || state.selectedAdminBlock.tierCount));
     setValue("admin-block-equipment", state.selectedAdminBlock.equipment || "");
+    localizeElement(document.getElementById("admin-tab"));
 }
 
 function renderAdminSlots() {
@@ -2322,6 +3113,7 @@ function renderAdminSlots() {
     if (!state.currentUser?.permissions?.includes("manage_layout")) {
         tbody.innerHTML = "";
         renderAdminSlotInspector();
+        localizeElement(document.getElementById("admin-tab"));
         return;
     }
     const activeBlock = state.selectedAdminBlock?.block || getTerminalLayout()[0].block;
@@ -2337,6 +3129,7 @@ function renderAdminSlots() {
     if (state.selectedAdminSlot) state.selectedAdminSlot = slots.find((slot) => slot.slot_code === state.selectedAdminSlot.slot_code) || null;
     setText("admin-slot-subtitle", `Showing current viewport for block ${activeBlock}: bays ${visibleBays[0]}-${visibleBays[visibleBays.length - 1]}, rows ${visibleRows[0]}-${visibleRows[visibleRows.length - 1]}.`);
     renderAdminSlotInspector();
+    localizeElement(document.getElementById("admin-tab"));
 }
 
 function renderAdminSlotInspector() {
@@ -2347,6 +3140,7 @@ function renderAdminSlotInspector() {
         empty.classList.remove("hidden");
         content.classList.add("hidden");
         badge.textContent = state.currentUser?.permissions?.includes("manage_layout") ? "No slot" : "No access";
+        localizeElement(document.getElementById("admin-tab"));
         return;
     }
     empty.classList.add("hidden");
@@ -2360,6 +3154,7 @@ function renderAdminSlotInspector() {
     setChecked("slot-type-40ft", state.selectedAdminSlot.allowed_container_types.includes("40ft"));
     setChecked("slot-type-45ft", state.selectedAdminSlot.allowed_container_types.includes("45ft"));
     setValue("admin-slot-notes", state.selectedAdminSlot.notes || "");
+    localizeElement(document.getElementById("admin-tab"));
 }
 
 function renderInventoryTable() {
@@ -2373,18 +3168,24 @@ function renderInventoryTable() {
     }
     if (!state.inventory.length) {
         inventoryList.innerHTML = `<tr><td colspan="5" style="text-align:center;">No container data</td></tr>`;
+        localizeElement(document.querySelector(".inventory-inline-panel"));
         return;
     }
     if (!filteredInventory.length) {
         inventoryList.innerHTML = `<tr><td colspan="5" style="text-align:center;">No containers match the current search.</td></tr>`;
+        localizeElement(document.querySelector(".inventory-inline-panel"));
         return;
     }
     inventoryList.innerHTML = filteredInventory.map((item) => `<tr data-container-id="${item.container_id}"><td><strong>${item.container_id}</strong></td><td>${item.container_type}</td><td><span class="tag">${item.position_code}</span></td><td>${item.status}</td><td>${item.direction}</td></tr>`).join("");
     inventoryList.querySelectorAll("tr[data-container-id]").forEach((row) => row.addEventListener("click", () => {
         const container = findContainerById(row.dataset.containerId);
         if (!container) return;
+        if (!canSelectBlock(container.block)) {
+            showToast(getBlockPauseMessage(container.block), "warning");
+            return;
+        }
         const previousBlock = state.selectedBlock;
-        state.selectedBlock = container.block;
+        setSelectedBlock(container.block, { manual: true });
         state.selectedSlotKey = getSlotKey(container.block, getSurfaceStartBay(container), container.row_num);
         state.selectedContainerId = container.container_id;
         ensureSlotVisible(container.block, container.bay, container.row_num);
@@ -2398,6 +3199,7 @@ function renderInventoryTable() {
             activity: false,
         });
     }));
+    localizeElement(document.querySelector(".inventory-inline-panel"));
 }
 
 function renderInspector() {
@@ -2411,6 +3213,7 @@ function renderInspector() {
         content.classList.add("hidden");
         badge.textContent = `Block ${state.selectedBlock}`;
         setText("inspector-subtitle", "Select a slot or container on the map.");
+        localizeElement(document.getElementById("dashboard-tab"));
         return;
     }
     const parsed = parseSlotKey(state.selectedSlotKey);
@@ -2455,6 +3258,7 @@ function renderInspector() {
     moveButton.innerHTML = state.moveDraftContainerId ? `<i class="fa-solid fa-xmark"></i> Cancel Map Target` : `<i class="fa-solid fa-location-crosshairs"></i> Pick Target On Map`;
     moveButton.disabled = !selectedContainer && !state.moveDraftContainerId;
     stackOutButton.disabled = !selectedContainer;
+    localizeElement(document.getElementById("dashboard-tab"));
 }
 
 function getFilteredInventory() {
@@ -2545,6 +3349,7 @@ function renderTargetMoveWidget() {
         widget.classList.add("hidden");
         state.quickMoveContainerId = null;
         submitButton.disabled = true;
+        localizeElement(widget);
         return;
     }
 
@@ -2566,24 +3371,28 @@ function renderTargetMoveWidget() {
     if (resolution.incomplete) {
         feedbackEl.textContent = "Enter target bay and row. The system will accept only a valid address for this container type.";
         submitButton.disabled = true;
+        localizeElement(widget);
         return;
     }
     if (resolution.error) {
         feedbackEl.textContent = resolution.error;
         feedbackEl.className = "target-move-feedback error";
         submitButton.disabled = true;
+        localizeElement(widget);
         return;
     }
 
     const { moveTarget } = resolution;
-    if (moveTarget.departureRuleConflict) {
-        feedbackEl.textContent = `Emergency override required: ${moveTarget.departureRuleConflict.message}`;
+    const overrideConflict = getMoveTargetOverrideConflict(moveTarget);
+    if (overrideConflict) {
+        feedbackEl.textContent = `Emergency override required: ${getMoveTargetOverrideMessage(moveTarget)}`;
         feedbackEl.className = "target-move-feedback warning";
     } else {
         feedbackEl.textContent = `Ready: ${moveTarget.target.block}-${moveTarget.target.bay}-${moveTarget.target.row}-${moveTarget.nextTier}`;
         feedbackEl.className = "target-move-feedback success";
     }
     submitButton.disabled = false;
+    localizeElement(widget);
 }
 
 async function submitTargetMove() {
@@ -2596,7 +3405,7 @@ async function submitTargetMove() {
         showToast(resolution.error, "error");
         return;
     }
-    if (resolution.moveTarget.departureRuleConflict) {
+    if (getMoveTargetOverrideConflict(resolution.moveTarget)) {
         openMoveConfirmModal({ ...resolution.moveTarget, targetSlotKey: resolution.targetSlotKey });
         return;
     }
@@ -2611,6 +3420,7 @@ function renderStackLayers(slotContainers) {
     const stack = document.getElementById("stack-layers");
     if (!slotContainers.length) {
         stack.innerHTML = `<div class="layer-empty">Slot is free. Pick it as a target for a new or moved container.</div>`;
+        localizeElement(stack);
         return;
     }
     stack.innerHTML = [...slotContainers].sort((a, b) => b.tier_num - a.tier_num).map((container) => `<button type="button" class="layer-item ${container.container_id === state.selectedContainerId ? "active" : ""}" data-container-id="${container.container_id}"><span class="layer-tier">Tier ${container.tier_num}</span><span class="layer-id">${container.container_id}</span><span class="layer-type">${container.container_type}</span></button>`).join("");
@@ -2619,26 +3429,31 @@ function renderStackLayers(slotContainers) {
         ensureContainerHistory(state.selectedContainerId);
         renderInspector();
     }));
+    localizeElement(stack);
 }
 
 function renderHistory(containerId) {
     const history = document.getElementById("container-history");
     if (!containerId) {
         history.innerHTML = `<div class="history-empty">Pick a container in the stack to inspect its route.</div>`;
+        localizeElement(history);
         return;
     }
     if (!state.containerHistory.has(containerId)) {
         history.innerHTML = `<div class="history-empty">Loading container history...</div>`;
+        localizeElement(history);
         ensureContainerHistory(containerId);
         return;
     }
     const records = state.containerHistory.get(containerId);
     if (records === null) {
         history.innerHTML = `<div class="history-empty">Loading container history...</div>`;
+        localizeElement(history);
         return;
     }
     if (!records.length) {
         history.innerHTML = `<div class="history-empty">No history found yet.</div>`;
+        localizeElement(history);
         return;
     }
     history.innerHTML = records.map((entry) => {
@@ -2646,12 +3461,14 @@ function renderHistory(containerId) {
         const actor = entry.operator_full_name || entry.operator_username || "System";
         return `<div class="history-item"><strong>${humanizeOperation(entry.operation_type)}</strong><span>${route}</span><small>${actor} · ${formatDateTime(entry.performed_at)}</small></div>`;
     }).join("");
+    localizeElement(history);
 }
 
 function renderActivityFeed() {
     const feed = document.getElementById("activity-feed");
     if (!state.logs.length) {
         feed.innerHTML = `<div class="history-empty">No recent activity loaded.</div>`;
+        localizeElement(feed);
         return;
     }
     const recent = [...state.logs].slice(-8).reverse();
@@ -2660,6 +3477,7 @@ function renderActivityFeed() {
         const route = entry.old_position_code ? `${entry.old_position_code} -> ${entry.new_position_code || "OUT"}` : entry.new_position_code || "IN";
         return `<div class="history-item"><strong>${actor} · ${humanizeOperation(entry.operation_type)}</strong><span>${entry.container_id} · ${route}</span><small>${formatDateTime(entry.performed_at)}</small></div>`;
     }).join("");
+    localizeElement(feed);
 }
 
 async function ensureContainerHistory(containerId) {
@@ -2686,9 +3504,11 @@ function renderRoutingPreview(selectedContainer) {
     const preview = document.getElementById("routing-preview");
     if (!selectedContainer) {
         preview.innerHTML = `<div class="history-empty">Select a container to inspect who gets notified.</div>`;
+        localizeElement(preview);
         return;
     }
     preview.innerHTML = `<div class="history-empty">Routing preview available after live notification requests.</div>`;
+    localizeElement(preview);
 }
 
 function handleSlotClick(slotKey, containerId) {
@@ -2699,7 +3519,7 @@ function handleSlotClick(slotKey, containerId) {
     const previousBlock = state.selectedBlock;
     state.selectedSlotKey = slotKey;
     const parsed = parseSlotKey(slotKey);
-    state.selectedBlock = parsed.block;
+    setSelectedBlock(parsed.block, { manual: true });
     ensureSlotVisible(parsed.block, parsed.bay, parsed.row);
     const slotContainers = getSlotContainers(parsed.block, parsed.bay, parsed.row);
     const visibleContainer = slotContainers.find((container) => container.container_id === containerId) || getVisibleContainerForSlot(slotContainers) || getTopContainer(slotContainers);
@@ -2718,7 +3538,7 @@ function handleMoveTargetSelection(targetSlotKey) {
     const previousBlock = state.selectedBlock;
     state.selectedSlotKey = targetSlotKey;
     state.selectedContainerId = moveTarget.movingContainer.container_id;
-    state.selectedBlock = moveTarget.target.block;
+    setSelectedBlock(moveTarget.target.block);
     state.moveTargetDraft.block = moveTarget.target.block;
     ensureSlotVisible(moveTarget.target.block, moveTarget.target.bay, moveTarget.target.row);
     state.moveTargetDraft.bay = moveTarget.target.bay;
@@ -2737,6 +3557,9 @@ function resolveMoveTarget(containerId, targetSlotKey) {
     const sourceKey = getSlotKey(movingContainer.block, getSurfaceStartBay(movingContainer), movingContainer.row_num);
     if (sourceKey === targetSlotKey) return { error: "Choose a different target slot." };
     const slotRecord = getSlotRecord(targetSurface.block, targetSurface.bay, targetSurface.row);
+    if (isBlockPausedForNewPlacements(target.block)) {
+        return { error: getBlockPauseMessage(target.block) };
+    }
     if (!slotRecord.enabled) return { error: "Selected slot is blocked in the slot directory." };
     if (!slotRecord.allowed_container_types.includes(movingContainer.container_type)) return { error: `Selected slot does not allow ${movingContainer.container_type}.` };
     const nextTier = getNextAvailableTier(getSlotContainers(targetSurface.block, targetSurface.bay, targetSurface.row), slotRecord.max_tiers);
@@ -2771,7 +3594,19 @@ function resolveMoveTarget(containerId, targetSlotKey) {
     if (departureRuleConflict && !canUseEmergencyDepartureOverride()) {
         return { error: `Stacking order blocked: ${departureRuleConflict.message}` };
     }
-    return { movingContainer, target, slotRecord, nextTier, departureRuleConflict };
+    const frontBufferConflict = getFrontBufferConflict({
+        block: target.block,
+        row: target.row,
+        containerType: movingContainer.container_type,
+        direction: movingContainer.direction,
+        stackOutDate: movingContainer.stack_out_date,
+        arrivedAt: movingContainer.arrived_at,
+        excludeContainerId: movingContainer.container_id,
+    });
+    if (frontBufferConflict && !canUseEmergencyDepartureOverride()) {
+        return { error: `Access lane blocked: ${frontBufferConflict.message}` };
+    }
+    return { movingContainer, target, slotRecord, nextTier, departureRuleConflict, frontBufferConflict };
 }
 
 function canDropContainerOnSlot(containerId, targetSlotKey) {
@@ -2786,11 +3621,12 @@ async function executeRestowMove(containerIdOrMoveTarget, targetSlotKey, options
     }
     const emergencyOverride = Boolean(options.emergencyOverride || moveTarget.emergencyOverride);
     const overrideReason = (options.overrideReason || moveTarget.overrideReason || "").trim();
-    if (moveTarget.departureRuleConflict && !emergencyOverride) {
+    const overrideConflict = getMoveTargetOverrideConflict(moveTarget);
+    if (overrideConflict && !emergencyOverride) {
         showToast("Emergency override must be enabled for this move.", "error");
         return;
     }
-    if (moveTarget.departureRuleConflict && !overrideReason) {
+    if (overrideConflict && !overrideReason) {
         showToast("Enter a reason for the emergency override.", "error");
         return;
     }
@@ -2813,7 +3649,7 @@ async function executeRestowMove(containerIdOrMoveTarget, targetSlotKey, options
                 new_row: moveTarget.target.row,
                 new_tier: moveTarget.nextTier,
                 emergency_override: emergencyOverride,
-                override_reason: moveTarget.departureRuleConflict ? overrideReason : null,
+                override_reason: overrideConflict ? overrideReason : null,
             }),
         });
         const data = await response.json();
@@ -2834,7 +3670,7 @@ async function executeRestowMove(containerIdOrMoveTarget, targetSlotKey, options
         });
         state.selectedSlotKey = resolvedTargetSlotKey;
         state.selectedContainerId = moveTarget.movingContainer.container_id;
-        state.selectedBlock = moveTarget.target.block;
+        setSelectedBlock(moveTarget.target.block);
         ensureSlotVisible(moveTarget.target.block, moveTarget.target.bay, moveTarget.target.row);
         renderDashboard({ inventory: false, activity: false, liveStatus: false });
         refreshInventoryInBackground();
@@ -2944,15 +3780,21 @@ function renderStackInBlockOptions() {
 
     const currentValue = blockSelect.value;
     const blocks = getTerminalLayout().map((layout) => layout.block);
+    const activeBlocks = blocks.filter((block) => !isBlockPausedForNewPlacements(block));
     if (!blocks.length) {
         blockSelect.innerHTML = "";
         return;
     }
 
-    blockSelect.innerHTML = blocks.map((block) => `<option value="${block}">${block}</option>`).join("");
+    blockSelect.innerHTML = blocks.map((block) => {
+        const isPaused = isBlockPausedForNewPlacements(block);
+        return `<option value="${block}" ${isPaused ? "disabled" : ""}>${block}${isPaused ? " · Paused" : ""}</option>`;
+    }).join("");
     const selectedBlock = state.selectedSlotKey ? parseSlotKey(state.selectedSlotKey).block : state.selectedBlock;
-    const fallbackValue = blocks.includes(selectedBlock) ? selectedBlock : blocks[0];
-    blockSelect.value = blocks.includes(currentValue) ? currentValue : fallbackValue;
+    const selectableBlocks = activeBlocks.length ? activeBlocks : blocks;
+    const fallbackValue = selectableBlocks.includes(selectedBlock) ? selectedBlock : selectableBlocks[0];
+    blockSelect.value = selectableBlocks.includes(currentValue) ? currentValue : fallbackValue;
+    localizeElement(blockSelect);
 }
 
 function getStackInRecommendationDraft() {
@@ -3022,8 +3864,29 @@ function getBlockLoadRatio(block) {
     return getSurfaceOccupancy(block).size / enabledSlots;
 }
 
-function buildStackInSuggestionReasons({ tier, slotContainers, lineMatches, commodityMatches, blockLoadRatio, line, commodity }) {
+function getOperationalRowTarget(draft) {
+    const plannedDate = parsePriorityDate(draft.stackOutDate);
+    if (!plannedDate) return 6;
+    const today = new Date();
+    const todayUtc = Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate());
+    const plannedUtc = Date.UTC(plannedDate.getUTCFullYear(), plannedDate.getUTCMonth(), plannedDate.getUTCDate());
+    const daysUntilOut = Math.ceil((plannedUtc - todayUtc) / 86400000);
+    if (daysUntilOut <= 3) return 2;
+    if (daysUntilOut <= 10) return 3;
+    if (daysUntilOut <= 21) return 4;
+    if (daysUntilOut <= 45) return 5;
+    return 6;
+}
+
+function buildStackInSuggestionReasons({ row, tier, slotContainers, lineMatches, commodityMatches, blockLoadRatio, line, commodity, rowTarget, hasPlannedStackOut }) {
     const reasons = [];
+    if (row === 1) {
+        reasons.push("Uses row 1 only because no safer yard slot is available");
+    } else if (hasPlannedStackOut) {
+        reasons.push(`Row ${row} matches planned stack-out access`);
+    } else {
+        reasons.push(`No stack-out date: row ${rowTarget} zone keeps access lane clear`);
+    }
     if (tier === 1) {
         reasons.push("Lowest available tier");
     } else {
@@ -3054,6 +3917,8 @@ function scoreStackInSuggestion({ block, row, bay, tier, slotContainers, draft }
         ? state.inventory.filter((item) => item.block === block && String(item.commodity || "").trim().toLowerCase() === normalizedCommodity).length
         : 0;
     const blockLoadRatio = getBlockLoadRatio(block);
+    const rowTarget = Math.min(getBlockLayout(block).rowCount, Math.max(2, getOperationalRowTarget(draft)));
+    const hasPlannedStackOut = Boolean(parsePriorityDate(draft.stackOutDate));
 
     let score = 1000;
     score += tier === 1 ? 240 : Math.max(0, 220 - (tier - 1) * 70);
@@ -3061,12 +3926,14 @@ function scoreStackInSuggestion({ block, row, bay, tier, slotContainers, draft }
     score += Math.max(0, Math.round((1 - blockLoadRatio) * 60));
     score += Math.min(90, lineMatches * 18);
     score += Math.min(50, commodityMatches * 12);
+    score -= Math.abs(Number(row) - rowTarget) * 42;
+    if (isFrontBufferRow(row)) score -= 520;
     score -= parseBayNumber(bay);
-    score -= Number(row) * 2;
 
     return {
         score,
         reasons: buildStackInSuggestionReasons({
+            row,
             tier,
             slotContainers,
             lineMatches,
@@ -3074,54 +3941,68 @@ function scoreStackInSuggestion({ block, row, bay, tier, slotContainers, draft }
             blockLoadRatio,
             line: draft.line,
             commodity: draft.commodity,
+            rowTarget,
+            hasPlannedStackOut,
         }),
     };
 }
 
-function getStackInSuggestions(draft) {
+function getStackInSuggestions(draft, options = {}) {
     if (!draft) return [];
 
-    const suggestions = [];
-    getTerminalLayout().forEach((layout) => {
-        const candidateBays = listCandidateBaysForContainerType(layout.block, draft.containerType);
-        layout.rows.forEach((row) => {
-            candidateBays.forEach((bay) => {
-                for (let tier = 1; tier <= layout.tierCount; tier += 1) {
-                    const placement = getStackInPlacementState({
-                        block: layout.block,
-                        bay,
-                        row,
-                        tier,
-                        direction: draft.direction,
-                        containerType: draft.containerType,
-                        stackOutDate: draft.stackOutDate,
-                    });
-                    if (placement.tone !== "success") continue;
-                    const surfaceBay = ["40ft", "45ft"].includes(draft.containerType)
-                        ? getSurfaceStartBayFromWideAnchor(bay)
-                        : bay;
-                    const slotContainers = getSlotContainers(layout.block, surfaceBay, row);
-                    const { score, reasons } = scoreStackInSuggestion({
-                        block: layout.block,
-                        row,
-                        bay,
-                        tier,
-                        slotContainers,
-                        draft,
-                    });
-                    suggestions.push({
-                        block: layout.block,
-                        bay,
-                        row,
-                        tier,
-                        score,
-                        reasons,
-                    });
-                    break;
-                }
+    const activeLayouts = getTerminalLayout().filter((layout) => !isBlockPausedForNewPlacements(layout.block));
+    const preferredBlock = options.preferredBlock ? formatBlockCode(options.preferredBlock) : "";
+    const preferredLayouts = preferredBlock ? activeLayouts.filter((layout) => layout.block === preferredBlock) : [];
+
+    const collectSuggestions = (layouts) => {
+        const suggestions = [];
+        layouts.forEach((layout) => {
+            const candidateBays = listCandidateBaysForContainerType(layout.block, draft.containerType);
+            layout.rows.forEach((row) => {
+                candidateBays.forEach((bay) => {
+                    for (let tier = 1; tier <= layout.tierCount; tier += 1) {
+                        const placement = getStackInPlacementState({
+                            block: layout.block,
+                            bay,
+                            row,
+                            tier,
+                            direction: draft.direction,
+                            containerType: draft.containerType,
+                            stackOutDate: draft.stackOutDate,
+                        });
+                        if (placement.tone !== "success") continue;
+                        const surfaceBay = ["40ft", "45ft"].includes(draft.containerType)
+                            ? getSurfaceStartBayFromWideAnchor(bay)
+                            : bay;
+                        const slotContainers = getSlotContainers(layout.block, surfaceBay, row);
+                        const { score, reasons } = scoreStackInSuggestion({
+                            block: layout.block,
+                            row,
+                            bay,
+                            tier,
+                            slotContainers,
+                            draft,
+                        });
+                        suggestions.push({
+                            block: layout.block,
+                            bay,
+                            row,
+                            tier,
+                            score,
+                            reasons,
+                        });
+                        break;
+                    }
+                });
             });
         });
-    });
+        return suggestions;
+    };
+
+    let suggestions = collectSuggestions(preferredLayouts.length ? preferredLayouts : activeLayouts);
+    if (!suggestions.length && preferredLayouts.length) {
+        suggestions = collectSuggestions(activeLayouts.filter((layout) => layout.block !== preferredBlock));
+    }
 
     return suggestions
         .sort((left, right) => (
@@ -3151,6 +4032,7 @@ function renderStackInSuggestions(suggestions, autoApplied = false) {
     if (!suggestions.length) {
         summary.textContent = "No safe slot suggestion is available for the current yard state.";
         list.innerHTML = `<div class="suggestion-empty">Try a different type, direction, or release a safer slot first.</div>`;
+        localizeElement(panel);
         return;
     }
 
@@ -3184,11 +4066,13 @@ function renderStackInSuggestions(suggestions, autoApplied = false) {
         applyStackInSuggestedPosition(suggestion, { lockSelection: true });
         renderStackInAdvisory();
     }));
+    localizeElement(panel);
 }
 
 function renderViewportControls(layout, visibleRows, visibleBays) {
-    const totalRowPages = Math.max(1, Math.ceil(layout.rows.length / state.viewportSize));
-    const totalBayPages = Math.max(1, Math.ceil(layout.bays.length / state.viewportSize));
+    const viewportSize = getViewportSize(layout);
+    const totalRowPages = Math.max(1, Math.ceil(layout.rows.length / viewportSize));
+    const totalBayPages = Math.max(1, Math.ceil(layout.bays.length / viewportSize));
     setText("rows-range", `${visibleRows[0]}-${visibleRows[visibleRows.length - 1]}`);
     setText("bays-range", `${visibleBays[0]}-${visibleBays[visibleBays.length - 1]}`);
     setText("viewport-summary-text", `Rows page ${state.rowPage + 1}/${totalRowPages} · Bays page ${state.bayPage + 1}/${totalBayPages} · ${layout.tierCount} tiers standard`);
@@ -3198,6 +4082,7 @@ function renderViewportControls(layout, visibleRows, visibleBays) {
     document.getElementById("bays-next").disabled = state.bayPage >= totalBayPages - 1;
     document.getElementById("jump-bay").max = String(getMaxSurfaceBay(layout.block));
     document.getElementById("jump-row").max = String(layout.rows.length);
+    document.getElementById("viewport-size").value = state.viewportMode;
 }
 
 function updateLiveStatus() {
@@ -3210,27 +4095,38 @@ function updateLiveStatus() {
 
 function clampViewport() {
     const layout = getBlockLayout(state.selectedBlock);
-    state.rowPage = Math.min(state.rowPage, Math.max(0, Math.ceil(layout.rows.length / state.viewportSize) - 1));
-    state.bayPage = Math.min(state.bayPage, Math.max(0, Math.ceil(layout.bays.length / state.viewportSize) - 1));
+    const viewportSize = getViewportSize(layout);
+    state.rowPage = Math.min(state.rowPage, Math.max(0, Math.ceil(layout.rows.length / viewportSize) - 1));
+    state.bayPage = Math.min(state.bayPage, Math.max(0, Math.ceil(layout.bays.length / viewportSize) - 1));
 }
 
 function getVisibleRows(layout) {
-    const start = state.rowPage * state.viewportSize;
-    return layout.rows.slice(start, start + state.viewportSize);
+    const viewportSize = getViewportSize(layout);
+    const start = state.rowPage * viewportSize;
+    return layout.rows.slice(start, start + viewportSize);
 }
 
 function getVisibleBays(layout) {
-    const start = state.bayPage * state.viewportSize;
-    return layout.bays.slice(start, start + state.viewportSize);
+    const viewportSize = getViewportSize(layout);
+    const start = state.bayPage * viewportSize;
+    return layout.bays.slice(start, start + viewportSize);
+}
+
+function getViewportSize(layout) {
+    if (state.viewportMode === "compact") {
+        return Math.min(COMPACT_VIEWPORT_SIZE, layout.bays.length);
+    }
+    return layout.bays.length;
 }
 
 function ensureSlotVisible(block, bay, row) {
     const layout = getBlockLayout(block);
+    const viewportSize = getViewportSize(layout);
     const rowIndex = layout.rows.indexOf(Number(row));
     const surfaceBay = isSurfaceBay(bay) ? formatBayNumber(bay) : getSurfaceStartBayFromWideAnchor(bay);
     const bayIndex = layout.bays.indexOf(String(surfaceBay));
-    if (rowIndex >= 0) state.rowPage = Math.floor(rowIndex / state.viewportSize);
-    if (bayIndex >= 0) state.bayPage = Math.floor(bayIndex / state.viewportSize);
+    if (rowIndex >= 0) state.rowPage = Math.floor(rowIndex / viewportSize);
+    if (bayIndex >= 0) state.bayPage = Math.floor(bayIndex / viewportSize);
 }
 
 function jumpToSlot() {
@@ -3408,6 +4304,72 @@ function getDeparturePriorityWarning(options) {
     return getDeparturePriorityConflict(options)?.message || null;
 }
 
+function buildFrontBufferMessage(conflict) {
+    return `Row 1 is reserved as the working access lane while rows 2-6 have safe available positions. Use ${conflict.alternative.block}-${conflict.alternative.bay}-${conflict.alternative.row}-${conflict.alternative.tier} first.`;
+}
+
+function getNonBufferPlacementAlternative({
+    block,
+    containerType,
+    direction,
+    stackOutDate,
+    arrivedAt,
+    excludeContainerId = null,
+}) {
+    const layout = getExactBlockLayout(block);
+    if (!layout) return null;
+    const candidateBays = listCandidateBaysForContainerType(layout.block, containerType);
+    for (const row of layout.rows.filter((candidateRow) => !isFrontBufferRow(candidateRow))) {
+        for (const bay of candidateBays) {
+            for (let tier = 1; tier <= layout.tierCount; tier += 1) {
+                const placement = getStackInPlacementState({
+                    block: layout.block,
+                    bay,
+                    row,
+                    tier,
+                    direction,
+                    containerType,
+                    stackOutDate,
+                    arrivedAt,
+                }, {
+                    ignoreFrontBufferRule: true,
+                    excludeContainerId,
+                });
+                if (placement.tone === "success") {
+                    return {
+                        block: layout.block,
+                        bay,
+                        row,
+                        tier,
+                    };
+                }
+            }
+        }
+    }
+    return null;
+}
+
+function getFrontBufferConflict({
+    block,
+    row,
+    containerType,
+    direction,
+    stackOutDate,
+    arrivedAt,
+    excludeContainerId = null,
+}) {
+    if (!isFrontBufferRow(row)) return null;
+    const alternative = getNonBufferPlacementAlternative({
+        block,
+        containerType,
+        direction,
+        stackOutDate,
+        arrivedAt,
+        excludeContainerId,
+    });
+    return alternative ? { alternative, message: buildFrontBufferMessage({ alternative }) } : null;
+}
+
 function getExactBlockLayout(block) {
     return getTerminalLayout().find((item) => item.block === String(block).trim()) || null;
 }
@@ -3436,7 +4398,9 @@ function getStackInDraft() {
     };
 }
 
-function getStackInPlacementState(draft) {
+function getStackInPlacementState(draft, options = {}) {
+    const ignoreFrontBufferRule = Boolean(options.ignoreFrontBufferRule);
+    const excludeContainerId = options.excludeContainerId || null;
     const normalizedBlock = String(draft.block || "").trim();
     const rawBay = String(draft.bay || "").trim();
     const tier = Number(draft.tier);
@@ -3454,6 +4418,9 @@ function getStackInPlacementState(draft) {
     const layout = getExactBlockLayout(normalizedBlock);
     if (!layout) {
         return { tone: "error", message: `Block ${normalizedBlock} is not available in the current terminal layout.` };
+    }
+    if (isBlockPausedForNewPlacements(layout.block)) {
+        return { tone: "error", message: getBlockPauseMessage(layout.block) };
     }
 
     const normalizedBay = formatBayNumber(rawBay);
@@ -3508,7 +4475,7 @@ function getStackInPlacementState(draft) {
         return { tone: "error", message: `${containerType} is not supported by the lower tier at ${layout.block}-${normalizedBay}-${row}-${tier}.` };
     }
 
-    const occupant = findPositionOccupant(layout.block, normalizedBay, row, tier, containerType);
+    const occupant = findPositionOccupant(layout.block, normalizedBay, row, tier, containerType, excludeContainerId);
     if (occupant) {
         return {
             tone: "error",
@@ -3521,6 +4488,7 @@ function getStackInPlacementState(draft) {
         bay: normalizedBay,
         direction,
         containerType,
+        excludeContainerId,
     });
     if (directionConflict) {
         return {
@@ -3536,7 +4504,8 @@ function getStackInPlacementState(draft) {
         tier,
         containerType,
         stackOutDate: draft.stackOutDate,
-        arrivedAt: new Date().toISOString(),
+        arrivedAt: draft.arrivedAt || new Date().toISOString(),
+        excludeContainerId,
     });
     const overrideEligible = Boolean(departureRuleConflict && canUseEmergencyDepartureOverride());
     const overrideChecked = overrideEligible && checked("stackin-emergency-override");
@@ -3587,6 +4556,68 @@ function getStackInPlacementState(draft) {
         };
     }
 
+    const frontBufferConflict = ignoreFrontBufferRule ? null : getFrontBufferConflict({
+        block: layout.block,
+        row,
+        containerType,
+        direction,
+        stackOutDate: draft.stackOutDate,
+        arrivedAt: draft.arrivedAt || new Date().toISOString(),
+        excludeContainerId,
+    });
+    const frontBufferOverrideEligible = Boolean(frontBufferConflict && canUseEmergencyDepartureOverride());
+    const frontBufferOverrideChecked = frontBufferOverrideEligible && checked("stackin-emergency-override");
+    const frontBufferOverrideReason = frontBufferOverrideChecked ? optionalValue("stackin-override-reason") : null;
+
+    if (frontBufferConflict && !frontBufferOverrideEligible) {
+        return {
+            tone: "error",
+            message: `Access lane blocked: ${frontBufferConflict.message}`,
+            requiresOverride: false,
+            overrideEligible: false,
+            overrideChecked: false,
+            overrideReason: null,
+            departureRuleConflict: null,
+            frontBufferConflict,
+        };
+    }
+    if (frontBufferConflict) {
+        if (!frontBufferOverrideChecked) {
+            return {
+                tone: "warning",
+                message: `Access lane blocked: ${frontBufferConflict.message} Enable Emergency Override to continue.`,
+                requiresOverride: true,
+                overrideEligible: true,
+                overrideChecked: frontBufferOverrideChecked,
+                overrideReason: frontBufferOverrideReason,
+                departureRuleConflict: null,
+                frontBufferConflict,
+            };
+        }
+        if (!frontBufferOverrideReason) {
+            return {
+                tone: "warning",
+                message: "Emergency override selected. Enter a reason to use row 1 while safer yard positions are available.",
+                requiresOverride: true,
+                overrideEligible: true,
+                overrideChecked: frontBufferOverrideChecked,
+                overrideReason: frontBufferOverrideReason,
+                departureRuleConflict: null,
+                frontBufferConflict,
+            };
+        }
+        return {
+            tone: "warning",
+            message: `Emergency override ready: ${frontBufferConflict.message}`,
+            requiresOverride: true,
+            overrideEligible: true,
+            overrideChecked: frontBufferOverrideChecked,
+            overrideReason: frontBufferOverrideReason,
+            departureRuleConflict: null,
+            frontBufferConflict,
+        };
+    }
+
     return {
         tone: "success",
         message: `Placement looks good: ${layout.block}-${normalizedBay}-${row}-${tier} is valid for ${containerType} and matches the current yard rules.`,
@@ -3595,6 +4626,7 @@ function getStackInPlacementState(draft) {
         overrideChecked: false,
         overrideReason: null,
         departureRuleConflict: null,
+        frontBufferConflict: null,
     };
 }
 
@@ -3613,15 +4645,17 @@ function renderStackInAdvisory() {
     const advisory = document.getElementById("stackin-advisory");
     const positionGroup = document.getElementById("stackin-position-group");
     if (!advisory) return;
-    let suggestions = getStackInSuggestions(getStackInRecommendationDraft());
+    const suggestionOptions = { preferredBlock: value("in-block") };
+    let suggestions = getStackInSuggestions(getStackInRecommendationDraft(), suggestionOptions);
     let autoApplied = false;
     if (!state.stackInPositionDirty && suggestions.length && !isSameStackInPosition(getStackInCurrentPosition(), suggestions[0])) {
         applyStackInSuggestedPosition(suggestions[0]);
         autoApplied = true;
-        suggestions = getStackInSuggestions(getStackInRecommendationDraft());
+        suggestions = getStackInSuggestions(getStackInRecommendationDraft(), suggestionOptions);
     }
     const next = getStackInAdvisory();
     advisory.textContent = next.message;
+    localizeElement(advisory);
     advisory.classList.remove("neutral", "warning", "error", "success");
     advisory.classList.add(next.tone);
     if (positionGroup) {
@@ -3632,8 +4666,16 @@ function renderStackInAdvisory() {
     }
     syncOverridePanel("stackin", {
         visible: Boolean(next.overrideEligible),
-        conflictMessage: next.departureRuleConflict ? `${next.departureRuleConflict.message} Enable emergency override to continue.` : "",
-        readyMessage: next.departureRuleConflict ? `Emergency override will be logged against lower container ${next.departureRuleConflict.item.container_id}.` : "",
+        conflictMessage: next.departureRuleConflict
+            ? `${next.departureRuleConflict.message} Enable emergency override to continue.`
+            : next.frontBufferConflict
+                ? `${next.frontBufferConflict.message} Enable emergency override to continue.`
+                : "",
+        readyMessage: next.departureRuleConflict
+            ? `Emergency override will be logged against lower container ${next.departureRuleConflict.item.container_id}.`
+            : next.frontBufferConflict
+                ? "Emergency override will be logged for row 1 access lane usage."
+                : "",
     });
     renderStackInSuggestions(suggestions, autoApplied);
 }
@@ -3696,9 +4738,10 @@ function getRestowAdvisory() {
         };
     }
     const moveTarget = resolution.moveTarget;
-    const overrideChecked = Boolean(moveTarget.departureRuleConflict && checked("restow-emergency-override"));
+    const overrideConflict = getMoveTargetOverrideConflict(moveTarget);
+    const overrideChecked = Boolean(overrideConflict && checked("restow-emergency-override"));
     const overrideReason = overrideChecked ? optionalValue("restow-override-reason") : null;
-    if (!moveTarget.departureRuleConflict) {
+    if (!overrideConflict) {
         return {
             tone: "neutral",
             message: `Move looks good: target ${moveTarget.target.block}-${moveTarget.target.bay}-${moveTarget.target.row}-${moveTarget.nextTier} respects current stacking order.`,
@@ -3707,17 +4750,19 @@ function getRestowAdvisory() {
             overrideChecked: false,
             overrideReason: null,
             departureRuleConflict: null,
+            frontBufferConflict: null,
         };
     }
     if (!overrideChecked) {
         return {
             tone: "warning",
-            message: `Stacking order blocked: ${moveTarget.departureRuleConflict.message} Enable Emergency Override to continue.`,
+            message: `${moveTarget.frontBufferConflict ? "Access lane blocked" : "Stacking order blocked"}: ${getMoveTargetOverrideMessage(moveTarget)} Enable Emergency Override to continue.`,
             requiresOverride: true,
             overrideEligible: true,
             overrideChecked,
             overrideReason,
             departureRuleConflict: moveTarget.departureRuleConflict,
+            frontBufferConflict: moveTarget.frontBufferConflict,
         };
     }
     if (!overrideReason) {
@@ -3729,16 +4774,18 @@ function getRestowAdvisory() {
             overrideChecked,
             overrideReason,
             departureRuleConflict: moveTarget.departureRuleConflict,
+            frontBufferConflict: moveTarget.frontBufferConflict,
         };
     }
     return {
         tone: "warning",
-        message: `Emergency override ready: ${moveTarget.departureRuleConflict.message}`,
+        message: `Emergency override ready: ${getMoveTargetOverrideMessage(moveTarget)}`,
         requiresOverride: true,
         overrideEligible: true,
         overrideChecked,
         overrideReason,
         departureRuleConflict: moveTarget.departureRuleConflict,
+        frontBufferConflict: moveTarget.frontBufferConflict,
     };
 }
 
@@ -3747,12 +4794,21 @@ function renderRestowAdvisory() {
     if (!advisoryEl) return;
     const advisory = getRestowAdvisory();
     advisoryEl.textContent = advisory.message;
+    localizeElement(advisoryEl);
     advisoryEl.classList.remove("neutral", "warning", "error");
     advisoryEl.classList.add(advisory.tone);
     syncOverridePanel("restow", {
         visible: Boolean(advisory.overrideEligible),
-        conflictMessage: advisory.departureRuleConflict ? `${advisory.departureRuleConflict.message} Enable emergency override to continue.` : "",
-        readyMessage: advisory.departureRuleConflict ? `Emergency override will be logged against lower container ${advisory.departureRuleConflict.item.container_id}.` : "",
+        conflictMessage: advisory.departureRuleConflict
+            ? `${advisory.departureRuleConflict.message} Enable emergency override to continue.`
+            : advisory.frontBufferConflict
+                ? `${advisory.frontBufferConflict.message} Enable emergency override to continue.`
+                : "",
+        readyMessage: advisory.departureRuleConflict
+            ? `Emergency override will be logged against lower container ${advisory.departureRuleConflict.item.container_id}.`
+            : advisory.frontBufferConflict
+                ? "Emergency override will be logged for row 1 access lane usage."
+                : "",
     });
 }
 
@@ -3768,7 +4824,7 @@ function getLocalDateKey(value = new Date()) {
 }
 
 function formatDateTime(value) {
-    return new Intl.DateTimeFormat("en-GB", {
+    return new Intl.DateTimeFormat(getActiveLanguage() === "uk" ? "uk-UA" : "en-GB", {
         day: "2-digit",
         month: "2-digit",
         year: "numeric",
@@ -3788,7 +4844,7 @@ function formatWeight(value) {
     if (value == null || value === "") return "";
     const numeric = Number(value);
     if (Number.isNaN(numeric)) return String(value);
-    return `${numeric.toLocaleString("en-US", { maximumFractionDigits: 3 })} kg`;
+    return `${numeric.toLocaleString(getActiveLanguage() === "uk" ? "uk-UA" : "en-US", { maximumFractionDigits: 3 })} kg`;
 }
 
 function escapeHtml(value) {
@@ -3837,7 +4893,10 @@ function setValue(id, val) {
 }
 
 function setText(id, text) {
-    document.getElementById(id).textContent = text;
+    const node = document.getElementById(id);
+    if (!node) return;
+    node.textContent = text;
+    localizeElement(node);
 }
 
 function setChecked(id, val) {
@@ -3849,6 +4908,7 @@ function showToast(message, tone = "success") {
     if (!toast || !message) return;
     if (state.toastTimer) window.clearTimeout(state.toastTimer);
     toast.textContent = message;
+    localizeElement(toast);
     toast.classList.remove("hidden", "show", "success", "error");
     toast.classList.add(tone === "error" ? "error" : "success");
     window.requestAnimationFrame(() => {

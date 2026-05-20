@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>BitVantage Yard Console</title>
     <link rel="icon" type="image/svg+xml" href="assets/bitvantage-logo.svg">
-    <link rel="stylesheet" href="styles.css?v=20260415-01">
+    <link rel="stylesheet" href="styles.css?v=20260520-yard-layout-rules">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
@@ -13,6 +13,10 @@
     <div id="auth-screen" class="auth-screen">
         <div class="auth-card">
             <div class="auth-copy">
+                <div class="language-switcher auth-language-switcher" aria-label="Language">
+                    <button type="button" class="language-option" data-language-option="en">EN</button>
+                    <button type="button" class="language-option" data-language-option="uk">UA</button>
+                </div>
                 <span class="auth-kicker">BitVantage Access</span>
                 <h1>Sign In To The Yard Console</h1>
                 <p>Each terminal operator works under a personal account. Actions, moves and timestamps are logged under the active session.</p>
@@ -177,6 +181,10 @@
                     <span class="header-kicker">Tablet Console</span>
                     <h1>Terminal Yard Map</h1>
                 </div>
+                <div class="language-switcher no-print" aria-label="Language">
+                    <button type="button" class="language-option" data-language-option="en">EN</button>
+                    <button type="button" class="language-option" data-language-option="uk">UA</button>
+                </div>
             </header>
 
             <div id="activity-indicator" class="activity-indicator hidden no-print" aria-live="polite">
@@ -265,8 +273,8 @@
                                     <div class="toolbar-group">
                                         <label for="viewport-size">Window</label>
                                         <select id="viewport-size">
-                                            <option value="14" selected>Full block</option>
-                                            <option value="10">Compact</option>
+                                            <option value="full" selected>Full block</option>
+                                            <option value="compact">Compact</option>
                                         </select>
                                     </div>
                                 </div>
@@ -716,6 +724,6 @@
     </div>
 
     <div id="toast" class="toast hidden"></div>
-    <script src="app.js?v=20260415-01"></script>
+    <script src="app.js?v=20260520-yard-layout-rules"></script>
 </body>
 </html>

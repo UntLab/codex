@@ -1,0 +1,12 @@
+[Unit]
+Description=Run BitVantage printable Google Drive snapshot daily at 22:00 Baku
+
+[Timer]
+# apps-01 currently runs in UTC. 18:00 UTC equals 22:00 Asia/Baku.
+OnCalendar=*-*-* 18:00:00
+Persistent=true
+RandomizedDelaySec=10m
+Unit=bitvantage-google-snapshot.service
+
+[Install]
+WantedBy=timers.target

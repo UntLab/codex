@@ -102,19 +102,19 @@ DEFAULT_USERS = [
 
 DEFAULT_BLOCKS = [
     ("01", "West Rail Block", 10, 2, 4, "Left of the railway"),
-    ("02", "East Rail Block", 14, 6, 4, "Right of the railway"),
+    ("02", "East Rail Block", 36, 6, 4, "Right of the railway"),
 ]
 
 DEFAULT_INVENTORY = [
     ("CONT001", "40ft", "01", "02", 2, 1, "01-02-2-1", "Loaded", "Import", 0, "2026-03-18", 28250.0, "Machinery", "Maersk", "John Doe", "None", "OK123", "2026-03-10T08:15:00+00:00", "2026-03-10T08:15:00+00:00", "2026-03-10T08:15:00+00:00"),
     ("CONT002", "20ft", "02", "09", 3, 1, "02-09-3-1", "Empty", "Export", 1, "2026-03-15", 8120.0, "Spare Parts", "MSC", "Jane Smith", "None", "SEAL456", "2026-03-11T09:30:00+00:00", "2026-03-11T09:30:00+00:00", "2026-03-11T09:30:00+00:00"),
-    ("CONT003", "45ft", "02", "26", 2, 2, "02-26-2-2", "Loaded", "Import", 0, None, 30180.0, "Steel Coils", "ZIM", "Alex Rail", "None", "RAIL789", "2026-03-12T07:20:00+00:00", "2026-03-12T07:20:00+00:00", "2026-03-12T07:20:00+00:00"),
+    ("CONT003", "45ft", "02", "70", 2, 1, "02-70-2-1", "Loaded", "Import", 0, None, 30180.0, "Steel Coils", "ZIM", "Alex Rail", "None", "RAIL789", "2026-03-12T07:20:00+00:00", "2026-03-12T07:20:00+00:00", "2026-03-12T07:20:00+00:00"),
 ]
 
 DEFAULT_LOGS = [
     ("CONT001", "STACK_IN", None, "01-02-2-1", "2026-03-10T08:15:00+00:00", "2026-03-10T08:15:00+00:00", "manager", "Marina Orlova", "MANAGER", json.dumps({"container_id": "CONT001", "container_type": "40ft", "block": "01", "bay": "02", "row_num": 2, "tier_num": 1, "position_code": "01-02-2-1", "status": "Loaded", "direction": "Import", "bonded": False, "stack_out_date": "2026-03-18", "weight": 28250.0, "commodity": "Machinery", "line": "Maersk", "expeditor": "John Doe", "damages": "None", "seals": "OK123", "arrived_at": "2026-03-10T08:15:00+00:00", "positioned_at": "2026-03-10T08:15:00+00:00", "updated_at": "2026-03-10T08:15:00+00:00"})),
     ("CONT002", "STACK_IN", None, "02-09-3-1", "2026-03-11T09:30:00+00:00", "2026-03-11T09:30:00+00:00", "planner", "Daniel Ash", "PLANNER", json.dumps({"container_id": "CONT002", "container_type": "20ft", "block": "02", "bay": "09", "row_num": 3, "tier_num": 1, "position_code": "02-09-3-1", "status": "Empty", "direction": "Export", "bonded": True, "stack_out_date": "2026-03-15", "weight": 8120.0, "commodity": "Spare Parts", "line": "MSC", "expeditor": "Jane Smith", "damages": "None", "seals": "SEAL456", "arrived_at": "2026-03-11T09:30:00+00:00", "positioned_at": "2026-03-11T09:30:00+00:00", "updated_at": "2026-03-11T09:30:00+00:00"})),
-    ("CONT003", "STACK_IN", None, "02-26-2-2", "2026-03-12T07:20:00+00:00", "2026-03-12T07:20:00+00:00", "admin", "BitVantage Admin", "ADMIN", json.dumps({"container_id": "CONT003", "container_type": "45ft", "block": "02", "bay": "26", "row_num": 2, "tier_num": 2, "position_code": "02-26-2-2", "status": "Loaded", "direction": "Import", "bonded": False, "stack_out_date": None, "weight": 30180.0, "commodity": "Steel Coils", "line": "ZIM", "expeditor": "Alex Rail", "damages": "None", "seals": "RAIL789", "arrived_at": "2026-03-12T07:20:00+00:00", "positioned_at": "2026-03-12T07:20:00+00:00", "updated_at": "2026-03-12T07:20:00+00:00"})),
+    ("CONT003", "STACK_IN", None, "02-70-2-1", "2026-03-12T07:20:00+00:00", "2026-03-12T07:20:00+00:00", "admin", "BitVantage Admin", "ADMIN", json.dumps({"container_id": "CONT003", "container_type": "45ft", "block": "02", "bay": "70", "row_num": 2, "tier_num": 1, "position_code": "02-70-2-1", "status": "Loaded", "direction": "Import", "bonded": False, "stack_out_date": None, "weight": 30180.0, "commodity": "Steel Coils", "line": "ZIM", "expeditor": "Alex Rail", "damages": "None", "seals": "RAIL789", "arrived_at": "2026-03-12T07:20:00+00:00", "positioned_at": "2026-03-12T07:20:00+00:00", "updated_at": "2026-03-12T07:20:00+00:00"})),
 ]
 
 DEFAULT_SLOT_OVERRIDES = []
@@ -407,6 +407,32 @@ def get_surface_bays_for_placement(bay: str, container_type: str) -> List[str]:
     if not is_wide_container(container_type):
         return [normalized_bay]
     return get_surface_bays_from_wide_anchor(normalized_bay)
+
+
+def list_candidate_bays_for_container_type(block_or_record: Union[str, Dict[str, Any]], container_type: str) -> List[str]:
+    normalized_type = str(container_type).strip().lower()
+    block_record = block_or_record if isinstance(block_or_record, dict) else get_block_record(block_or_record)
+    if not block_record:
+        return []
+    if normalized_type == "20ft":
+        return [format_bay_number(bay) for bay in range(1, get_max_surface_bay(block_record) + 1, 2)]
+    if normalized_type == "40ft":
+        return [
+            get_wide_anchor_bay_from_surface_bay(format_bay_number(bay))
+            for bay in range(1, get_max_surface_bay(block_record) + 1, 2)
+            if can_start_wide_at_surface_bay(block_record, format_bay_number(bay))
+        ]
+    if normalized_type == "45ft":
+        return sorted(
+            bay
+            for bay in {format_bay_number(2), format_bay_number(get_max_wide_bay(block_record))}
+            if is_45ft_anchor_allowed(block_record, bay)
+        )
+    return []
+
+
+def is_front_buffer_row(row_num: int) -> bool:
+    return int(row_num) == 1
 
 
 def parse_priority_date(value: Any) -> Optional[datetime]:
@@ -1238,6 +1264,36 @@ def find_inventory_by_surface_position(
     return None
 
 
+def find_upper_blocking_containers(
+    container: Dict[str, Any],
+    *,
+    inventory_rows: Optional[List[Dict[str, Any]]] = None,
+    db: Optional[DBConnection] = None,
+) -> List[Dict[str, Any]]:
+    target_slots = set(
+        get_surface_slot_keys(
+            container["block"],
+            container["bay"],
+            container["row_num"],
+            container["container_type"],
+        )
+    )
+    target_tier = int(container["tier_num"])
+    inventory = inventory_rows if inventory_rows is not None else get_all_inventory(db=db)
+    blockers: List[Dict[str, Any]] = []
+    for item in inventory:
+        if item["container_id"] == container["container_id"]:
+            continue
+        if item["block"] != container["block"] or int(item["row_num"]) != int(container["row_num"]):
+            continue
+        if int(item["tier_num"]) <= target_tier:
+            continue
+        occupied_slots = set(get_surface_slot_keys(item["block"], item["bay"], item["row_num"], item["container_type"]))
+        if target_slots & occupied_slots:
+            blockers.append(item)
+    return sorted(blockers, key=lambda item: (-int(item["tier_num"]), str(item.get("position_code") or ""), str(item["container_id"])))
+
+
 def get_slot_lookup_bay(block: str, bay: str, container_type: str) -> str:
     normalized_bay = format_bay_number(int(bay))
     if not is_wide_container(container_type):
@@ -1324,6 +1380,98 @@ def find_departure_priority_conflict(
     }
 
 
+def find_non_buffer_placement_alternative(
+    block: str,
+    container_type: str,
+    direction: str,
+    stack_out_date: Any,
+    arrived_at: Any,
+    *,
+    exclude_container_id: Optional[str] = None,
+    inventory_rows: Optional[List[Dict[str, Any]]] = None,
+    layout_records: Optional[List[Dict[str, Any]]] = None,
+    overrides_by_slot: Optional[Dict[str, Dict[str, Any]]] = None,
+    db: Optional[DBConnection] = None,
+) -> Optional[Dict[str, Any]]:
+    layout_source = layout_records if layout_records is not None else get_terminal_layout(db=db)
+    block_record = next((item for item in layout_source if item["block"] == block), None)
+    if not block_record:
+        return None
+
+    inventory = inventory_rows if inventory_rows is not None else get_all_inventory(db=db)
+    overrides = overrides_by_slot if overrides_by_slot is not None else load_slot_overrides(db=db, block=block)
+    candidate_bays = list_candidate_bays_for_container_type(block_record, container_type)
+
+    for row_num in range(2, int(block_record["row_count"]) + 1):
+        for bay in candidate_bays:
+            lookup_bay = get_slot_lookup_bay(block, bay, container_type)
+            slot = get_slot(
+                block,
+                lookup_bay,
+                row_num,
+                db=db,
+                layout_records=layout_source,
+                overrides_by_slot=overrides,
+            )
+            if not slot or not slot.get("enabled", True):
+                continue
+            if container_type not in slot.get("allowed_container_types", []):
+                continue
+            for tier_num in range(1, int(slot.get("max_tiers") or block_record["tier_count"]) + 1):
+                if not has_supporting_base(
+                    block,
+                    bay,
+                    row_num,
+                    tier_num,
+                    container_type,
+                    inventory_rows=inventory,
+                    db=db,
+                ):
+                    continue
+                if find_inventory_by_surface_position(
+                    block,
+                    bay,
+                    row_num,
+                    tier_num,
+                    container_type,
+                    exclude_container_id=exclude_container_id,
+                    inventory_rows=inventory,
+                    db=db,
+                ):
+                    continue
+                if find_direction_conflict_in_bay(
+                    block,
+                    bay,
+                    direction,
+                    container_type,
+                    exclude_container_id=exclude_container_id,
+                    inventory_rows=inventory,
+                    db=db,
+                ):
+                    continue
+                if find_departure_priority_conflict(
+                    block,
+                    bay,
+                    row_num,
+                    tier_num,
+                    container_type,
+                    stack_out_date,
+                    arrived_at,
+                    exclude_container_id=exclude_container_id,
+                    inventory_rows=inventory,
+                    db=db,
+                ):
+                    continue
+                return {
+                    "block": block,
+                    "bay": bay,
+                    "row": row_num,
+                    "tier": tier_num,
+                    "position_code": f"{block}-{bay}-{row_num}-{tier_num}",
+                }
+    return None
+
+
 def get_all_inventory(db: Optional[DBConnection] = None) -> List[Dict[str, Any]]:
     if db is None:
         with get_db() as db_conn:
@@ -1333,8 +1481,11 @@ def get_all_inventory(db: Optional[DBConnection] = None) -> List[Dict[str, Any]]
     return [normalize_inventory_row(row) for row in rows]
 
 
-def delete_inventory(container_id: str) -> bool:
-    with get_db() as db:
+def delete_inventory(container_id: str, db: Optional[DBConnection] = None) -> bool:
+    if db is None:
+        with get_db() as db_conn:
+            db_conn.execute("DELETE FROM inventory WHERE container_id = ?", (container_id,))
+    else:
         db.execute("DELETE FROM inventory WHERE container_id = ?", (container_id,))
     return True
 

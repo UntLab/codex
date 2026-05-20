@@ -89,6 +89,10 @@ button, input, select {
     margin: 0.35rem 0 0.75rem;
 }
 
+.auth-language-switcher {
+    margin-bottom: 0.85rem;
+}
+
 .auth-copy p,
 .header-subtitle {
     color: var(--text-secondary);
@@ -485,7 +489,7 @@ button, input, select {
 
 .app-header {
     display: flex;
-    justify-content: flex-start;
+    justify-content: space-between;
     align-items: start;
     gap: 0.6rem;
     margin-bottom: 0.22rem;
@@ -511,6 +515,47 @@ button, input, select {
     text-transform: uppercase;
     letter-spacing: 0.16em;
     color: var(--text-secondary);
+}
+
+.language-switcher {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.32rem;
+    padding: 0.24rem;
+    border: 1px solid rgba(140, 164, 196, 0.18);
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.06);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+.language-option {
+    min-width: 38px;
+    border: 0;
+    border-radius: 999px;
+    padding: 0.42rem 0.58rem;
+    background: transparent;
+    color: var(--text-secondary);
+    font-size: 0.72rem;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    cursor: pointer;
+    transition: 0.18s ease;
+}
+
+.language-option:hover {
+    color: var(--text-primary);
+    background: rgba(79, 155, 255, 0.12);
+}
+
+.language-option.active {
+    color: #071221;
+    background: linear-gradient(180deg, #f8fbff, #dceaff);
+    box-shadow: 0 8px 18px rgba(47, 129, 247, 0.16);
+}
+
+.app-header .language-switcher {
+    margin-left: auto;
+    background: rgba(8, 17, 31, 0.44);
 }
 
 .dashboard-overview-panel {
@@ -989,6 +1034,20 @@ button, input, select {
     box-shadow: 0 10px 18px rgba(79, 155, 255, 0.1);
 }
 
+.terminal-block.is-paused {
+    border-color: rgba(185, 125, 22, 0.34);
+    background: linear-gradient(180deg, rgba(255, 252, 245, 0.98), rgba(245, 239, 229, 0.96));
+}
+
+.terminal-block.is-selection-locked {
+    cursor: not-allowed;
+}
+
+.terminal-block.is-selection-locked:hover {
+    box-shadow: none;
+    transform: none;
+}
+
 .terminal-block-top,
 .terminal-block-footer {
     display: flex;
@@ -1031,6 +1090,20 @@ button, input, select {
     color: #1e5da8;
     font-size: 0.82rem;
     font-weight: 700;
+}
+
+.terminal-block-pause-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.24rem 0.58rem;
+    border-radius: 999px;
+    background: rgba(171, 106, 0, 0.12);
+    color: #895a00;
+    font-size: 0.66rem;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
 }
 
 .terminal-block-track {
@@ -1099,6 +1172,11 @@ button, input, select {
 .mini-cell.support-fragment { opacity: 0.9; }
 .mini-cell.wide { grid-column: span 2; border-radius: 8px; }
 .mini-cell.dense-part { border-radius: 4px; }
+.mini-cell.mini-corridor {
+    border-color: transparent;
+    background: linear-gradient(90deg, transparent, rgba(91, 111, 137, 0.16), transparent);
+    box-shadow: none;
+}
 .mini-cell.type-disabled {
     background: repeating-linear-gradient(135deg, rgba(180, 191, 204, 0.65), rgba(180, 191, 204, 0.65) 4px, rgba(234, 239, 245, 0.9) 4px, rgba(234, 239, 245, 0.9) 8px);
 }
@@ -1143,6 +1221,8 @@ input, select {
     display: grid;
     gap: 0.55rem;
     align-items: stretch;
+    overflow-x: auto;
+    padding-bottom: 0.25rem;
 }
 
 .bay-grid.compact-grid {
@@ -1151,6 +1231,18 @@ input, select {
 
 .bay-grid.condensed-grid {
     gap: 0.28rem;
+}
+
+.yard-corridor-header,
+.yard-corridor-cell {
+    border-radius: 12px;
+    background: linear-gradient(90deg, transparent, rgba(91, 111, 137, 0.12), transparent);
+    border: 1px dashed rgba(91, 111, 137, 0.2);
+    min-height: 30px;
+}
+
+.yard-corridor-cell {
+    min-height: 100%;
 }
 
 .axis-cell,
@@ -1239,7 +1331,16 @@ input, select {
     padding: 0;
 }
 .slot-code { display: block; color: var(--muted-dark); font-size: 0.66rem; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 0.35rem; }
-.slot-title { display: block; font-size: 0.9rem; font-weight: 700; margin-bottom: 0.18rem; }
+.slot-title {
+    display: block;
+    max-width: calc(100% - 42px);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 0.9rem;
+    font-weight: 700;
+    margin-bottom: 0.18rem;
+}
 .slot-cell.type-20ft .slot-title { color: #005ccf; }
 .slot-cell.type-40ft .slot-title { color: #b55e00; }
 .slot-cell.type-45ft .slot-title { color: #c42130; }
@@ -1272,7 +1373,8 @@ input, select {
 }
 
 .bay-grid.condensed-grid .slot-title {
-    font-size: 0.54rem;
+    max-width: calc(100% - 22px);
+    font-size: 0.58rem;
     margin: 0;
     line-height: 1.1;
     font-weight: 800;
@@ -1788,6 +1890,7 @@ input, select {
     .app-container { flex-direction: column; }
     .sidebar { width: 100%; }
     .content { padding: 1rem; }
+    .app-header { align-items: center; }
     .stats-cards,
     .container-card-meta,
     .form-grid,

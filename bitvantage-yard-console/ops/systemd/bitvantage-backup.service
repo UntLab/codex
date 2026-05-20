@@ -1,0 +1,17 @@
+[Unit]
+Description=BitVantage verified database and stack backup
+Documentation=file:/srv/stacks/bitvantage/app/BACKUP_RESTORE.md
+After=docker.service network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=root
+Group=root
+EnvironmentFile=-/etc/bitvantage-backup.env
+ExecStart=/usr/local/sbin/bitvantage-backup
+Nice=10
+IOSchedulingClass=best-effort
+IOSchedulingPriority=7
+PrivateTmp=true
+NoNewPrivileges=true
